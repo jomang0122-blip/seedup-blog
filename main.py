@@ -47,10 +47,28 @@ def save_log(data: dict, post: dict, result: dict):
     log(f"로그 저장: {log_file.name}")
 
 
+def is_trading_day(date_str: str) -> bool:
+    """해당 날짜에 코스피 거래 데이터가 있으면 True (공휴일·주말 감지)"""
+    import FinanceDataReader as fdr
+    date_fmt = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+    try:
+        df = fdr.DataReader("KS11", date_fmt, date_fmt)
+        return not df.empty
+    except Exception:
+        return False
+
+
 def run(dry_run: bool = False, date: str = None):
     log("=" * 50)
     log(f"SeedUP 자동 발행 시작  {'[DRY-RUN]' if dry_run else '[LIVE]'}")
     log("=" * 50)
+
+    # 공휴일·휴장일 체크 (날짜 미지정 = 오늘 자동 실행 모드에서만)
+    if date is None:
+        today = datetime.today().strftime("%Y%m%d")
+        if not is_trading_day(today):
+            log(f"  오늘({today})은 휴장일입니다 — 발행 생략")
+            sys.exit(0)
 
     # 1. 데이터 수집
     log("▶ Step 1: 시장 데이터 수집")

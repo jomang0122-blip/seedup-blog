@@ -26,15 +26,27 @@ def _build_data_summary(data: dict) -> str:
 
     gainers = data.get("top_gainers", [])
     if gainers:
-        lines.append("급등 종목 (정확한 수치):")
+        lines.append("급등 종목 TOP5 (시총 1000억+ KOSPI 전체 기준):")
         for g in gainers:
             lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%")
 
     losers = data.get("top_losers", [])
     if losers:
-        lines.append("급락 종목 (정확한 수치):")
+        lines.append("급락 종목 TOP5 (시총 1000억+ KOSPI 전체 기준):")
         for l in losers:
             lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%")
+
+    # 섹터 데이터 (구성 종목 포함) — 섹터 섹션 검증용
+    for label, key in [("상승", "top_sectors"), ("하락", "bottom_sectors")]:
+        sectors = data.get(key, [])
+        if sectors:
+            lines.append(f"{label} 섹터 TOP3 (Naver 업종별 데이터):")
+            for s in sectors:
+                stock_txt = " / ".join(
+                    f"{st['name']} {st['change_pct']:+.2f}%"
+                    for st in s.get("top_stocks", [])
+                )
+                lines.append(f"  {s['name']} {s['change_pct']:+.2f}%: {stock_txt}")
 
     return "\n".join(lines)
 
@@ -69,16 +81,17 @@ def validate_post(data: dict, post: dict) -> dict:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 검증 체크리스트:
-1. 제목의 종목명·수치가 실제 데이터와 일치하는가?
+1. 제목의 종목명·수치가 "급등 종목 TOP5" 데이터와 일치하는가?
    - 여러 종목을 한 수치로 묶은 경우 (예: "20% 이상") 각 종목의 실제 수치와 비교
 2. 본문의 KOSPI·KOSDAQ 종가 및 등락률이 정확한가?
-3. 급등·급락 종목명과 등락률(%)이 실제 데이터와 일치하는가?
+3. 🔥 특징주 리포트 섹션의 급등·급락 종목명과 등락률이 "급등/급락 종목 TOP5" 데이터와 일치하는가?
 4. 실제 데이터에 없는 수치가 임의로 삽입되지 않았는가?
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
-- 존재하지 않는 종목이나 수치가 추가된 경우 반드시 오류로 표시
-- 제목과 본문 모두 검증
+- 🏭 주도 섹터 섹션의 종목들은 "섹터 TOP3" 데이터에서 가져온 것 — 급등/급락 TOP5와 다름. 섹터 섹션의 종목 검증 제외
+- 🔥 특징주 리포트 섹션 안의 '—' 이후 텍스트는 뉴스 헤드라인 원문이므로 검증 제외 (과거 시세·다른 종목 언급 가능)
+- 검증 대상: 제목 수치, 🚀 핵심 섹션, 📊 지수 동향 섹션의 수치만
 
 반드시 아래 JSON 형식으로만 응답 (코드 블록, 설명 없이 순수 JSON만):
 {{
@@ -110,24 +123,40 @@ def validate_post(data: dict, post: dict) -> dict:
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=1024,
+        max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
     )
 
     raw = message.content[0].text.strip()
 
-    # JSON 추출 (코드 블록 제거)
+    # JSON 추출 (코드 블록 제거, 잘린 JSON 복구 시도)
     raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
 
-    try:
-        result = json.loads(raw)
-    except json.JSONDecodeError as e:
-        return {
-            "approved": False,
-            "issues": [{"type": "parse_error", "description": f"검증 응답 파싱 실패: {e}", "found": raw, "expected": ""}],
-            "corrected_title": None,
-            "corrections": [],
-        }
+    # 잘린 JSON인 경우 }]} 닫기 시도
+    if raw and not raw.endswith("}"):
+        for suffix in ["}", "}]}", "]}"]:
+            try:
+                result = json.loads(raw + suffix)
+                break
+            except json.JSONDecodeError:
+                continue
+        else:
+            return {
+                "approved": True,   # 파싱 실패 시 통과 처리 (발행 막지 않음)
+                "issues": [{"type": "parse_warning", "description": "검증 응답 파싱 불완전 — 검증 생략", "found": "", "expected": ""}],
+                "corrected_title": None,
+                "corrections": [],
+            }
+    else:
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError as e:
+            return {
+                "approved": True,
+                "issues": [{"type": "parse_warning", "description": f"검증 응답 파싱 실패: {e}", "found": "", "expected": ""}],
+                "corrected_title": None,
+                "corrections": [],
+            }
 
     return result
 

@@ -260,16 +260,20 @@ def get_news(query: str = "코스피 증시 오늘") -> list:
 
 
 def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
-    """종목별 최신 뉴스 헤드라인 (급등/급락 이유 파악용)"""
+    """종목별 최신 뉴스 헤드라인 — 제목에 종목명이 포함된 기사만 사용"""
     if not stock_names:
         return {}
     result = {}
     for name in stock_names:
-        headlines = _naver_news_search(f"{name} 주가", display=max_per_stock)
-        result[name] = headlines
+        # 더 많이 가져와서 종목명 포함 기사만 필터링
+        candidates = _naver_news_search(f"{name} 주가", display=5)
+        # 제목에 종목명(또는 핵심 단어)이 있는 기사 우선 선택
+        matched = [h for h in candidates if name in h]
+        # 매칭 없으면 전체 후보에서 앞 2개
+        result[name] = (matched or candidates)[:max_per_stock]
         time.sleep(0.1)
-    if result:
-        print(f"  [종목뉴스] {len([v for v in result.values() if v])}개 종목 뉴스 수집 완료")
+    matched_cnt = len([v for v in result.values() if v])
+    print(f"  [종목뉴스] {matched_cnt}개 종목 뉴스 수집 완료")
     return result
 
 
