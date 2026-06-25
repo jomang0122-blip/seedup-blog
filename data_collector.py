@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
-from anthropic import Anthropic as _Claude
 
 
 # ── 공통 헤더 ─────────────────────────────────────────────────────────────
@@ -112,8 +111,8 @@ def get_top_stocks(date_str: str) -> dict:
         df = df.dropna(subset=[chg_col])
         total = len(df)
 
-        gainers_df = df.nlargest(10, chg_col)
-        losers_df  = df.nsmallest(10, chg_col)
+        gainers_df = df.nlargest(5, chg_col)
+        losers_df  = df.nsmallest(5, chg_col)
 
         gainers = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
                    for _, r in gainers_df.iterrows()]
@@ -218,111 +217,6 @@ def get_news(query: str = "코스피 증시 오늘") -> list:
     return [i["title"] for i in items]
 
 
-def _is_today(pub_date_str: str, today: str) -> bool:
-    """pubDate 문자열("Wed, 25 Jun 2026 15:30:00 +0900")이 today(YYYYMMDD)와 같은 날인지 확인"""
-    try:
-        from email.utils import parsedate_to_datetime
-        dt = parsedate_to_datetime(pub_date_str)
-        return dt.strftime("%Y%m%d") == today
-    except Exception:
-        return False
-
-
-def _has_today_news(name: str, stock_news: dict, today: str) -> bool:
-    """종목명이 헤드라인에 포함된 당일 뉴스가 1건 이상 있으면 True
-    종목명 없는 뉴스는 무관한 기사이므로 제외"""
-    return any(
-        _is_today(h.get("pub_date", ""), today) and name in h.get("title", "")
-        for h in stock_news.get(name, [])
-        if isinstance(h, dict)
-    )
-
-
-def summarize_stock_movements(gainers: list, losers: list, stock_news: dict) -> dict:
-    """종목별 개별 Claude Haiku 호출 — 교차 오염 원천 차단
-    반환: {종목명: "요약문"} — 요약 불가 종목은 포함 안 함"""
-    if not gainers and not losers:
-        return {}
-
-    all_stocks = [(s, "급등") for s in gainers] + [(s, "급락") for s in losers]
-    summaries  = {}
-    claude     = _Claude()
-
-    for stock, direction in all_stocks:
-        name, pct = stock["name"], stock["change_pct"]
-
-        # 해당 종목명이 헤드라인에 포함된 뉴스만 사용 (교차 오염 방지)
-        raw_items = stock_news.get(name, [])
-        titles = [
-            h["title"] if isinstance(h, dict) else h
-            for h in raw_items[:5]
-            if name in (h["title"] if isinstance(h, dict) else h)
-        ]
-        if not titles:
-            print(f"  [요약] {name}: 유효 헤드라인 없음 — 제외")
-            continue
-
-        prompt = f"""{name}({pct:+.2f}%)의 {direction} 이유를 아래 헤드라인 기반으로만 요약하세요.
-
-헤드라인:
-{chr(10).join(f"- {t}" for t in titles)}
-
-규칙:
-- 위 헤드라인에서 확인된 사실만. 추측·창작 절대 금지.
-- 40자 이내 한국어. 종목명 생략.
-- {direction} 원인 중심으로 작성.
-- 원인 파악 불가 시 빈 문자열 ""만 출력.
-
-요약문만 출력 (다른 설명 없이)."""
-
-        try:
-            msg = claude.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=100,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            summary = msg.content[0].text.strip().strip('"').strip()
-            if summary:
-                summaries[name] = summary
-                print(f"  [요약] {name}: {summary}")
-            else:
-                print(f"  [요약] {name}: 원인 불명 — 제외")
-        except Exception as e:
-            print(f"  [요약] {name} 실패: {e}")
-
-        time.sleep(0.3)  # API rate limit 방지
-
-    print(f"  [요약] 총 {len(summaries)}개 종목 요약 완료")
-    return summaries
-
-
-def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
-    """종목별 당일 뉴스 — {'title': str, 'link': str} 형태로 반환.
-    pubDate로 당일 기사 우선 선택, 없으면 최신순 fallback."""
-    if not stock_names:
-        return {}
-    today = datetime.today().strftime("%Y%m%d")
-    result = {}
-    for name in stock_names:
-        candidates = _naver_news_search(f"{name} 주가", display=10)
-        # 1순위: 종목명 포함 + 당일 발행
-        today_matched = [
-            h for h in candidates
-            if name in h["title"] and _is_today(h["pub_date"], today)
-        ]
-        if today_matched:
-            result[name] = today_matched[:max_per_stock]
-        else:
-            # 2순위: 종목명 포함 (날짜 무관) — 종목명 없는 관련 없는 뉴스는 절대 포함 안 함
-            matched = [h for h in candidates if name in h["title"]]
-            result[name] = matched[:max_per_stock]
-        time.sleep(0.1)
-    matched_cnt = len([v for v in result.values() if v])
-    today_cnt   = sum(1 for v in result.values() if v and _is_today(v[0]["pub_date"], today))
-    print(f"  [종목뉴스] {matched_cnt}개 수집, 당일기사 {today_cnt}개")
-    return result
-
-
 # ── 통합 수집 ─────────────────────────────────────────────────────────────
 
 def collect_all(date: str = None) -> dict:
@@ -336,46 +230,15 @@ def collect_all(date: str = None) -> dict:
     investor_data = get_investor_data(date)
     stock_result  = get_top_stocks(date)
     sector_data   = get_sector_data(date)
-    news          = get_news()
-
-    # TOP10 급등/급락 종목 뉴스 수집 (요약용으로 5건씩)
-    top_names = (
-        [g["name"] for g in stock_result.get("top_gainers", [])] +
-        [l["name"] for l in stock_result.get("top_losers",  [])]
-    )
-    stock_news = get_stock_news(top_names, max_per_stock=5)
-
-    # 당일 뉴스 있는 종목만 필터링
-    gainers_with_news = [
-        g for g in stock_result.get("top_gainers", [])
-        if _has_today_news(g["name"], stock_news, date)
-    ]
-    losers_with_news = [
-        l for l in stock_result.get("top_losers", [])
-        if _has_today_news(l["name"], stock_news, date)
-    ]
-    print(f"  [필터] 당일뉴스 보유 — 급등 {len(gainers_with_news)}개, 급락 {len(losers_with_news)}개")
-
-    # Claude Haiku 배치 요약 (1회 호출)
-    stock_summaries = summarize_stock_movements(
-        gainers_with_news, losers_with_news, stock_news
-    )
-
-    # 요약 있는 종목만 최종 TOP5 확정
-    final_gainers = [g for g in gainers_with_news if g["name"] in stock_summaries][:5]
-    final_losers  = [l for l in losers_with_news  if l["name"] in stock_summaries][:5]
-    print(f"  [최종] 급등 {len(final_gainers)}개, 급락 {len(final_losers)}개 확정")
+    news = get_news()
 
     return {
-        "date":            f"{date[:4]}-{date[4:6]}-{date[6:]}",
+        "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
         **investor_data,
         **sector_data,
-        "top_gainers":     final_gainers,
-        "top_losers":      final_losers,
-        "news":            news,
-        "stock_news":      stock_news,
-        "stock_summaries": stock_summaries,
+        **stock_result,
+        "news": news,
     }
 
 

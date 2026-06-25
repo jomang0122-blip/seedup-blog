@@ -24,21 +24,17 @@ def _build_data_summary(data: dict) -> str:
     if kosdaq:
         lines.append(f"KOSDAQ 종가: {kosdaq['close']:,.2f}pt  등락: {kosdaq['change']:+.2f}pt ({kosdaq['change_pct']:+.2f}%)")
 
-    stock_summaries = data.get("stock_summaries", {})
-
     gainers = data.get("top_gainers", [])
     if gainers:
-        lines.append("급등 종목 (당일뉴스 필터·우선주 제외·AI 요약 완료):")
+        lines.append("급등 종목 TOP5 (시총 1000억+ KOSPI 전체·우선주 제외):")
         for g in gainers:
-            summary = stock_summaries.get(g["name"], "")
-            lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%  요약=[{summary or '없음'}]")
+            lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%")
 
     losers = data.get("top_losers", [])
     if losers:
-        lines.append("급락 종목 (당일뉴스 필터·우선주 제외·AI 요약 완료):")
+        lines.append("급락 종목 TOP5 (시총 1000억+ KOSPI 전체·우선주 제외):")
         for l in losers:
-            summary = stock_summaries.get(l["name"], "")
-            lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%  요약=[{summary or '없음'}]")
+            lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%")
 
     for label, key in [("상승", "top_sectors"), ("하락", "bottom_sectors")]:
         sectors = data.get(key, [])
@@ -85,18 +81,10 @@ def validate_post(data: dict, post: dict) -> dict:
 2. 본문의 KOSPI·KOSDAQ 종가 및 등락률이 정확한가?
 3. 🔥 특징주 리포트 섹션의 급등·급락 종목명과 등락률이 "급등/급락 종목 TOP5" 데이터와 일치하는가?
 4. 실제 데이터에 없는 수치가 임의로 삽입되지 않았는가?
-5. [요약문 존재] 🔥 특징주 리포트 섹션의 모든 종목에 '—' 이후 AI 요약문이 존재하는가?
-   - 요약문 없이 종목명+%만 있으면 오류 (뉴스 없는 종목이 잘못 포함된 것)
-6. [요약 방향성·급등] 급등 종목 요약문에 하락 의미 단어(하락, 급락, 하한가, 약세, 실망)가 포함되어 있지 않은가?
-   - 포함되어 있으면 요약 방향 불일치 → 오류
-7. [요약 방향성·급락] 급락 종목 요약문에 상승 의미 단어(상승, 급등, 상한가, 강세, 기대감 상승)가 포함되어 있지 않은가?
-   - 포함되어 있으면 요약 방향 불일치 → 오류
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
 - 🏭 주도 섹터 섹션은 검증 제외
-- 5번 오류 발견 시 해당 <li> 전체를 corrections에서 제거
-- 6·7번 오류 발견 시 해당 요약문 부분(' — 요약문')을 corrections에서 제거
 
 반드시 아래 JSON 형식으로만 응답 (코드 블록, 설명 없이 순수 JSON만):
 {{
@@ -117,23 +105,17 @@ def validate_post(data: dict, post: dict) -> dict:
       "expected": "SK +20.51%, SK하이닉스 +13.06%"
     }},
     {{
-      "type": "summary_direction",
-      "description": "급락 종목 S-Oil 요약문에 '상승 기대감' 포함 — 방향 불일치",
-      "found": "상승 기대감으로 매수세 유입",
-      "expected": "하락 원인 중심 요약문"
-    }},
-    {{
-      "type": "summary_missing",
-      "description": "급등 종목 XXX에 요약문 없이 종목명+%만 존재",
-      "found": "<li><strong>XXX</strong> +5.43%</li>",
-      "expected": "— 요약문 포함 필요"
+      "type": "stock_number",
+      "description": "본문에 SK하이닉스 등락률이 +13.06%인데 +15.00%로 잘못 기재",
+      "found": "+15.00%",
+      "expected": "+13.06%"
     }}
   ],
   "corrected_title": "수정된 제목 전체 (수치 오류 없으면 null)",
   "corrections": [
     {{
-      "original": "포스팅에서 틀린 원본 문자열 (요약 방향 오류면 ' — 잘못된요약문' 부분, 요약 없으면 <li> 전체)",
-      "corrected": "수정된 문자열 (요약 제거면 빈 문자열 '')"
+      "original": "포스팅에서 틀린 원본 문자열",
+      "corrected": "수정된 문자열"
     }}
   ]
 }}"""

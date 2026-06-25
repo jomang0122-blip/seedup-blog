@@ -82,27 +82,15 @@ def _build_prompt(data: dict) -> str:
     if news:
         news_txt = "시장 전체 뉴스:\n" + "\n".join(f"  - {n}" for n in news[:5])
 
-    # 특징주 HTML 사전 생성 — AI 환각 방지 (Python에서 직접 포맷)
-    # data_collector에서 이미 당일뉴스 필터 + Claude 요약 완료된 상태
-    stock_summaries = data.get("stock_summaries", {})
-
+    # 특징주 HTML 사전 생성 — 종목명+등락률만 표시 (뉴스 요약 없음)
     def build_stock_html(stocks, section_label: str) -> str:
-        """AI 요약문 있는 종목만 포함 — 요약 없으면 제외"""
         if not stocks:
             return ""
         is_gainer = "급등" in section_label
-        items = []
-        for s in stocks:
-            summary = stock_summaries.get(s["name"], "")
-            if not summary:
-                continue
-            line = (
-                f'<li><strong>{s["name"]}</strong> {s["change_pct"]:+.2f}%'
-                f' — {summary}</li>'
-            )
-            items.append(line)
-        if not items:
-            return ""
+        items = [
+            f'<li><strong>{s["name"]}</strong> {s["change_pct"]:+.2f}%</li>'
+            for s in stocks
+        ]
         label = "급등주" if is_gainer else "급락주"
         return (
             f"<p><strong>{label}</strong></p>\n<ul>\n"
