@@ -1,0 +1,13 @@
+# 민감 파일 — 절대 GitHub에 올리지 말 것
+.env
+token.json
+credentials.json
+config.yaml
+
+# 로그
+logs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
