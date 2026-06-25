@@ -58,7 +58,7 @@ def is_trading_day(date_str: str) -> bool:
         return False
 
 
-def run(dry_run: bool = False, date: str = None):
+def run(dry_run: bool = False, date: str = None, force: bool = False):
     log("=" * 50)
     log(f"SeedUP 자동 발행 시작  {'[DRY-RUN]' if dry_run else '[LIVE]'}")
     log("=" * 50)
@@ -119,18 +119,22 @@ def run(dry_run: bool = False, date: str = None):
         log("DRY-RUN 완료")
         return
 
-    # 중복 발행 방지: 당일 포스트가 이미 있으면 중단
+    # 중복 발행 방지: 당일 포스트가 이미 있으면 중단 (--force 시 스킵)
     log("▶ Step 4: 중복 발행 체크")
-    try:
-        existing = check_today_post(data["date"])
-        if existing:
-            log(f"  ⚠️ 오늘({data['date']}) 이미 발행된 포스트 있음 — 발행 중단")
-            log(f"  기존 URL: {existing['url']}")
-            save_log(data, post, existing)
-            sys.exit(0)
-        log("  ✅ 중복 없음 — 발행 진행")
-    except Exception as e:
-        log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
+    if force:
+        log("  ⚡ --force 모드 — 중복 체크 생략")
+    else:
+        try:
+            existing = check_today_post(data["date"])
+            if existing:
+                log(f"  ⚠️ 오늘({data['date']}) 이미 발행된 포스트 있음 — 발행 중단")
+                log(f"  기존 URL: {existing['url']}")
+                log(f"  재발행하려면 --force 옵션을 사용하세요")
+                save_log(data, post, existing)
+                sys.exit(0)
+            log("  ✅ 중복 없음 — 발행 진행")
+        except Exception as e:
+            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
 
     log("▶ Step 5: Blogger 발행")
     try:
@@ -158,6 +162,8 @@ if __name__ == "__main__":
                         help="발행하지 않고 생성된 포스트만 출력")
     parser.add_argument("--date", type=str, default=None,
                         help="날짜 지정 (YYYYMMDD). 기본값: 오늘")
+    parser.add_argument("--force", action="store_true",
+                        help="중복 발행 체크 무시하고 강제 재발행")
     args = parser.parse_args()
 
-    run(dry_run=args.dry_run, date=args.date)
+    run(dry_run=args.dry_run, date=args.date, force=args.force)
