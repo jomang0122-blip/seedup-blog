@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 from anthropic import Anthropic
 
 client = Anthropic()
@@ -58,22 +59,40 @@ def _build_prompt(data: dict) -> str:
             f"기관:   {_fmt_won(abs(institution))} {_direction(institution)}"
         )
 
-    # 섹터 (구성 종목 포함)
-    def sector_lines(sectors):
-        if not sectors:
-            return "(데이터 없음)"
-        lines = []
-        for s in sectors:
-            stocks = s.get("top_stocks", [])
-            stock_txt = " / ".join(f"{st['name']} {st['change_pct']:+.2f}%" for st in stocks)
-            line = f"  - {s['name']} {s['change_pct']:+.2f}%"
-            if stock_txt:
-                line += f"\n    구성종목: {stock_txt}"
-            lines.append(line)
-        return "\n".join(lines)
+    # ── 헤드라인 정제 (% 가격 날짜 제거) ──────────────────────────────────────
+    def _clean_hl(hl: str) -> str:
+        hl = re.sub(r"<[^>]+>", "", hl)
+        hl = re.sub(r"[\+\-]?\d+\.?\d*\s*%", "", hl)   # +12.5%, -3.4%
+        hl = re.sub(r"[\d,]+\s*원", "", hl)              # 107,300원
+        hl = re.sub(r"\d+\s*월\s*\d+\s*일", "", hl)     # 6월 25일
+        return re.sub(r"\s{2,}", " ", hl).strip(" —·,")
 
-    top_sec_txt = sector_lines(data.get("top_sectors",    []))
-    bot_sec_txt = sector_lines(data.get("bottom_sectors", []))
+    # ── 섹터 HTML 사전 생성 (Python 직접 포맷 — AI 환각 방지) ─────────────────
+    sector_news = data.get("sector_news", {})
+
+    def build_sector_html(sectors, label: str) -> str:
+        if not sectors:
+            return ""
+        items = []
+        for s in sectors:
+            name = s["name"]
+            news = sector_news.get(name, [])
+            line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
+            if news:
+                cleaned = _clean_hl(news[0])[:70]
+                if cleaned:
+                    line += f" — {cleaned}"
+            line += "</li>"
+            items.append(line)
+        return (
+            f"<p><strong>{label}</strong></p>\n<ul>\n"
+            + "\n".join(items)
+            + "\n</ul>"
+        )
+
+    top_sector_html = build_sector_html(data.get("top_sectors",    []), "상승 섹터")
+    bot_sector_html = build_sector_html(data.get("bottom_sectors", []), "하락 섹터")
+    sectors_prebuilt = "\n\n".join(filter(None, [top_sector_html, bot_sector_html])) or ""
 
     # 시장 전체 뉴스
     news = data.get("news", [])
@@ -85,19 +104,22 @@ def _build_prompt(data: dict) -> str:
     stock_news = data.get("stock_news", {})
 
     def build_stock_html(stocks, section_label: str) -> str:
-        """뉴스 있는 종목만 포함. 뉴스 제목을 그대로 표시 — AI 해석 없음."""
+        """B안: 종목명+수치 기본, 종목명 포함 뉴스 있을 때만 헤드라인 추가 (% 수치 제거)"""
         if not stocks:
             return ""
         items = []
         for s in stocks:
-            headlines = stock_news.get(s["name"], [])
-            if not headlines:
-                continue
-            hl = headlines[0][:60]  # 첫 번째 뉴스 제목 최대 60자
-            items.append(
-                f'<li><strong>{s["name"]}</strong> {s["change_pct"]:+.2f}% '
-                f'— {hl}</li>'
-            )
+            name = s["name"]
+            headlines = stock_news.get(name, [])
+            line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
+            # 종목명이 실제로 포함된 헤드라인만 사용 (관련 없는 기사 제외)
+            best = next((h for h in headlines if name in h), None)
+            if best:
+                cleaned = _clean_hl(best)[:70]
+                if cleaned:
+                    line += f" — {cleaned}"
+            line += "</li>"
+            items.append(line)
         if not items:
             return ""
         label = "급등주" if "급등" in section_label else "급락주"
@@ -143,18 +165,15 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 {kosdaq_line}
 {investor_section if investor_section else "(수급 데이터 미수집)"}
 
-상승 섹터 TOP3:
-{top_sec_txt}
-
-하락 섹터 TOP3:
-{bot_sec_txt}
-
-급등 종목 목록: {gainers_txt}
-급락 종목 목록: {losers_txt}
+급등 종목: {gainers_txt}
+급락 종목: {losers_txt}
 
 {news_txt}
 
-▼ 아래 HTML은 🔥 특징주 리포트 섹션에 그대로 삽입할 것 (수정 금지):
+▼ 아래 HTML은 🏭 주도 섹터 섹션에 그대로 삽입 (수정 금지):
+{sectors_prebuilt}
+
+▼ 아래 HTML은 🔥 특징주 리포트 섹션에 그대로 삽입 (수정 금지):
 {stocks_prebuilt}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -164,10 +183,10 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 3. 구조 (반드시 이 순서로):
    a) <h2> 제목: 반드시 "[{date_title} 시황] 핵심내용" 형식으로 시작
    b) <h3>🚀 오늘 시장 핵심</h3> — 지수·섹터·특징주를 아우르는 2~3문장 요약
-   c) <h3>📊 지수 동향</h3> — KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술
-   d) <h3>🏭 주도 섹터</h3> — 상승 섹터와 하락 섹터를 각각 <ul><li>로 나열. 섹터명 + 등락률 + 구성종목(이름·등락률)만 표기. 이유·해석·분석 문장 절대 금지{'(섹터 데이터 없음 — 이 섹션 생략)' if not has_sectors else ''}
-   e) <h3>🔥 특징주 리포트</h3> — 위 데이터의 "▼ 아래 HTML" 블록을 <h3> 아래에 그대로 복사 붙여넣기. 한 글자도 수정 금지. 종목 추가·삭제·설명 창작 절대 금지
-   f) <h3>💡 시드업 인사이트</h3> — 오늘 시장에서 시드머니를 키우는 투자자 관점의 핵심 관찰 2~3가지. 구체적이고 실용적으로
+   c) <h3>📊 지수 동향</h3> — KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술. 수급 데이터(외국인·기관)가 없으면 수급 관련 문장을 절대 쓰지 말 것. 지수 수치와 섹터 흐름만으로 서술.
+   d) <h3>🏭 주도 섹터</h3> — 위 데이터의 "🏭 주도 섹터 삽입" HTML 블록을 <h3> 아래에 그대로 붙여넣기. 수정 금지{'(섹터 데이터 없음 — 이 섹션 생략)' if not has_sectors else ''}
+   e) <h3>🔥 특징주 리포트</h3> — 위 데이터의 "🔥 특징주 리포트 삽입" HTML 블록을 <h3> 아래에 그대로 붙여넣기. 수정 금지
+   f) <h3>💡 시드업 인사이트</h3> — 오늘 시장에서 시드머니를 키우는 투자자 관점의 핵심 관찰 2~3가지. 구체적이고 실용적으로. 반드시 위 데이터(지수 수치·섹터 등락률·종목 등락률)에서 관찰 가능한 사실만 쓸 것. 마이크론·Fed·미국 등 수집되지 않은 외부 이벤트를 원인으로 추정하거나 언급 금지. 데이터에 없는 수급(외국인·기관) 정보 창작 금지.
    g) <h3>🧭 내일 시장 전망</h3> — 신중한 어조로 2~3문장
    h) 면책 문구: h3/h4 제목 없이 아래 문구를 <p> 태그로만 출력 (한 글자도 바꾸지 말 것):
       <p style="margin-top:30px; padding:15px; background:#f5f5f5; border-left:4px solid #999; font-size:12px; color:#666;">⚠️ 본 포스트는 시장 정보 제공 및 교육 목적으로 작성된 것이며, 어떤 식으로든 특정 종목 또는 금융상품의 매매를 추천하는 것이 아닙니다. 투자 결정은 반드시 개인의 투자 목표, 위험 선호도, 재무 상황을 고려하여 신중히 진행하시기 바랍니다. SeedUP 투자 블로그는 본 내용으로 인한 모든 직·간접적 손실에 대해 책임을 지지 않습니다. ⚠️</p>
@@ -175,14 +194,11 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 5. null/없는 데이터는 자연스럽게 생략 (언급하지 말 것)
 6. SEO: '코스피', '오늘 증시', '주식시장', '섹터', '특징주' 키워드를 제목/본문에 자연스럽게 포함
 
-⚠️ 반드시 지켜야 할 5가지 규칙:
+⚠️ 반드시 지켜야 할 4가지 규칙:
 A. 숫자 정확성: 제목의 수치는 반드시 실제 데이터와 일치. 급등 1위 종목 수치로 제목 작성. 여러 종목을 묶어 "XX% 이상"으로 쓰면 안 됨 — 각 종목 수치를 정확히 기재.
 B. 리스트 형식: 급등/급락 종목·섹터는 반드시 <ul><li> HTML 리스트 사용. 각 항목에 수치 필수 기재.
 C. 단락 여백: 모든 <p> 태그는 2~3문장 이내로 짧게. 긴 단락은 반드시 쪼갤 것 (애드센스 광고 삽입 공간 확보).
-D. 섹터 환각 금지: 섹터 섹션에는 섹터명+%, 구성종목명+% 수치만 표기. 섹터가 오른/내린 이유를 해석하거나 설명하는 문장 절대 작성 금지.
-   - 예시(올바름): <li>석유와가스 +11.38% — SK +20.51% / SK해운 +12.85%</li>
-   - 예시(금지): <li>석유와가스 +11.38% — 유가 상승 영향으로 에너지 업종 강세</li>
-E. 특징주 HTML 수정 금지: 데이터에 제공된 "▼ 아래 HTML" 블록을 <h3>🔥 특징주 리포트</h3> 아래에 그대로 삽입. 종목·수치·문구 변경 불가. AI가 종목 설명을 창작하거나 추가하는 것 절대 금지.
+D. 섹터·특징주 HTML 수정 금지: 위에서 제공한 두 HTML 블록을 해당 <h3> 아래에 한 글자도 변경 없이 그대로 삽입. 섹터 이유 창작, 종목 추가·삭제, 수치 변경 절대 금지.
 
 출력 형식 — 아래 3줄 헤더 뒤에 HTML 본문만 작성 (다른 설명 없음):
 TITLE: [{date_title} 시황] 핵심내용 (예: [{date_title} 시황] 코스피 5.42% 폭등! 반도체 섹터 주도)
