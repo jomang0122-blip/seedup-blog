@@ -196,8 +196,9 @@ def _naver_news_search(query: str, display: int = 3) -> list:
         items = resp.json().get("items", [])
         return [
             {
-                "title": re.sub(r"<[^>]+>", "", item["title"]),
-                "link":  item.get("originallink") or item.get("link", ""),
+                "title":    re.sub(r"<[^>]+>", "", item["title"]),
+                "link":     item.get("originallink") or item.get("link", ""),
+                "pub_date": item.get("pubDate", ""),   # "Wed, 25 Jun 2026 15:30:00 +0900"
             }
             for item in items
         ]
@@ -212,18 +213,40 @@ def get_news(query: str = "코스피 증시 오늘") -> list:
     return [i["title"] for i in items]
 
 
+def _is_today(pub_date_str: str, today: str) -> bool:
+    """pubDate 문자열("Wed, 25 Jun 2026 15:30:00 +0900")이 today(YYYYMMDD)와 같은 날인지 확인"""
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(pub_date_str)
+        return dt.strftime("%Y%m%d") == today
+    except Exception:
+        return False
+
+
 def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
-    """종목별 최신 뉴스 — {'title': str, 'link': str} 형태로 반환"""
+    """종목별 당일 뉴스 — {'title': str, 'link': str} 형태로 반환.
+    pubDate로 당일 기사 우선 선택, 없으면 최신순 fallback."""
     if not stock_names:
         return {}
+    today = datetime.today().strftime("%Y%m%d")
     result = {}
     for name in stock_names:
-        candidates = _naver_news_search(f"{name} 주가", display=5)
-        matched = [h for h in candidates if name in h["title"]]
-        result[name] = (matched or candidates)[:max_per_stock]
+        candidates = _naver_news_search(f"{name} 주가", display=10)
+        # 1순위: 종목명 포함 + 당일 발행
+        today_matched = [
+            h for h in candidates
+            if name in h["title"] and _is_today(h["pub_date"], today)
+        ]
+        if today_matched:
+            result[name] = today_matched[:max_per_stock]
+        else:
+            # 2순위: 종목명 포함 (날짜 무관)
+            matched = [h for h in candidates if name in h["title"]]
+            result[name] = (matched or candidates)[:max_per_stock]
         time.sleep(0.1)
     matched_cnt = len([v for v in result.values() if v])
-    print(f"  [종목뉴스] {matched_cnt}개 종목 뉴스 수집 완료")
+    today_cnt   = sum(1 for v in result.values() if v and _is_today(v[0]["pub_date"], today))
+    print(f"  [종목뉴스] {matched_cnt}개 수집, 당일기사 {today_cnt}개")
     return result
 
 
