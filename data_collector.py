@@ -125,12 +125,49 @@ def get_top_stocks(date_str: str) -> dict:
         return {"top_gainers": [], "top_losers": []}
 
 
-# ── 섹터 데이터 (Naver Finance 메인 페이지 — frame src 동적 탐색) ──────────
+# ── 섹터 데이터 (Naver Finance 메인 페이지 + 상세 페이지) ───────────────────
+
+def _get_sector_stocks(sector_no: str, is_rising: bool, top_n: int = 5) -> list:
+    """섹터 상세 페이지에서 구성 종목 + 등락률 추출 (type_5 테이블)"""
+    try:
+        url = f"https://finance.naver.com/sise/sise_group_detail.naver?type=upjong&no={sector_no}"
+        resp = requests.get(url, headers=_NAVER_HEADERS, timeout=10)
+        resp.encoding = "cp949"
+        soup = BeautifulSoup(resp.text, "lxml")
+
+        # 종목 리스트는 class=type_5 테이블 — cols[0]=종목명, cols[3]=등락률
+        table = soup.find("table", {"class": "type_5"})
+        if not table:
+            return []
+
+        stocks = []
+        for row in table.find_all("tr"):
+            cols = row.find_all("td")
+            if len(cols) < 4:
+                continue
+            name    = cols[0].get_text(strip=True).rstrip("*")  # 코스닥 * 제거
+            pct_raw = cols[3].get_text(strip=True)
+            if not name or not pct_raw or name in ("종목명", ""):
+                continue
+            is_neg  = "-" in pct_raw
+            pct_val = re.sub(r"[^\d.]", "", pct_raw)
+            try:
+                pct = float(pct_val) * (-1 if is_neg else 1)
+                stocks.append({"name": name, "change_pct": round(pct, 2)})
+            except ValueError:
+                continue
+
+        # 상승 섹터: 상승률 높은 순 / 하락 섹터: 하락률 낮은 순(가장 많이 내린 것 먼저)
+        stocks.sort(key=lambda x: x["change_pct"], reverse=is_rising)
+        return stocks[:top_n]
+    except Exception as e:
+        print(f"  [섹터상세] no={sector_no} 수집 실패: {e}")
+        return []
+
 
 def get_sector_data(date_str: str = None) -> dict:
-    """코스피 업종별 등락 (Naver Finance 섹터 페이지 스크래핑)"""
+    """코스피 업종별 등락 + 섹터별 구성 종목 (Naver Finance 스크래핑)"""
     try:
-        # 1단계: 메인 페이지에서 inner frame URL 동적 탐색
         main_resp = requests.get(
             "https://finance.naver.com/sise/sise_group.nhn",
             params={"type": "upjong"},
@@ -140,8 +177,7 @@ def get_sector_data(date_str: str = None) -> dict:
         main_resp.encoding = "cp949"  # euc-kr보다 cp949가 중간점(·) 처리 정확
         soup = BeautifulSoup(main_resp.text, "lxml")
 
-        # 2단계: 테이블에서 업종명 + 등락률 파싱
-        # 구조: cols[0]=업종명(a태그), cols[1]=등락률(+11.38% 형식)
+        # cols[0]=업종명(a태그+href에 no=XXX), cols[1]=등락률
         table = soup.find("table", {"class": "type_1"}) or soup.find("table")
         if not table:
             return {"top_sectors": [], "bottom_sectors": []}
@@ -151,7 +187,11 @@ def get_sector_data(date_str: str = None) -> dict:
             cols = row.find_all("td")
             if len(cols) < 2:
                 continue
-            name    = cols[0].get_text(strip=True)
+            a_tag   = cols[0].find("a")
+            name    = a_tag.get_text(strip=True) if a_tag else cols[0].get_text(strip=True)
+            href    = a_tag.get("href", "") if a_tag else ""
+            no_m    = re.search(r"no=(\d+)", href)
+            sector_no = no_m.group(1) if no_m else None
             pct_raw = cols[1].get_text(strip=True)
             if not name or not pct_raw:
                 continue
@@ -159,7 +199,7 @@ def get_sector_data(date_str: str = None) -> dict:
             pct_val = re.sub(r"[^\d.]", "", pct_raw)
             try:
                 pct = float(pct_val) * (-1 if is_neg else 1)
-                sectors.append({"name": name, "change_pct": round(pct, 2)})
+                sectors.append({"name": name, "change_pct": round(pct, 2), "no": sector_no})
             except ValueError:
                 continue
 
@@ -167,10 +207,22 @@ def get_sector_data(date_str: str = None) -> dict:
             return {"top_sectors": [], "bottom_sectors": []}
 
         sectors.sort(key=lambda x: x["change_pct"], reverse=True)
+        top_3 = sectors[:3]
+        bot_3 = sectors[-3:][::-1]
+
         print(f"  [섹터] {len(sectors)}개 업종 수집 완료")
+
+        # 상위/하위 섹터 구성 종목 수집 (상세 페이지 요청)
+        for sec in top_3 + bot_3:
+            if sec.get("no"):
+                sec["top_stocks"] = _get_sector_stocks(sec["no"], is_rising=(sec["change_pct"] >= 0))
+            else:
+                sec["top_stocks"] = []
+            time.sleep(0.3)  # 네이버 rate limit 방지
+
         return {
-            "top_sectors":    sectors[:3],
-            "bottom_sectors": sectors[-3:][::-1],
+            "top_sectors":    top_3,
+            "bottom_sectors": bot_3,
         }
     except Exception as e:
         print(f"  [섹터] 수집 실패: {e}")
