@@ -104,6 +104,9 @@ def get_top_stocks(date_str: str) -> dict:
         if "Marcap" in df.columns:
             df = df[pd.to_numeric(df["Marcap"], errors="coerce") > 1_000_000_000_000]
 
+        # 우선주 제거 (종목명이 '우', '우B', '우C'로 끝나는 종목)
+        df = df[~df["Name"].astype(str).str.match(r".*우[BC]?$")]
+
         df = df.dropna(subset=[chg_col])
         total = len(df)
 
