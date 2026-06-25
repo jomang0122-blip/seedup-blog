@@ -194,28 +194,32 @@ def _naver_news_search(query: str, display: int = 3) -> list:
             timeout=5,
         )
         items = resp.json().get("items", [])
-        return [re.sub(r"<[^>]+>", "", item["title"]) for item in items]
+        return [
+            {
+                "title": re.sub(r"<[^>]+>", "", item["title"]),
+                "link":  item.get("originallink") or item.get("link", ""),
+            }
+            for item in items
+        ]
     except Exception as e:
         print(f"  [뉴스] '{query}' 수집 실패: {e}")
         return []
 
 
 def get_news(query: str = "코스피 증시 오늘") -> list:
-    """시장 전체 뉴스 헤드라인"""
-    return _naver_news_search(query, display=5)
+    """시장 전체 뉴스 헤드라인 (제목만)"""
+    items = _naver_news_search(query, display=5)
+    return [i["title"] for i in items]
 
 
 def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
-    """종목별 최신 뉴스 헤드라인 — 제목에 종목명이 포함된 기사만 사용"""
+    """종목별 최신 뉴스 — {'title': str, 'link': str} 형태로 반환"""
     if not stock_names:
         return {}
     result = {}
     for name in stock_names:
-        # 더 많이 가져와서 종목명 포함 기사만 필터링
         candidates = _naver_news_search(f"{name} 주가", display=5)
-        # 제목에 종목명(또는 핵심 단어)이 있는 기사 우선 선택
-        matched = [h for h in candidates if name in h]
-        # 매칭 없으면 전체 후보에서 앞 2개
+        matched = [h for h in candidates if name in h["title"]]
         result[name] = (matched or candidates)[:max_per_stock]
         time.sleep(0.1)
     matched_cnt = len([v for v in result.values() if v])

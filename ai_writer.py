@@ -111,15 +111,21 @@ def _build_prompt(data: dict) -> str:
             headlines = stock_news.get(name, [])
             line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
             # 종목명 포함 + 방향 충돌 없는 헤드라인만 사용
+            # headlines는 {"title": str, "link": str} 형태
             best = next(
                 (h for h in headlines
-                 if name in h and not any(w in h for w in conflict_words)),
+                 if name in h["title"]
+                 and not any(w in h["title"] for w in conflict_words)),
                 None
             )
             if best:
-                cleaned = _clean_hl(best)[:70]
+                cleaned = _clean_hl(best["title"])[:70]
                 if cleaned:
-                    line += f" — {cleaned}"
+                    url = best.get("link", "")
+                    if url:
+                        line += f' — <a href="{url}" target="_blank" rel="nofollow noopener">{cleaned}</a>'
+                    else:
+                        line += f" — {cleaned}"
             line += "</li>"
             items.append(line)
         if not items:
