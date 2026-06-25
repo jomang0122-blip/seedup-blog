@@ -68,22 +68,13 @@ def _build_prompt(data: dict) -> str:
         return re.sub(r"\s{2,}", " ", hl).strip(" —·,")
 
     # ── 섹터 HTML 사전 생성 (Python 직접 포맷 — AI 환각 방지) ─────────────────
-    sector_news = data.get("sector_news", {})
-
     def build_sector_html(sectors, label: str) -> str:
         if not sectors:
             return ""
-        items = []
-        for s in sectors:
-            name = s["name"]
-            news = sector_news.get(name, [])
-            line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
-            if news:
-                cleaned = _clean_hl(news[0])[:70]
-                if cleaned:
-                    line += f" — {cleaned}"
-            line += "</li>"
-            items.append(line)
+        items = [
+            f'<li><strong>{s["name"]}</strong> {s["change_pct"]:+.2f}%</li>'
+            for s in sectors
+        ]
         return (
             f"<p><strong>{label}</strong></p>\n<ul>\n"
             + "\n".join(items)
@@ -103,17 +94,28 @@ def _build_prompt(data: dict) -> str:
     # 특징주 HTML 사전 생성 — AI 환각 방지 (Python에서 직접 포맷)
     stock_news = data.get("stock_news", {})
 
+    # 방향성 불일치 단어: 급등주에 하락 뉴스, 급락주에 상승 뉴스 방지
+    _UP_WORDS   = {"상승", "급등", "상한가", "오름세", "반등", "상승 마감"}
+    _DOWN_WORDS = {"하락", "급락", "하한가", "내림세", "폭락", "하락 마감"}
+
     def build_stock_html(stocks, section_label: str) -> str:
-        """B안: 종목명+수치 기본, 종목명 포함 뉴스 있을 때만 헤드라인 추가 (% 수치 제거)"""
+        """종목명+수치 기본, 방향성 일치 뉴스 있을 때만 헤드라인 추가"""
         if not stocks:
             return ""
+        is_gainer = "급등" in section_label
+        conflict_words = _DOWN_WORDS if is_gainer else _UP_WORDS
+
         items = []
         for s in stocks:
             name = s["name"]
             headlines = stock_news.get(name, [])
             line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
-            # 종목명이 실제로 포함된 헤드라인만 사용 (관련 없는 기사 제외)
-            best = next((h for h in headlines if name in h), None)
+            # 종목명 포함 + 방향 충돌 없는 헤드라인만 사용
+            best = next(
+                (h for h in headlines
+                 if name in h and not any(w in h for w in conflict_words)),
+                None
+            )
             if best:
                 cleaned = _clean_hl(best)[:70]
                 if cleaned:
@@ -122,7 +124,7 @@ def _build_prompt(data: dict) -> str:
             items.append(line)
         if not items:
             return ""
-        label = "급등주" if "급등" in section_label else "급락주"
+        label = "급등주" if is_gainer else "급락주"
         return (
             f"<p><strong>{label}</strong></p>\n<ul>\n"
             + "\n".join(items)

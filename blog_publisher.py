@@ -14,6 +14,26 @@ with open(CONFIG_FILE, encoding='utf-8') as f:
 BLOG_ID = CONFIG['blogger']['blog_id']
 
 
+def check_today_post(date_str: str) -> dict | None:
+    """당일 이미 발행된 포스트가 있으면 {'id', 'url'} 반환, 없으면 None (KST 기준)"""
+    creds = get_credentials()
+    service = build('blogger', 'v3', credentials=creds)
+    start = f"{date_str}T00:00:00+09:00"
+    end   = f"{date_str}T23:59:59+09:00"
+    result = service.posts().list(
+        blogId=BLOG_ID,
+        startDate=start,
+        endDate=end,
+        fetchBodies=False,
+        fetchImages=False,
+        maxResults=5,
+    ).execute()
+    items = result.get("items", [])
+    if items:
+        return {"id": items[0]["id"], "url": items[0].get("url", "")}
+    return None
+
+
 def publish_post(title: str, content: str, labels: list = None, status: str = 'LIVE') -> dict:
     """
     Blogger에 글 발행

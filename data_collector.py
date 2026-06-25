@@ -175,22 +175,6 @@ def get_sector_data(date_str: str = None) -> dict:
         return {"top_sectors": [], "bottom_sectors": []}
 
 
-def get_sector_news(sector_names: list) -> dict:
-    """섹터별 뉴스 헤드라인 — 섹터명 키워드 포함 기사 우선"""
-    result = {}
-    for name in sector_names:
-        # "반도체와반도체장비" → ["반도체", "반도체장비"] 키워드 추출
-        keywords = [w for w in name.replace("와", " ").split() if len(w) >= 2]
-        query = " ".join(keywords[:2]) + " 주식"
-        headlines = _naver_news_search(query, display=5)
-        matched = [h for h in headlines if any(kw in h for kw in keywords)]
-        result[name] = (matched or headlines)[:1]
-        time.sleep(0.2)
-    cnt = len([v for v in result.values() if v])
-    print(f"  [섹터뉴스] {cnt}개 섹터 뉴스 수집 완료")
-    return result
-
-
 # ── 뉴스 ─────────────────────────────────────────────────────────────────
 
 def _naver_news_search(query: str, display: int = 3) -> list:
@@ -254,13 +238,6 @@ def collect_all(date: str = None) -> dict:
     sector_data   = get_sector_data(date)
     news          = get_news()
 
-    # 섹터별 뉴스
-    sector_names = (
-        [s["name"] for s in sector_data.get("top_sectors",    [])] +
-        [s["name"] for s in sector_data.get("bottom_sectors", [])]
-    )
-    sector_news = get_sector_news(sector_names) if sector_names else {}
-
     # 급등/급락 종목별 뉴스
     top_names = (
         [g["name"] for g in stock_result.get("top_gainers", [])] +
@@ -274,9 +251,8 @@ def collect_all(date: str = None) -> dict:
         **investor_data,
         **sector_data,
         **stock_result,
-        "news":        news,
-        "sector_news": sector_news,
-        "stock_news":  stock_news,
+        "news":       news,
+        "stock_news": stock_news,
     }
 
 

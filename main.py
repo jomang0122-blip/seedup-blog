@@ -20,7 +20,7 @@ load_dotenv(Path(__file__).parent / ".env")
 from data_collector import collect_all
 from ai_writer import generate_post
 from validator import validate_post, apply_corrections
-from blog_publisher import publish_post
+from blog_publisher import publish_post, check_today_post
 
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
@@ -119,7 +119,20 @@ def run(dry_run: bool = False, date: str = None):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: Blogger 발행")
+    # 중복 발행 방지: 당일 포스트가 이미 있으면 중단
+    log("▶ Step 4: 중복 발행 체크")
+    try:
+        existing = check_today_post(data["date"])
+        if existing:
+            log(f"  ⚠️ 오늘({data['date']}) 이미 발행된 포스트 있음 — 발행 중단")
+            log(f"  기존 URL: {existing['url']}")
+            save_log(data, post, existing)
+            sys.exit(0)
+        log("  ✅ 중복 없음 — 발행 진행")
+    except Exception as e:
+        log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
+
+    log("▶ Step 5: Blogger 발행")
     try:
         result = publish_post(
             title=post["title"],
