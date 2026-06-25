@@ -229,73 +229,71 @@ def _is_today(pub_date_str: str, today: str) -> bool:
 
 
 def _has_today_news(name: str, stock_news: dict, today: str) -> bool:
-    """해당 종목의 당일(today=YYYYMMDD) 뉴스가 1건 이상 있으면 True"""
+    """종목명이 헤드라인에 포함된 당일 뉴스가 1건 이상 있으면 True
+    종목명 없는 뉴스는 무관한 기사이므로 제외"""
     return any(
-        _is_today(h.get("pub_date", ""), today)
+        _is_today(h.get("pub_date", ""), today) and name in h.get("title", "")
         for h in stock_news.get(name, [])
         if isinstance(h, dict)
     )
 
 
 def summarize_stock_movements(gainers: list, losers: list, stock_news: dict) -> dict:
-    """당일 뉴스 헤드라인 기반 급등/급락 이유 AI 요약 (Claude Haiku 1회 배치 호출)
-    반환: {종목명: "요약 1~2문장"} — 요약 불가 종목은 포함 안 함"""
+    """종목별 개별 Claude Haiku 호출 — 교차 오염 원천 차단
+    반환: {종목명: "요약문"} — 요약 불가 종목은 포함 안 함"""
     if not gainers and not losers:
         return {}
 
-    lines = []
-    for g in gainers:
-        name, pct = g["name"], g["change_pct"]
+    all_stocks = [(s, "급등") for s in gainers] + [(s, "급락") for s in losers]
+    summaries  = {}
+    claude     = _Claude()
+
+    for stock, direction in all_stocks:
+        name, pct = stock["name"], stock["change_pct"]
+
+        # 해당 종목명이 헤드라인에 포함된 뉴스만 사용 (교차 오염 방지)
+        raw_items = stock_news.get(name, [])
         titles = [
             h["title"] if isinstance(h, dict) else h
-            for h in stock_news.get(name, [])[:5]
+            for h in raw_items[:5]
+            if name in (h["title"] if isinstance(h, dict) else h)
         ]
-        if titles:
-            lines.append(f"[급등] {name} ({pct:+.2f}%)\n뉴스: {' | '.join(titles)}")
+        if not titles:
+            print(f"  [요약] {name}: 유효 헤드라인 없음 — 제외")
+            continue
 
-    for lo in losers:
-        name, pct = lo["name"], lo["change_pct"]
-        titles = [
-            h["title"] if isinstance(h, dict) else h
-            for h in stock_news.get(name, [])[:5]
-        ]
-        if titles:
-            lines.append(f"[급락] {name} ({pct:+.2f}%)\n뉴스: {' | '.join(titles)}")
+        prompt = f"""{name}({pct:+.2f}%)의 {direction} 이유를 아래 헤드라인 기반으로만 요약하세요.
 
-    if not lines:
-        return {}
-
-    prompt = f"""아래 종목들의 급등/급락 이유를 뉴스 헤드라인 기반으로 간략히 요약하세요.
+헤드라인:
+{chr(10).join(f"- {t}" for t in titles)}
 
 규칙:
-- 헤드라인에서 확인된 사실만 작성. 추측·창작 절대 금지.
-- 종목명 생략 (자동으로 앞에 붙음).
-- 급등: 상승 원인 중심 (기대감·수혜·호실적·수주·M&A 등).
-- 급락: 하락 원인 중심 (우려·실망·차익실현·악재 등).
-- 40자 이내 한국어. 간결하게.
-- 뉴스 헤드라인으로 원인 파악 불가 시 반드시 빈 문자열 "" 반환.
+- 위 헤드라인에서 확인된 사실만. 추측·창작 절대 금지.
+- 40자 이내 한국어. 종목명 생략.
+- {direction} 원인 중심으로 작성.
+- 원인 파악 불가 시 빈 문자열 ""만 출력.
 
-{chr(10).join(lines)}
+요약문만 출력 (다른 설명 없이)."""
 
-JSON만 반환 (설명·코드블록 없이 순수 JSON):
-{{"종목명": "요약문 또는 빈문자열"}}"""
+        try:
+            msg = claude.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=100,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            summary = msg.content[0].text.strip().strip('"').strip()
+            if summary:
+                summaries[name] = summary
+                print(f"  [요약] {name}: {summary}")
+            else:
+                print(f"  [요약] {name}: 원인 불명 — 제외")
+        except Exception as e:
+            print(f"  [요약] {name} 실패: {e}")
 
-    try:
-        claude = _Claude()
-        msg = claude.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=1024,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw = msg.content[0].text.strip()
-        raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
-        result = json.loads(raw)
-        summaries = {k: v for k, v in result.items() if isinstance(v, str) and v.strip()}
-        print(f"  [요약] {len(summaries)}개 종목 요약 완료")
-        return summaries
-    except Exception as e:
-        print(f"  [요약] 실패: {e}")
-        return {}
+        time.sleep(0.3)  # API rate limit 방지
+
+    print(f"  [요약] 총 {len(summaries)}개 종목 요약 완료")
+    return summaries
 
 
 def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
@@ -315,9 +313,9 @@ def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
         if today_matched:
             result[name] = today_matched[:max_per_stock]
         else:
-            # 2순위: 종목명 포함 (날짜 무관)
+            # 2순위: 종목명 포함 (날짜 무관) — 종목명 없는 관련 없는 뉴스는 절대 포함 안 함
             matched = [h for h in candidates if name in h["title"]]
-            result[name] = (matched or candidates)[:max_per_stock]
+            result[name] = matched[:max_per_stock]
         time.sleep(0.1)
     matched_cnt = len([v for v in result.values() if v])
     today_cnt   = sum(1 for v in result.values() if v and _is_today(v[0]["pub_date"], today))
