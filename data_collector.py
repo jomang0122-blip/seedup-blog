@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import re
 import time
@@ -8,6 +9,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
+from anthropic import Anthropic as _Claude
 
 
 # ── 공통 헤더 ─────────────────────────────────────────────────────────────
@@ -110,8 +112,8 @@ def get_top_stocks(date_str: str) -> dict:
         df = df.dropna(subset=[chg_col])
         total = len(df)
 
-        gainers_df = df.nlargest(5, chg_col)
-        losers_df  = df.nsmallest(5, chg_col)
+        gainers_df = df.nlargest(10, chg_col)
+        losers_df  = df.nsmallest(10, chg_col)
 
         gainers = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
                    for _, r in gainers_df.iterrows()]
@@ -226,6 +228,76 @@ def _is_today(pub_date_str: str, today: str) -> bool:
         return False
 
 
+def _has_today_news(name: str, stock_news: dict, today: str) -> bool:
+    """해당 종목의 당일(today=YYYYMMDD) 뉴스가 1건 이상 있으면 True"""
+    return any(
+        _is_today(h.get("pub_date", ""), today)
+        for h in stock_news.get(name, [])
+        if isinstance(h, dict)
+    )
+
+
+def summarize_stock_movements(gainers: list, losers: list, stock_news: dict) -> dict:
+    """당일 뉴스 헤드라인 기반 급등/급락 이유 AI 요약 (Claude Haiku 1회 배치 호출)
+    반환: {종목명: "요약 1~2문장"} — 요약 불가 종목은 포함 안 함"""
+    if not gainers and not losers:
+        return {}
+
+    lines = []
+    for g in gainers:
+        name, pct = g["name"], g["change_pct"]
+        titles = [
+            h["title"] if isinstance(h, dict) else h
+            for h in stock_news.get(name, [])[:5]
+        ]
+        if titles:
+            lines.append(f"[급등] {name} ({pct:+.2f}%)\n뉴스: {' | '.join(titles)}")
+
+    for lo in losers:
+        name, pct = lo["name"], lo["change_pct"]
+        titles = [
+            h["title"] if isinstance(h, dict) else h
+            for h in stock_news.get(name, [])[:5]
+        ]
+        if titles:
+            lines.append(f"[급락] {name} ({pct:+.2f}%)\n뉴스: {' | '.join(titles)}")
+
+    if not lines:
+        return {}
+
+    prompt = f"""아래 종목들의 급등/급락 이유를 뉴스 헤드라인 기반으로 간략히 요약하세요.
+
+규칙:
+- 헤드라인에서 확인된 사실만 작성. 추측·창작 절대 금지.
+- 종목명 생략 (자동으로 앞에 붙음).
+- 급등: 상승 원인 중심 (기대감·수혜·호실적·수주·M&A 등).
+- 급락: 하락 원인 중심 (우려·실망·차익실현·악재 등).
+- 40자 이내 한국어. 간결하게.
+- 뉴스 헤드라인으로 원인 파악 불가 시 반드시 빈 문자열 "" 반환.
+
+{chr(10).join(lines)}
+
+JSON만 반환 (설명·코드블록 없이 순수 JSON):
+{{"종목명": "요약문 또는 빈문자열"}}"""
+
+    try:
+        claude = _Claude()
+        msg = claude.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = msg.content[0].text.strip()
+        raw = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()
+        result = json.loads(raw)
+        summaries = {k: v for k, v in result.items() if isinstance(v, str) and v.strip()}
+        print(f"  [요약] {len(summaries)}개 종목 요약 완료")
+        return summaries
+    except Exception as e:
+        print(f"  [요약] 실패: {e}")
+        return {}
+
+
 def get_stock_news(stock_names: list, max_per_stock: int = 2) -> dict:
     """종목별 당일 뉴스 — {'title': str, 'link': str} 형태로 반환.
     pubDate로 당일 기사 우선 선택, 없으면 최신순 fallback."""
@@ -268,21 +340,44 @@ def collect_all(date: str = None) -> dict:
     sector_data   = get_sector_data(date)
     news          = get_news()
 
-    # 급등/급락 종목별 뉴스
+    # TOP10 급등/급락 종목 뉴스 수집 (요약용으로 5건씩)
     top_names = (
         [g["name"] for g in stock_result.get("top_gainers", [])] +
         [l["name"] for l in stock_result.get("top_losers",  [])]
     )
-    stock_news = get_stock_news(top_names)
+    stock_news = get_stock_news(top_names, max_per_stock=5)
+
+    # 당일 뉴스 있는 종목만 필터링
+    gainers_with_news = [
+        g for g in stock_result.get("top_gainers", [])
+        if _has_today_news(g["name"], stock_news, date)
+    ]
+    losers_with_news = [
+        l for l in stock_result.get("top_losers", [])
+        if _has_today_news(l["name"], stock_news, date)
+    ]
+    print(f"  [필터] 당일뉴스 보유 — 급등 {len(gainers_with_news)}개, 급락 {len(losers_with_news)}개")
+
+    # Claude Haiku 배치 요약 (1회 호출)
+    stock_summaries = summarize_stock_movements(
+        gainers_with_news, losers_with_news, stock_news
+    )
+
+    # 요약 있는 종목만 최종 TOP5 확정
+    final_gainers = [g for g in gainers_with_news if g["name"] in stock_summaries][:5]
+    final_losers  = [l for l in losers_with_news  if l["name"] in stock_summaries][:5]
+    print(f"  [최종] 급등 {len(final_gainers)}개, 급락 {len(final_losers)}개 확정")
 
     return {
-        "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
+        "date":            f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
         **investor_data,
         **sector_data,
-        **stock_result,
-        "news":       news,
-        "stock_news": stock_news,
+        "top_gainers":     final_gainers,
+        "top_losers":      final_losers,
+        "news":            news,
+        "stock_news":      stock_news,
+        "stock_summaries": stock_summaries,
     }
 
 

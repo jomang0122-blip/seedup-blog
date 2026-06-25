@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-import re
 from anthropic import Anthropic
 
 client = Anthropic()
@@ -59,14 +58,6 @@ def _build_prompt(data: dict) -> str:
             f"기관:   {_fmt_won(abs(institution))} {_direction(institution)}"
         )
 
-    # ── 헤드라인 정제 (% 가격 날짜 제거) ──────────────────────────────────────
-    def _clean_hl(hl: str) -> str:
-        hl = re.sub(r"<[^>]+>", "", hl)
-        hl = re.sub(r"[\+\-]?\d+\.?\d*\s*%", "", hl)   # +12.5%, -3.4%
-        hl = re.sub(r"[\d,]+\s*원", "", hl)              # 107,300원
-        hl = re.sub(r"\d+\s*월\s*\d+\s*일", "", hl)     # 6월 25일
-        return re.sub(r"\s{2,}", " ", hl).strip(" —·,")
-
     # ── 섹터 HTML 사전 생성 (Python 직접 포맷 — AI 환각 방지) ─────────────────
     def build_sector_html(sectors, label: str) -> str:
         if not sectors:
@@ -92,41 +83,23 @@ def _build_prompt(data: dict) -> str:
         news_txt = "시장 전체 뉴스:\n" + "\n".join(f"  - {n}" for n in news[:5])
 
     # 특징주 HTML 사전 생성 — AI 환각 방지 (Python에서 직접 포맷)
-    stock_news = data.get("stock_news", {})
-
-    # 방향성 불일치 단어: 급등주에 하락 뉴스, 급락주에 상승 뉴스 방지
-    _UP_WORDS   = {"상승", "급등", "상한가", "오름세", "반등", "상승 마감"}
-    _DOWN_WORDS = {"하락", "급락", "하한가", "내림세", "폭락", "하락 마감"}
+    # data_collector에서 이미 당일뉴스 필터 + Claude 요약 완료된 상태
+    stock_summaries = data.get("stock_summaries", {})
 
     def build_stock_html(stocks, section_label: str) -> str:
-        """종목명+수치 기본, 방향성 일치 뉴스 있을 때만 헤드라인 추가"""
+        """AI 요약문 있는 종목만 포함 — 요약 없으면 제외"""
         if not stocks:
             return ""
         is_gainer = "급등" in section_label
-        conflict_words = _DOWN_WORDS if is_gainer else _UP_WORDS
-
         items = []
         for s in stocks:
-            name = s["name"]
-            headlines = stock_news.get(name, [])
-            line = f'<li><strong>{name}</strong> {s["change_pct"]:+.2f}%'
-            # 종목명 포함 + 방향 충돌 없는 헤드라인만 사용
-            # headlines는 {"title": str, "link": str} 형태
-            best = next(
-                (h for h in headlines
-                 if name in h["title"]
-                 and not any(w in h["title"] for w in conflict_words)),
-                None
+            summary = stock_summaries.get(s["name"], "")
+            if not summary:
+                continue
+            line = (
+                f'<li><strong>{s["name"]}</strong> {s["change_pct"]:+.2f}%'
+                f' — {summary}</li>'
             )
-            if best:
-                cleaned = _clean_hl(best["title"])[:70]
-                if cleaned:
-                    url = best.get("link", "")
-                    if url:
-                        line += f' — <a href="{url}" target="_blank" rel="nofollow noopener">{cleaned}</a>'
-                    else:
-                        line += f" — {cleaned}"
-            line += "</li>"
             items.append(line)
         if not items:
             return ""
