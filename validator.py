@@ -24,29 +24,34 @@ def _build_data_summary(data: dict) -> str:
     if kosdaq:
         lines.append(f"KOSDAQ 종가: {kosdaq['close']:,.2f}pt  등락: {kosdaq['change']:+.2f}pt ({kosdaq['change_pct']:+.2f}%)")
 
+    stock_news = data.get("stock_news", {})
+
     gainers = data.get("top_gainers", [])
     if gainers:
         lines.append("급등 종목 TOP5 (시총 1000억+ KOSPI 전체 기준):")
         for g in gainers:
-            lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%")
+            news = stock_news.get(g["name"], [])
+            news_titles = " | ".join(
+                h["title"] if isinstance(h, dict) else h for h in news[:2]
+            ) or "없음"
+            lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%  수집뉴스=[{news_titles}]")
 
     losers = data.get("top_losers", [])
     if losers:
         lines.append("급락 종목 TOP5 (시총 1000억+ KOSPI 전체 기준):")
         for l in losers:
-            lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%")
+            news = stock_news.get(l["name"], [])
+            news_titles = " | ".join(
+                h["title"] if isinstance(h, dict) else h for h in news[:2]
+            ) or "없음"
+            lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%  수집뉴스=[{news_titles}]")
 
-    # 섹터 데이터 (구성 종목 포함) — 섹터 섹션 검증용
     for label, key in [("상승", "top_sectors"), ("하락", "bottom_sectors")]:
         sectors = data.get(key, [])
         if sectors:
-            lines.append(f"{label} 섹터 TOP3 (Naver 업종별 데이터):")
+            lines.append(f"{label} 섹터 TOP3:")
             for s in sectors:
-                stock_txt = " / ".join(
-                    f"{st['name']} {st['change_pct']:+.2f}%"
-                    for st in s.get("top_stocks", [])
-                )
-                lines.append(f"  {s['name']} {s['change_pct']:+.2f}%: {stock_txt}")
+                lines.append(f"  {s['name']} {s['change_pct']:+.2f}%")
 
     return "\n".join(lines)
 
@@ -86,12 +91,18 @@ def validate_post(data: dict, post: dict) -> dict:
 2. 본문의 KOSPI·KOSDAQ 종가 및 등락률이 정확한가?
 3. 🔥 특징주 리포트 섹션의 급등·급락 종목명과 등락률이 "급등/급락 종목 TOP5" 데이터와 일치하는가?
 4. 실제 데이터에 없는 수치가 임의로 삽입되지 않았는가?
+5. [뉴스 관련성] 🔥 특징주 리포트 섹션에서 각 종목의 '—' 이후 뉴스 헤드라인(있는 경우)에 해당 종목명이 포함되어 있는가?
+   - 종목명이 없는 헤드라인은 무관한 기사가 붙은 것 → 오류
+6. [뉴스 방향성·급등] 급등 종목에 붙은 뉴스 헤드라인에 하락 의미 단어(하락, 급락, 하한가, 하락 마감, 약세)가 포함되어 있는가?
+   - 포함되어 있으면 방향 불일치 → 오류
+7. [뉴스 방향성·급락] 급락 종목에 붙은 뉴스 헤드라인에 상승 의미 단어(상승, 급등, 상한가, 상승 마감, 강세)가 포함되어 있는가?
+   - 포함되어 있으면 방향 불일치 → 오류
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
-- 🏭 주도 섹터 섹션의 종목들은 "섹터 TOP3" 데이터에서 가져온 것 — 급등/급락 TOP5와 다름. 섹터 섹션의 종목 검증 제외
-- 🔥 특징주 리포트 섹션 안의 '—' 이후 텍스트는 뉴스 헤드라인 원문이므로 검증 제외 (과거 시세·다른 종목 언급 가능)
-- 검증 대상: 제목 수치, 🚀 핵심 섹션, 📊 지수 동향 섹션의 수치만
+- 🏭 주도 섹터 섹션은 검증 제외
+- 5·6·7번 오류 발견 시 corrections에 원본 헤드라인 링크 부분만 제거한 수정본 제공
+  예) original: ' — <a href="...">S-Oil 주가, 상승 마감</a>', corrected: ''
 
 반드시 아래 JSON 형식으로만 응답 (코드 블록, 설명 없이 순수 JSON만):
 {{
@@ -110,13 +121,25 @@ def validate_post(data: dict, post: dict) -> dict:
       "description": "제목에 'SK·SK하이닉스 20% 이상'으로 썼으나 SK하이닉스 실제 수치는 13.06%",
       "found": "SK·SK하이닉스 20% 이상",
       "expected": "SK +20.51%, SK하이닉스 +13.06%"
+    }},
+    {{
+      "type": "news_direction",
+      "description": "급락 종목 S-Oil의 뉴스에 '상승 마감' 포함 — 방향 불일치",
+      "found": "S-Oil 주가, 상승 마감",
+      "expected": "하락 의미 헤드라인 또는 헤드라인 없음"
+    }},
+    {{
+      "type": "news_irrelevant",
+      "description": "종목 뉴스 헤드라인에 해당 종목명 미포함 — 무관한 기사",
+      "found": "SK하이닉스·삼성전자 선물 질주…",
+      "expected": "해당 종목명 포함 헤드라인 또는 헤드라인 없음"
     }}
   ],
-  "corrected_title": "수정된 제목 전체",
+  "corrected_title": "수정된 제목 전체 (수치 오류 없으면 null)",
   "corrections": [
     {{
-      "original": "포스팅에서 틀린 원본 문자열",
-      "corrected": "수정된 문자열"
+      "original": "포스팅에서 틀린 원본 문자열 (뉴스 오류면 링크 전체 ' — <a ...>...</a>' 부분)",
+      "corrected": "수정된 문자열 (뉴스 제거면 빈 문자열 '')"
     }}
   ]
 }}"""
