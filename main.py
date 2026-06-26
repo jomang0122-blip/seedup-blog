@@ -77,6 +77,7 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         kospi = data.get("kospi", {})
         log(f"  KOSPI: {kospi.get('close', 'N/A')} ({kospi.get('change_pct', 0):+.2f}%)")
         log(f"  급등 TOP1: {data['top_gainers'][0]['name'] if data['top_gainers'] else '없음'}")
+        log(f"  특징주 뉴스: {len(data.get('crawled_news_features', []))}건")
     except Exception as e:
         log(f"  [오류] 데이터 수집 실패: {e}")
         sys.exit(1)

@@ -217,6 +217,36 @@ def get_news(query: str = "코스피 증시 오늘") -> list:
     return [i["title"] for i in items]
 
 
+def _crawl_featured_stock_news() -> list:
+    """[특징주] 뉴스 크롤링 폴백 — 네이버 증권 시황/전망 섹션 직접 파싱"""
+    try:
+        url = "https://finance.naver.com/news/news_list.naver"
+        params = {"mode": "LSS2D", "section_id": "101", "section_id2": "258"}
+        soup = _naver_soup(url, params=params)
+        results = []
+        for a_tag in soup.find_all("a", href=True):
+            text = a_tag.get_text(strip=True)
+            if "[특징주]" in text and text not in results:
+                results.append(text)
+            if len(results) >= 15:
+                break
+        print(f"  [특징주뉴스] 크롤링 폴백 {len(results)}건 수집")
+        return results
+    except Exception as e:
+        print(f"  [특징주뉴스] 크롤링 실패: {e}")
+        return []
+
+
+def get_featured_stock_news(display: int = 15) -> list:
+    """당일 [특징주] 뉴스 헤드라인 — API 우선, 크롤링 폴백"""
+    items = _naver_news_search("[특징주]", display=display)
+    results = [i["title"] for i in items if "[특징주]" in i["title"]]
+    if results:
+        print(f"  [특징주뉴스] API {len(results)}건 수집")
+        return results[:15]
+    return _crawl_featured_stock_news()
+
+
 # ── 통합 수집 ─────────────────────────────────────────────────────────────
 
 def collect_all(date: str = None) -> dict:
@@ -230,7 +260,8 @@ def collect_all(date: str = None) -> dict:
     investor_data = get_investor_data(date)
     stock_result  = get_top_stocks(date)
     sector_data   = get_sector_data(date)
-    news = get_news()
+    news          = get_news()
+    featured      = get_featured_stock_news()
 
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
@@ -238,7 +269,8 @@ def collect_all(date: str = None) -> dict:
         **investor_data,
         **sector_data,
         **stock_result,
-        "news": news,
+        "news":                  news,
+        "crawled_news_features": featured,
     }
 
 
