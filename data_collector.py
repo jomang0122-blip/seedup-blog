@@ -81,52 +81,73 @@ def get_investor_data(date_str: str) -> dict:
 
 # ── 종목 데이터 (FDR 시총 상위 샘플링) ────────────────────────────────────
 
-def get_top_stocks(date_str: str) -> dict:
-    """KOSPI 전체 종목 당일 등락률 — StockListing 단일 호출 (2초, 전종목)"""
-    try:
-        df = fdr.StockListing("KOSPI")
+def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
+    """공통 전처리: 거래정지·우선주 제거, 등락률 숫자 변환"""
+    df = df.copy()
+    df[chg_col] = pd.to_numeric(df[chg_col], errors="coerce")
+    vol_col = next((c for c in ["Volume", "거래량"] if c in df.columns), None)
+    if vol_col:
+        df = df[pd.to_numeric(df[vol_col], errors="coerce") > 0]
+    df = df[~df["Name"].astype(str).str.match(r".*우[BC]?$")]
+    return df.dropna(subset=[chg_col])
 
-        # 등락률 컬럼 탐색 (FDR 오타: ChagesRatio)
+
+def get_top_stocks(date_str: str) -> dict:
+    """KOSPI TOP5 급등/급락 + KOSPI·KOSDAQ 전종목 등락률 맵"""
+    try:
+        df_kospi = fdr.StockListing("KOSPI")
+
         chg_col = next(
-            (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df.columns),
+            (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kospi.columns),
             None
         )
         if chg_col is None:
-            raise ValueError(f"등락률 컬럼 없음. 컬럼 목록: {df.columns.tolist()}")
+            raise ValueError(f"등락률 컬럼 없음: {df_kospi.columns.tolist()}")
 
-        df[chg_col] = pd.to_numeric(df[chg_col], errors="coerce")
+        df_kospi = _clean_stock_df(df_kospi, chg_col)
 
-        # 거래 없는 종목 제거 (상장폐지·거래정지)
-        vol_col = next((c for c in ["Volume", "거래량"] if c in df.columns), None)
-        if vol_col:
-            df = df[pd.to_numeric(df[vol_col], errors="coerce") > 0]
+        # stock_pct_map: KOSPI 전종목 (시총 필터 전)
+        stock_pct_map = {
+            str(r["Name"]): round(float(r[chg_col]), 2)
+            for _, r in df_kospi.iterrows()
+        }
 
-        # 시총 1000억 미만 소형주 제거 (신뢰성 확보)
-        if "Marcap" in df.columns:
-            df = df[pd.to_numeric(df["Marcap"], errors="coerce") > 1_000_000_000_000]
+        # KOSDAQ도 추가 (뉴스 종목이 코스닥인 경우 조회용)
+        try:
+            df_kosdaq = fdr.StockListing("KOSDAQ")
+            kq_chg = next(
+                (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kosdaq.columns),
+                None
+            )
+            if kq_chg:
+                df_kosdaq = _clean_stock_df(df_kosdaq, kq_chg)
+                for _, r in df_kosdaq.iterrows():
+                    name = str(r["Name"])
+                    if name not in stock_pct_map:
+                        stock_pct_map[name] = round(float(r[kq_chg]), 2)
+                print(f"  [종목] KOSDAQ {len(df_kosdaq)}개 추가 (맵 총 {len(stock_pct_map)}개)")
+        except Exception as e:
+            print(f"  [종목] KOSDAQ 추가 실패: {e}")
 
-        # 우선주 제거 (종목명이 '우', '우B', '우C'로 끝나는 종목)
-        df = df[~df["Name"].astype(str).str.match(r".*우[BC]?$")]
+        # TOP5: KOSPI 시총 1조 이상만
+        df_top5 = df_kospi.copy()
+        if "Marcap" in df_top5.columns:
+            df_top5 = df_top5[pd.to_numeric(df_top5["Marcap"], errors="coerce") > 1_000_000_000_000]
 
-        df = df.dropna(subset=[chg_col])
-        total = len(df)
-
-        gainers_df = df.nlargest(5, chg_col)
-        losers_df  = df.nsmallest(5, chg_col)
-
+        total = len(df_top5)
         gainers = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
-                   for _, r in gainers_df.iterrows()]
+                   for _, r in df_top5.nlargest(5, chg_col).iterrows()]
         losers  = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
-                   for _, r in losers_df.iterrows()]
+                   for _, r in df_top5.nsmallest(5, chg_col).iterrows()]
 
         print(f"  [종목] KOSPI 전체 {total}개 분석 완료")
         print(f"  [종목] 급등: {[g['name'] for g in gainers]}")
         print(f"  [종목] 급락: {[l['name'] for l in losers]}")
-        return {"top_gainers": gainers, "top_losers": losers}
+        return {"top_gainers": gainers, "top_losers": losers, "stock_pct_map": stock_pct_map}
 
     except Exception as e:
         print(f"  [FDR 종목] 실패: {e}")
-        return {"top_gainers": [], "top_losers": []}
+        return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}}
 
 
 # ── 섹터 데이터 (Naver Finance 메인 페이지) ─────────────────────────────────

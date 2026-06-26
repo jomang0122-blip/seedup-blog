@@ -51,11 +51,20 @@ def _build_sector_anchor(data: dict) -> str:
     return "\n".join(lines) if lines else "(섹터 데이터 없음 — 섹터 등락률 언급 금지)"
 
 
-def _build_news_anchor(headlines: list) -> str:
-    """[특징주] 헤드라인 목록 → 번호 목록 텍스트"""
+def _build_news_anchor(headlines: list, stock_pct_map: dict = None) -> str:
+    """[특징주] 헤드라인 목록 → 종목 등락률 매칭 후 번호 목록 텍스트"""
     if not headlines:
-        return "(특징주 뉴스 없음 — 이유 항목 생략하고 [종목명 - 등락률] 형식으로만 작성)"
-    return "\n".join(f"{i + 1}. {h}" for i, h in enumerate(headlines[:15]))
+        return "(특징주 뉴스 없음 — 이유 항목 생략하고 종목명(등락률) 형식으로만 작성)"
+    lines = []
+    for i, h in enumerate(headlines[:15]):
+        pct_tag = ""
+        if stock_pct_map:
+            for name, pct in stock_pct_map.items():
+                if name in h:
+                    pct_tag = f" [{pct:+.2f}%]"
+                    break
+        lines.append(f"{i + 1}. {h}{pct_tag}")
+    return "\n".join(lines)
 
 
 # ── 프롬프트 빌더 ─────────────────────────────────────────────────────────
@@ -92,7 +101,7 @@ def _build_prompt(data: dict) -> str:
 
     stock_anchor  = _build_stock_anchor(data)
     sector_anchor = _build_sector_anchor(data)
-    news_anchor   = _build_news_anchor(data.get("crawled_news_features", []))
+    news_anchor   = _build_news_anchor(data.get("crawled_news_features", []), data.get("stock_pct_map", {}))
 
     # 동적 라벨: 기본 6개 + 상승 섹터명 최대 2개
     base_labels   = ["코스피", "코스닥", "시황", "주식", "오늘증시", "특징주"]
@@ -130,9 +139,9 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 
 1. 실시간 뉴스 기반 상승/하락 이유 매칭 (최우선)
 - 위 [특징주] 뉴스 헤드라인을 철저히 분석하여 당일 주요 종목을 추출하세요.
-- 반드시 [종목명 - 등락률 - 상승/하락 이유] 형태로 리스트를 구성해야 합니다.
+- 반드시 종목명(등락률) — 이유 형태로 리스트를 구성해야 합니다. 예: 금호타이어(+16.52%) — 타이어 수출 급증 소식에 강세
 - 절대 이유를 임의로 지어내지 마세요(환각 금지). 오직 제공된 뉴스 헤드라인에 명시된 팩트에만 근거하세요.
-- 뉴스 헤드라인에 이유가 없는 종목은 이유 항목을 생략하고 [종목명 - 등락률]만 표기하세요.
+- 뉴스 헤드라인에 이유가 없는 종목은 이유 항목을 생략하고 종목명(등락률)만 표기하세요.
 
 2. 구글 애드센스 고단가 키워드 필수 노출
 - 당일 주도 종목명과 핵심 섹터명을 본문 전체에 최소 3~5회 이상 자연스럽게 반복 노출하세요.
@@ -160,7 +169,13 @@ b) <h3>📌 오늘 시장 핵심</h3> — 지수·섹터·특징주를 아우르
 c) <h3>📈 지수 동향</h3> — KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술. 수급 데이터 없으면 수급 문장 절대 금지.
 d) <h3>🔥 당일 주도 섹터 및 특징주</h3>
    - 섹터 흐름 1~2문장 (섹터명 + 등락률 포함)
-   - 각 특징주를 <ul><li>[종목명 - 등락률 - 이유]</li></ul> 형식으로 기술. 이유 없으면 [종목명 - 등락률]만.
+   - 섹터명을 본문에 쓸 때는 단어 사이에 반드시 띄어쓰기를 넣을 것 (예: '반도체와반도체장비' → '반도체와 반도체 장비', '에너지장비및서비스' → '에너지 장비 및 서비스')
+   - '급락', '급등' 등 동사를 절대 누락하지 말 것 (예: '-8.16% 락' → '-8.16% 급락')
+   - 급등 종목 앞에 반드시 <p><strong>📈 상승 특징주</strong></p> 소제목 출력
+   - 급락 종목 앞에 반드시 <p><strong>📉 하락 특징주</strong></p> 소제목 출력
+   - 각 특징주를 <ul><li>종목명(등락률) — 이유</li></ul> 형식으로 기술. 예: <li>금호타이어(+16.52%) — 타이어 수출 급증 소식</li>. 이유 없으면 종목명(등락률)만.
+   - 급등/급락 TOP5 리스트에 없지만 뉴스에 언급된 종목은 <p><strong>📰 뉴스 기반 주요 종목</strong></p><ul><li>종목명(등락률) — 이유</li></ul> 섹션을 별도로 추가할 것. 등락률은 뉴스 헤드라인에 명시된 수치(예: '7%대 약세', '상한가')를 괄호 안에 표기하고, 헤드라인에 수치가 없으면 등락률 괄호 자체를 생략할 것
+   - 본문 설명 단락에서는 위 세 리스트(📈/📉/📰)에 포함된 종목만 언급할 것. 리스트에 없는 종목을 본문 단락에서 단독 서술하지 말 것
    - 마지막 <p>에 SeedUP 인사이트: 오늘 데이터에서 투자자 관점 핵심 관찰 1~2가지
 e) <h3>🔮 내일 시장 전망</h3> — 신중한 어조로 2~3문장
 f) 면책 문구: h3/h4 제목 없이 아래 문구를 <p> 태그로만 출력 (한 글자도 바꾸지 말 것):

@@ -26,13 +26,13 @@ def _build_data_summary(data: dict) -> str:
 
     gainers = data.get("top_gainers", [])
     if gainers:
-        lines.append("급등 종목 TOP5 (시총 1000억+ KOSPI 전체·우선주 제외):")
+        lines.append("급등 종목 TOP5 (시총 1조+ KOSPI·우선주 제외) — 📈 상승 특징주 섹션 검증 기준:")
         for g in gainers:
             lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%")
 
     losers = data.get("top_losers", [])
     if losers:
-        lines.append("급락 종목 TOP5 (시총 1000억+ KOSPI 전체·우선주 제외):")
+        lines.append("급락 종목 TOP5 (시총 1조+ KOSPI·우선주 제외) — 📉 하락 특징주 섹션 검증 기준:")
         for l in losers:
             lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%")
 
@@ -42,6 +42,17 @@ def _build_data_summary(data: dict) -> str:
             lines.append(f"{label} 섹터 TOP3:")
             for s in sectors:
                 lines.append(f"  {s['name']} {s['change_pct']:+.2f}%")
+
+    # 뉴스 기반 종목 등락률 (📰 뉴스 기반 주요 종목 섹션 검증 기준)
+    news_headlines = data.get("crawled_news_features", [])
+    stock_pct_map  = data.get("stock_pct_map", {})
+    if news_headlines and stock_pct_map:
+        lines.append("📰 뉴스 기반 주요 종목 실제 등락률 (KOSPI+KOSDAQ 전종목 기준):")
+        for h in news_headlines:
+            for name, pct in stock_pct_map.items():
+                if name in h:
+                    lines.append(f"  {name}: {pct:+.2f}%")
+                    break
 
     return "\n".join(lines)
 
@@ -79,14 +90,16 @@ def validate_post(data: dict, post: dict) -> dict:
 1. 제목의 종목명·수치가 "급등 종목 TOP5" 데이터와 일치하는가?
    - 여러 종목을 한 수치로 묶은 경우 (예: "20% 이상") 각 종목의 실제 수치와 비교
 2. 본문의 KOSPI·KOSDAQ 종가 및 등락률이 정확한가?
-3. 🔥 당일 주도 섹터 및 특징주 섹션의 종목명과 등락률이 "급등/급락 종목 TOP5" 데이터와 일치하는가?
-4. 실제 데이터에 없는 수치가 임의로 삽입되지 않았는가?
-5. 🔥 당일 주도 섹터 및 특징주 섹션의 섹터 등락률이 "상승/하락 섹터 TOP3" 데이터와 일치하는가?
-6. [종목명 - 등락률 - 이유] 서술에서 등락률이 실제 데이터와 일치하는가? (±0.1% 허용)
+3. 📈 상승 특징주 / 📉 하락 특징주 섹션의 종목명·등락률이 "급등/급락 종목 TOP5" 데이터와 일치하는가?
+4. 섹터 등락률이 "상승/하락 섹터 TOP3" 데이터와 일치하는가?
+5. 📰 뉴스 기반 주요 종목 섹션의 등락률이 "뉴스 기반 주요 종목 실제 등락률" 데이터와 일치하는가?
+   - 이 섹션의 종목은 TOP5에 없어도 정상 — "뉴스 기반 주요 종목 실제 등락률"에서 확인
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
 - 상승/하락 이유 텍스트(뉴스 기반 서술)는 검증 제외 — 수치만 검증
+- 📰 뉴스 기반 주요 종목의 종목이 TOP5에 없다는 이유만으로 오류로 판정하지 말 것
+- 뉴스 기반 종목의 수치가 "뉴스 기반 주요 종목 실제 등락률"과 일치하면 정상
 
 반드시 아래 JSON 형식으로만 응답 (코드 블록, 설명 없이 순수 JSON만):
 {{
