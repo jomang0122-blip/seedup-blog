@@ -1,7 +1,7 @@
 name: SeedUP — 국내증시 데일리
 
 on:
-  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 16:30 평일)
+  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 16:00 평일)
   workflow_dispatch:
     inputs:
       date:

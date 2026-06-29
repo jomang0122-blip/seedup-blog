@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import yaml
 from shared.auth import get_credentials
 from googleapiclient.discovery import build
@@ -11,6 +12,13 @@ with open(CONFIG_FILE, encoding='utf-8') as f:
     CONFIG = yaml.safe_load(f)
 
 BLOG_ID = CONFIG['blogger']['blog_id']
+
+
+def _strip_code_fences(text: str) -> str:
+    """AI 응답에 포함된 ```html ... ``` 마크다운 코드 블록 기호 제거"""
+    text = re.sub(r'```[a-zA-Z]*\n?', '', text)
+    text = re.sub(r'\n?```', '', text)
+    return text.strip()
 
 
 def check_today_post(date_str: str, label_filter: str = None) -> dict | None:
@@ -45,7 +53,7 @@ def publish_post(title: str, content: str, labels: list = None, status: str = 'L
 
     body = {
         'title': title,
-        'content': content,
+        'content': _strip_code_fences(content),
         'labels': labels or [],
     }
 
