@@ -101,12 +101,15 @@ def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
                 week_start, week_end, "KOSPI", key
             )
             if df is None or df.empty:
+                print(f"  [{label}] DataFrame 비어 있음 (None or empty)")
                 result[label] = {"buy": [], "sell": []}
                 continue
+            print(f"  [{label}] 컬럼: {df.columns.tolist()}")
             amt_col = next(
                 (c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns), None
             )
             if amt_col is None:
+                print(f"  [{label}] 순매수 컬럼 없음 — 가용 컬럼: {df.columns.tolist()}")
                 result[label] = {"buy": [], "sell": []}
                 continue
             name_col = "종목명" if "종목명" in df.columns else None
@@ -117,6 +120,7 @@ def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 
             buy3  = [_row_to_item(r) for _, r in df.nlargest(3, amt_col).iterrows()]
             sell3 = [_row_to_item(r) for _, r in df.nsmallest(3, amt_col).iterrows()]
+            print(f"  [{label}] 순매수 TOP3: {[s['name'] for s in buy3]}")
             result[label] = {"buy": buy3, "sell": sell3}
         except Exception as e:
             print(f"  [{label}] 주간 수급 수집 실패: {e}")
