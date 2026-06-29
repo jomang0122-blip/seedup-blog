@@ -77,11 +77,6 @@ def run(dry_run: bool = False, force: bool = False):
     log(f"SeedUP 국내증시 위클리  {'[DRY-RUN]' if dry_run else '[LIVE]'}  KST {kst_now.strftime('%Y-%m-%d %H:%M')}")
     log("=" * 50)
 
-    # 토요일(5)에만 발행 — force 시 생략
-    if not force and kst_now.weekday() != 5:
-        log(f"  오늘은 {kst_now.strftime('%A')} — 토요일에만 발행합니다. 종료.")
-        sys.exit(0)
-
     log("▶ Step 1: 국내 주간 데이터 수집")
     try:
         data = collect_all()
