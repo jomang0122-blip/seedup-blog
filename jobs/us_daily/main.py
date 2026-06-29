@@ -53,7 +53,7 @@ def build_title(data: dict) -> str:
     else:
         stock_part = ""
 
-    return f"[{date_kor} 미증시] 나스닥 {abs(nasdaq_pct):.1f}% {nasdaq_dir}{stock_part}"
+    return f"[{date_kor} 미증시 마감] 나스닥 {abs(nasdaq_pct):.1f}% {nasdaq_dir}{stock_part}"
 
 
 def save_log(data: dict, post: dict, result: dict, kst_date: str):
@@ -158,7 +158,7 @@ def run(dry_run: bool = False, force: bool = False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SeedUP 미증시 데일리 자동 발행")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--dry-run", action="store_true", help="발행 없이 미리보기만")
+    parser.add_argument("--force", action="store_true", help="중복 체크 무시하고 강제 재발행")
     args = parser.parse_args()
     run(dry_run=args.dry_run, force=args.force)
