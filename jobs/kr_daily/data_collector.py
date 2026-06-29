@@ -93,26 +93,27 @@ def get_investor_data(date_str: str) -> dict:
                 date_str, date_str, "KOSPI", key
             )
             if df is None or df.empty:
-                result[label] = []
+                result[label] = {"buy": [], "sell": []}
                 continue
-            # 순매수거래대금 컬럼 탐색
             amt_col = next(
                 (c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns),
                 None,
             )
             if amt_col is None:
-                result[label] = []
+                result[label] = {"buy": [], "sell": []}
                 continue
-            # 종목명 컬럼 탐색 (없으면 index = 티커코드 사용)
             name_col = "종목명" if "종목명" in df.columns else None
-            top3 = []
-            for _, row in df.nlargest(3, amt_col).iterrows():
+
+            def _row_to_item(row):
                 name = str(row[name_col]) if name_col else str(row.name)
-                top3.append({"name": name, "net_amount": int(row[amt_col])})
-            result[label] = top3
+                return {"name": name, "net_amount": int(row[amt_col])}
+
+            buy3 = [_row_to_item(r) for _, r in df.nlargest(3, amt_col).iterrows()]
+            sell3 = [_row_to_item(r) for _, r in df.nsmallest(3, amt_col).iterrows()]
+            result[label] = {"buy": buy3, "sell": sell3}
         except Exception as e:
             print(f"  [{label}] 수급 수집 실패: {e}")
-            result[label] = []
+            result[label] = {"buy": [], "sell": []}
 
     return {"investor_top3": result, "foreign_net": None, "institution_net": None}
 
