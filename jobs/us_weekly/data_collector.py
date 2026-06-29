@@ -137,10 +137,16 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
             changes[ticker] = pct
 
         sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
-        return [
-            {"ticker": t, "weekly_pct": p, "direction": "up" if p >= 0 else "down"}
-            for t, p in sorted_movers[:top_n]
-        ]
+        result = []
+        for t, p in sorted_movers[:top_n]:
+            last_close = round(float(close[t].dropna().iloc[-1]), 2) if t in close.columns else None
+            result.append({
+                "ticker": t,
+                "close": last_close,
+                "weekly_pct": p,
+                "direction": "up" if p >= 0 else "down",
+            })
+        return result
     except Exception as e:
         print(f"  [경고] 주간 급등락 수집 실패: {e}")
         return []

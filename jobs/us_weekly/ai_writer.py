@@ -38,7 +38,8 @@ def _build_movers_block(top_movers: list) -> str:
     lines = []
     for m in top_movers:
         icon = "📈" if m["direction"] == "up" else "📉"
-        lines.append(f"{icon} {m['ticker']}: {m['weekly_pct']:+.2f}%")
+        close_str = f"${m['close']:,.2f}" if m.get("close") is not None else "-"
+        lines.append(f"{icon} {m['ticker']}: {close_str}  {m['weekly_pct']:+.2f}%")
     return "\n".join(lines)
 
 
@@ -128,15 +129,17 @@ b) ### 🔥 한국인 관심 종목 주간 성적
      * 한줄 동향: 4~10자 한국어
    - 표 아래 단락 1~2개: 주요 종목 간 수급 흐름 서술
    - #### 💥 주간 급등락 TOP3
-     📈/📉 TICKER(한글명) +X.X% — 핵심 이유 한 줄
+     마크다운 테이블: 종목 | 주간 종가 | 주간 등락률 | 핵심 이유 한 줄
+     * 종목 컬럼: 📈/📉 이모티콘 + **TICKER** 형식 (예: 📈 **MSTR**)
+     * 주간 종가·등락률은 위 [주간 급등락 TOP 3] 데이터 블록 수치 그대로 사용
 
 c) ### 📰 이번 주 핵심 뉴스 & 이슈
    - 제공된 뉴스 헤드라인 한국어 요약 번호 목록(1. 2. 3.) 3~5개
    - 뉴스 없으면 이번 주 시장 전반 흐름 이슈 3개
 
-d) ### 🔮 다음 주 주목 일정 ({next_week})
+d) ### 🔮 다음 주 주목 일정 ({next_week})(한국시간)
    - FOMC, 경제지표, 주요 실적 발표 등 1~3개 (AI 지식 기반)
-   - 날짜+KST 시각 명시
+   - 모든 시각은 반드시 한국시간(KST) 기준으로 표기 (예: 7월 1일(화) 한국시간 21:30)
    - 플레이스홀더 금지 — 날짜/일정을 모르면 지표명만 작성
 
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
