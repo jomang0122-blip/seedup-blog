@@ -18,8 +18,12 @@ def md_to_html(text: str) -> str:
         import re
         import markdown as md
         from bs4 import BeautifulSoup
-        # Python markdown 라이브러리는 헤더(#) 앞에 빈 줄이 없으면 인식 못 함 → 보장
-        text = re.sub(r'([^\n])\n(#{1,6} )', r'\1\n\n\2', text)
+        # ### 헤딩을 Python markdown 라이브러리에 의존하지 않고 직접 HTML로 변환
+        # (라이브러리는 앞에 빈 줄이 없으면 ### 를 그대로 출력하는 버그 있음)
+        def _heading(m):
+            level = len(m.group(1))
+            return f'<h{level}>{m.group(2).strip()}</h{level}>'
+        text = re.sub(r'^(#{1,6})\s+(.+)$', _heading, text, flags=re.MULTILINE)
         html = md.markdown(text, extensions=["tables"])
         soup = BeautifulSoup(html, "html.parser")
         for table in soup.find_all("table"):
