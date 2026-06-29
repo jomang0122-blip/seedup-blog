@@ -106,8 +106,13 @@ def build_prompt(data: dict) -> str:
     sector_block  = _build_sector_block(data.get("top_sectors", []), data.get("bottom_sectors", []))
     news_block    = _build_news_block(data.get("news", []))
 
-    investor_block    = _build_investor_block(data.get("investor_top3", {}))
-    has_investor      = investor_block != "(수급 데이터 없음)"
+    investor_top3  = data.get("investor_top3", {})
+    investor_block = _build_investor_block(investor_top3)
+    # 실제 buy/sell 데이터가 하나라도 있어야 섹션 포함
+    has_investor   = any(
+        v.get("buy") or v.get("sell")
+        for v in investor_top3.values()
+    ) if investor_top3 else False
     investor_data_sec = f"\n[메이저 수급 (주간 합산 TOP3)]\n{investor_block}\n" if has_investor else ""
     investor_prompt_sec = """
 b) ### 💰 메이저 수급 흐름 (주간)

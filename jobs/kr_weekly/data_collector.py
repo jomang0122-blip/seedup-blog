@@ -81,6 +81,25 @@ def _fmt_amount(amount: int) -> str:
     return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
 
 
+def _find_available_end_date(pyk, week_start: str, this_fri_str: str, market: str, investor_key: str) -> tuple:
+    """pykrx 데이터 지연 대응 — 금요일부터 최대 3일 앞으로 당겨 가용 날짜 탐색."""
+    for delta in range(4):
+        end_dt  = datetime.strptime(this_fri_str, "%Y%m%d") - timedelta(days=delta)
+        end_str = end_dt.strftime("%Y%m%d")
+        if end_str < week_start:
+            break
+        try:
+            df = pyk.get_market_net_purchases_of_equities_by_ticker(
+                week_start, end_str, market, investor_key
+            )
+            if df is not None and not df.empty:
+                print(f"  [수급] 데이터 취득 성공 (종료일: {end_str})")
+                return df, end_str
+        except Exception:
+            pass
+    return None, None
+
+
 def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
     """외국인/기관/연기금 KOSPI 주간 순매수 TOP3 (pykrx)."""
     try:
@@ -91,17 +110,14 @@ def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 
     prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
     week_start  = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")  # 월요일
-    week_end    = this_fri_str
 
     investor_map = {"외국인": "외국인", "기관": "기관합계", "연기금": "연기금등"}
     result = {}
     for label, key in investor_map.items():
         try:
-            df = pyk.get_market_net_purchases_of_equities_by_ticker(
-                week_start, week_end, "KOSPI", key
-            )
+            df, used_end = _find_available_end_date(pyk, week_start, this_fri_str, "KOSPI", key)
             if df is None or df.empty:
-                print(f"  [{label}] DataFrame 비어 있음 (None or empty)")
+                print(f"  [{label}] 수급 데이터 없음 (4일 시도 모두 실패)")
                 result[label] = {"buy": [], "sell": []}
                 continue
             print(f"  [{label}] 컬럼: {df.columns.tolist()}")
@@ -136,9 +152,23 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
         prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
         week_start  = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")  # 월요일
 
-        df = pyk.get_market_price_change_by_ticker(week_start, this_fri_str, "KOSPI")
+        # pykrx 데이터 지연 대응 — 금요일부터 최대 3일 앞으로 당겨서 시도
+        df = None
+        for delta in range(4):
+            end_dt  = datetime.strptime(this_fri_str, "%Y%m%d") - timedelta(days=delta)
+            end_str = end_dt.strftime("%Y%m%d")
+            if end_str < week_start:
+                break
+            try:
+                df = pyk.get_market_price_change_by_ticker(week_start, end_str, "KOSPI")
+                if df is not None and not df.empty:
+                    print(f"  [주간 종목] 데이터 취득 성공 (종료일: {end_str})")
+                    break
+            except Exception:
+                df = None
+
         if df is None or df.empty:
-            print("  [주간 종목] pykrx 결과 없음")
+            print("  [주간 종목] pykrx 결과 없음 (4일 시도 모두 실패)")
             return {"top_gainers": [], "top_losers": []}
 
         pct_col   = "등락률"   if "등락률"   in df.columns else None
