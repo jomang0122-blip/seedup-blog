@@ -161,7 +161,9 @@ C. 수급 데이터가 "(데이터 없음)" 또는 "(수급 데이터 미수집)
 5. 색상 태그 규칙 (모든 등락률 수치에 예외 없이 적용):
    - 플러스(상승) 수치: <font color="red"><b>+X.XX%</b></font>
    - 마이너스(하락) 수치: <font color="blue"><b>-X.XX%</b></font>
-   - 적용 범위: 지수 등락률, 특징주 등락률, 섹터 등락률, 수급 표 내 수치 모두 포함
+   - 적용 범위: 지수 테이블 등락률 셀, 특징주 등락률, 섹터 등락률, 수급 표 내 수치 모두 포함
+6. TITLE 출력 규칙: 순수 텍스트만. <font>, <b>, <span> 등 HTML 태그 절대 금지
+7. <h2> 제목 안에 color 태그 절대 금지 — 검정 텍스트만 사용
 
 구조 (반드시 이 순서로):
 a) <h2> 제목: "[{date_title} 국내증시] 주도섹터 + 대장종목명 + 수치" 형식
@@ -169,10 +171,16 @@ b) <h3>📌 오늘 시장 핵심</h3>
    - 지수·섹터·특징주를 아우르는 2~3문장 요약. KOSPI/KOSDAQ 수치 필수 포함.
    - 문단이 2~3문장을 넘으면 새 <p>로 분리할 것.
 c) <h3>📈 지수 동향</h3>
-   - KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술.
-   - 수급 데이터 없으면 수급 문장 절대 금지.
-d) <h3>💰 메이저 수급 동향</h3>
-   - 아래 형식의 HTML 테이블로 출력 (수급 데이터가 "(데이터 없음)"이면 이 섹션 전체 생략):
+   - 반드시 아래 형식의 HTML 테이블로 출력 (텍스트 서술만 하면 안 됨):
+     <table border="1" style="border-collapse:collapse;width:100%;font-size:14px;">
+       <tr style="background:#f2f2f2;"><th>지수</th><th>종가</th><th>등락률</th></tr>
+       <tr><td>KOSPI</td><td>8,XXX.XX</td><td><font color="blue"><b>-X.XX%</b></font></td></tr>
+       <tr><td>KOSDAQ</td><td>XXX.XX</td><td><font color="red"><b>+X.XX%</b></font></td></tr>
+     </table>
+   - 표 아래 <p> 1~2개: 지수 흐름 간략 서술. 수급 문장 절대 금지.
+d) <h3>💰 메이저 수급 동향 (외국인·기관·연기금)</h3>
+   - ⚠️ 수급 데이터 블록 전체가 "(데이터 없음)"이면 이 섹션(<h3> 포함)을 통째로 생략할 것
+   - 데이터가 있으면 아래 형식의 HTML 테이블로 출력:
      <table border="1" style="border-collapse:collapse;width:100%;font-size:14px;">
        <tr style="background:#f2f2f2;"><th>구분</th><th>1위</th><th>2위</th><th>3위</th></tr>
        <tr><td>외국인</td><td>종목명(+XXX억)</td><td>...</td><td>...</td></tr>
@@ -199,6 +207,12 @@ CONTENT:
     return prompt
 
 
+def _strip_html(text: str) -> str:
+    """제목에 섞인 HTML 태그 제거"""
+    import re
+    return re.sub(r'<[^>]+>', '', text).strip()
+
+
 def _parse_response(raw: str) -> dict:
     title = ""
     labels = []
@@ -207,7 +221,7 @@ def _parse_response(raw: str) -> dict:
 
     for line in raw.split("\n"):
         if line.startswith("TITLE:"):
-            title = line.removeprefix("TITLE:").strip()
+            title = _strip_html(line.removeprefix("TITLE:").strip())
         elif line.startswith("LABELS:"):
             raw_labels = line.removeprefix("LABELS:").strip()
             labels = [l.strip() for l in raw_labels.split(",") if l.strip()]
