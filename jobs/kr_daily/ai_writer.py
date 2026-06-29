@@ -5,6 +5,12 @@ from anthropic import Anthropic
 client = Anthropic()
 
 
+def _fmt_amount(amount: int) -> str:
+    """순매수거래대금(원) → +/-억 단위 문자열"""
+    val = amount // 100_000_000
+    return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
+
+
 def _fmt_won(amount) -> str:
     if amount is None:
         return None
@@ -20,6 +26,23 @@ def _direction(value) -> str:
     if value is None:
         return ""
     return "순매수" if value >= 0 else "순매도"
+
+
+def _build_investor_block(investor_top3: dict) -> str:
+    """외국인/기관/연기금 순매수 TOP3 → 프롬프트용 텍스트 블록"""
+    if not investor_top3:
+        return "(수급 데이터 미수집)"
+    lines = []
+    for label, top3 in investor_top3.items():
+        if not top3:
+            lines.append(f"{label}: (데이터 없음)")
+            continue
+        stocks = "  |  ".join(
+            f"{s['name']} {_fmt_amount(s['net_amount'])}"
+            for s in top3
+        )
+        lines.append(f"{label}: {stocks}")
+    return "\n".join(lines)
 
 
 def _build_stock_anchor(data: dict) -> str:
@@ -80,15 +103,7 @@ def _build_prompt(data: dict) -> str:
             f"{sign}{abs(kosdaq['change']):.2f}pt ({kosdaq['change_pct']:+.2f}%)"
         )
 
-    foreign = data.get("foreign_net")
-    institution = data.get("institution_net")
-    investor_section = ""
-    if foreign is not None:
-        investor_section = (
-            f"외국인: {_fmt_won(abs(foreign))} {_direction(foreign)}\n"
-            f"기관:   {_fmt_won(abs(institution))} {_direction(institution)}"
-        )
-
+    investor_block = _build_investor_block(data.get("investor_top3", {}))
     stock_anchor = _build_stock_anchor(data)
     sector_anchor = _build_sector_anchor(data)
     news_anchor = _build_news_anchor(data.get("crawled_news_features", []), data.get("stock_pct_map", {}))
@@ -111,7 +126,9 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 ━━━ 오늘의 시장 데이터 ━━━
 {kospi_line}
 {kosdaq_line}
-{investor_section if investor_section else "(수급 데이터 미수집)"}
+
+▼ 외국인/기관/연기금 순매수 TOP3 (KOSPI 기준):
+{investor_block}
 
 ▼ 당일 특징주 등락률 (수치를 한 글자도 바꾸지 말고 그대로 사용할 것):
 {stock_anchor}
@@ -134,30 +151,47 @@ SeedUP INVEST 블로그(seedup-invest.blogspot.com)에 올릴 오늘({date}) 마
 2. 환각 방지 (절대 규칙)
 A. 등락률 수치는 위 데이터 블록의 값만 사용. 임의 창작 금지.
 B. 상승/하락 이유는 제공된 뉴스 헤드라인에 근거한 팩트만 사용.
-C. 수급 데이터 없으면 수급 관련 문장 작성 금지.
+C. 수급 데이터가 "(데이터 없음)" 또는 "(수급 데이터 미수집)"이면 수급 관련 문장 작성 금지.
 
 작성 규칙:
-1. HTML 형식 (Blogger에 바로 붙여 넣는 포맷). 마크다운(###) 사용 금지.
+1. HTML 형식 (Blogger에 바로 붙여 넣는 포맷). 마크다운(###, ```) 사용 금지.
 2. 분량: HTML 태그 포함 2000~2800자
-3. 스마트폰 가독성: 모든 <p> 태그는 2~3문장 이내로 짧게.
+3. 스마트폰 가독성: 모든 <p> 태그는 2~3문장 이내. 문단이 길어지면 새 <p> 태그로 반드시 줄바꿈.
 4. 어조: 전문적이고 정중한 톤앤매너(~입니다, ~로 분석됩니다).
+5. 색상 태그 규칙 (모든 등락률 수치에 예외 없이 적용):
+   - 플러스(상승) 수치: <font color="red"><b>+X.XX%</b></font>
+   - 마이너스(하락) 수치: <font color="blue"><b>-X.XX%</b></font>
+   - 적용 범위: 지수 등락률, 특징주 등락률, 섹터 등락률, 수급 표 내 수치 모두 포함
 
 구조 (반드시 이 순서로):
-a) <h2> 제목: "[{date_title} 시황] 주도섹터 + 대장종목명 + 수치" 형식
-b) <h3>📌 오늘 시장 핵심</h3> — 지수·섹터·특징주를 아우르는 2~3문장 요약. KOSPI/KOSDAQ 수치 필수 포함.
-c) <h3>📈 지수 동향</h3> — KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술. 수급 데이터 없으면 수급 문장 절대 금지.
-d) <h3>🔥 당일 주도 섹터 및 특징주</h3>
-   - 섹터 흐름 1~2문장 (섹터명 + 등락률 포함)
+a) <h2> 제목: "[{date_title} 국내증시] 주도섹터 + 대장종목명 + 수치" 형식
+b) <h3>📌 오늘 시장 핵심</h3>
+   - 지수·섹터·특징주를 아우르는 2~3문장 요약. KOSPI/KOSDAQ 수치 필수 포함.
+   - 문단이 2~3문장을 넘으면 새 <p>로 분리할 것.
+c) <h3>📈 지수 동향</h3>
+   - KOSPI/KOSDAQ 각각 별도 <p>로 수치 포함 서술.
+   - 수급 데이터 없으면 수급 문장 절대 금지.
+d) <h3>💰 메이저 수급 동향</h3>
+   - 아래 형식의 HTML 테이블로 출력 (수급 데이터가 "(데이터 없음)"이면 이 섹션 전체 생략):
+     <table border="1" style="border-collapse:collapse;width:100%;font-size:14px;">
+       <tr style="background:#f2f2f2;"><th>구분</th><th>1위</th><th>2위</th><th>3위</th></tr>
+       <tr><td>외국인</td><td>종목명(+XXX억)</td><td>...</td><td>...</td></tr>
+       <tr><td>기관</td><td>...</td><td>...</td><td>...</td></tr>
+       <tr><td>연기금</td><td>...</td><td>...</td><td>...</td></tr>
+     </table>
+   - 표 아래 <p> 2~3개: 수급 인과관계 담백하게 서술. 수치 반복 나열 금지.
+e) <h3>🔥 당일 주도 섹터 및 특징주</h3>
+   - 섹터 흐름 1~2문장 (섹터명 + 등락률 색상 태그 포함)
    - 급등 종목 앞에 반드시 <p><strong>📈 상승 특징주</strong></p> 소제목 출력
    - 급락 종목 앞에 반드시 <p><strong>📉 하락 특징주</strong></p> 소제목 출력
-   - 각 특징주를 <ul><li>종목명(등락률) — 이유</li></ul> 형식으로 기술
+   - 각 특징주를 <ul><li>종목명(<font color="red"><b>+X.XX%</b></font>) — 이유</li></ul> 형식으로 기술
    - 마지막 <p>에 SeedUP 인사이트: 오늘 데이터에서 투자자 관점 핵심 관찰 1~2가지
-e) <h3>🔮 내일 시장 전망</h3> — 신중한 어조로 2~3문장
-f) 면책 문구 — h3/h4 제목 없이 아래 문구를 <p> 태그로만 출력 (한 글자도 바꾸지 말 것):
+f) <h3>🔮 내일 시장 전망</h3> — 신중한 어조로 2~3문장 (새 <p>로 분리)
+g) 면책 문구 — h3/h4 제목 없이 아래 문구를 <p> 태그로만 출력 (한 글자도 바꾸지 말 것):
    <p style="margin-top:30px; padding:15px; background:#f5f5f5; border-left:4px solid #999; font-size:12px; color:#666;">⚠️ 본 포스트는 시장 정보 제공 및 교육 목적으로 작성된 것이며, 어떤 식으로든 특정 종목 또는 금융상품의 매매를 추천하는 것이 아닙니다. 투자 결정은 반드시 개인의 투자 목표, 위험 선호도, 재무 상황을 고려하여 신중히 진행하시기 바랍니다. SeedUP 투자 블로그는 본 내용으로 인한 모든 직·간접적 손실에 대해 책임을 지지 않습니다. ⚠️</p>
 
 출력 형식 — 아래 3줄 헤더 뒤에 HTML 본문만 작성 (다른 설명 없음):
-TITLE: [{date_title} 시황] 핵심내용
+TITLE: [{date_title} 국내증시] 핵심내용
 LABELS: {all_labels}
 CONTENT:
 [HTML 본문]"""

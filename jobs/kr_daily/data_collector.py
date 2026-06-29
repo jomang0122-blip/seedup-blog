@@ -64,8 +64,57 @@ def get_index_data(date_str: str) -> dict:
     return result
 
 
+def _fmt_amount(amount: int) -> str:
+    """순매수거래대금(원) → 억원 단위 문자열"""
+    if amount >= 0:
+        return f"+{amount // 100_000_000:,}억"
+    return f"{amount // 100_000_000:,}억"
+
+
 def get_investor_data(date_str: str) -> dict:
-    return {"foreign_net": None, "institution_net": None}
+    """외국인/기관/연기금 KOSPI 순매수 TOP3 수집 (pykrx)
+    date_str: YYYYMMDD 형식
+    """
+    try:
+        from pykrx import stock as pyk
+    except ImportError:
+        print("  [수급] pykrx 미설치 — 수급 데이터 생략")
+        return {"investor_top3": {}, "foreign_net": None, "institution_net": None}
+
+    investor_map = {
+        "외국인": "외국인",
+        "기관":   "기관합계",
+        "연기금": "연기금등",
+    }
+    result = {}
+    for label, key in investor_map.items():
+        try:
+            df = pyk.get_market_net_purchases_of_equities_by_ticker(
+                date_str, date_str, "KOSPI", key
+            )
+            if df is None or df.empty:
+                result[label] = []
+                continue
+            # 순매수거래대금 컬럼 탐색
+            amt_col = next(
+                (c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns),
+                None,
+            )
+            if amt_col is None:
+                result[label] = []
+                continue
+            # 종목명 컬럼 탐색 (없으면 index = 티커코드 사용)
+            name_col = "종목명" if "종목명" in df.columns else None
+            top3 = []
+            for _, row in df.nlargest(3, amt_col).iterrows():
+                name = str(row[name_col]) if name_col else str(row.name)
+                top3.append({"name": name, "net_amount": int(row[amt_col])})
+            result[label] = top3
+        except Exception as e:
+            print(f"  [{label}] 수급 수집 실패: {e}")
+            result[label] = []
+
+    return {"investor_top3": result, "foreign_net": None, "institution_net": None}
 
 
 def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
