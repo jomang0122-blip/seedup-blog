@@ -25,38 +25,53 @@ def _naver_soup(url: str, params: dict = None) -> BeautifulSoup:
 
 
 def get_latest_trading_date() -> str:
-    date = datetime.today()
-    for _ in range(10):
-        date_str = date.strftime("%Y-%m-%d")
-        try:
-            df = fdr.DataReader("KS11", date_str, date_str)
-            if not df.empty:
-                return date.strftime("%Y%m%d")
-        except Exception:
-            pass
-        date -= timedelta(days=1)
+    """pykrx로 최근 거래일 탐색 (KRX 공식 데이터 기준)."""
+    try:
+        from pykrx import stock as pyk
+        date = datetime.today()
+        for _ in range(10):
+            date_str = date.strftime("%Y%m%d")
+            df = pyk.get_index_ohlcv_by_date(date_str, date_str, "1001")
+            if df is not None and not df.empty:
+                return date_str
+            date -= timedelta(days=1)
+    except Exception:
+        pass
     raise RuntimeError("최근 거래일을 찾을 수 없습니다.")
 
 
 def get_index_data(date_str: str) -> dict:
-    date_fmt = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+    """KOSPI/KOSDAQ 지수 데이터 수집 (pykrx — KRX 공식 데이터)."""
+    try:
+        from pykrx import stock as pyk
+    except ImportError:
+        print("  [지수] pykrx 미설치")
+        return {}
+
+    # 직전 5거래일 포함해서 가져와 전일 대비 등락률 계산
+    end_dt   = datetime.strptime(date_str, "%Y%m%d")
+    start_dt = end_dt - timedelta(days=7)
+    start_str = start_dt.strftime("%Y%m%d")
+
     result = {}
-    for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+    for key, code in [("kospi", "1001"), ("kosdaq", "2001")]:
         try:
-            df = fdr.DataReader(ticker, date_fmt, date_fmt)
-            if df.empty:
+            df = pyk.get_index_ohlcv_by_date(start_str, date_str, code)
+            if df is None or df.empty:
                 result[key] = {}
                 continue
-            row = df.iloc[-1]
-            close = float(row["Close"])
-            change_raw = float(row.get("Change", 0))
-            change_pct = change_raw * 100
-            prev_close = close / (1 + change_raw) if change_raw != -1 else close
+            close_col  = "종가" if "종가" in df.columns else df.columns[3]
+            vol_col    = "거래량" if "거래량" in df.columns else None
+            today_close = float(df[close_col].iloc[-1])
+            prev_close  = float(df[close_col].iloc[-2]) if len(df) >= 2 else today_close
+            change      = today_close - prev_close
+            change_pct  = change / prev_close * 100 if prev_close else 0
+            volume      = int(df[vol_col].iloc[-1]) if vol_col else 0
             result[key] = {
-                "close": round(close, 2),
-                "change": round(close - prev_close, 2),
+                "close":      round(today_close, 2),
+                "change":     round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "volume": int(row.get("Volume", 0)),
+                "volume":     volume,
             }
         except Exception as e:
             print(f"  [{key}] 지수 수집 실패: {e}")

@@ -138,16 +138,8 @@ def validate_post(data: dict, post: dict) -> dict:
 
 def apply_corrections(post: dict, validation: dict) -> dict:
     corrected = dict(post)
-
+    # 제목만 수정 — 본문 텍스트 교체는 하지 않음
+    # (AI가 corrections에 수정값 대신 설명 문구를 넣는 경우 본문이 오염되는 버그 방지)
     if validation.get("corrected_title"):
         corrected["title"] = validation["corrected_title"]
-
-    content = corrected["content"]
-    for fix in validation.get("corrections", []):
-        original = fix.get("original", "")
-        corrected_text = fix.get("corrected", "")
-        if original and corrected_text and original in content:
-            content = content.replace(original, corrected_text, 1)
-    corrected["content"] = content
-
     return corrected
