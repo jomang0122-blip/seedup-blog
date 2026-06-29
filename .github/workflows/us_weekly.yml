@@ -1,10 +1,7 @@
 name: SeedUP — 미국증시 위클리 (테스트)
 
 on:
-  # KST 일요일 오후 16:00 = UTC 일요일 06:55 (5분 일찍 설정)
-  schedule:
-    - cron: '55 6 * * 0'
-
+  # cron-job.org 에서 workflow_dispatch로 트리거 (schedule 제거)
   workflow_dispatch:
     inputs:
       dry_run:
