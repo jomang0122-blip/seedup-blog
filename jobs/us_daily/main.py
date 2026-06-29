@@ -20,7 +20,7 @@ load_dotenv()
 
 from data_collector import collect_all
 from prompt_builder import generate_post
-from shared.blog_publisher import publish_post, check_today_post
+from shared.blog_publisher import publish_post
 
 KST = pytz.timezone("Asia/Seoul")
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -121,20 +121,7 @@ def run(dry_run: bool = False, force: bool = False):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: 중복 발행 체크")
-    if force:
-        log("  --force 모드 — 중복 체크 생략")
-    else:
-        try:
-            existing = check_today_post(kst_date, label_filter="미증시")
-            if existing:
-                log(f"  오늘({kst_date}) 미증시 데일리 이미 발행됨 — 발행 중단")
-                log(f"  기존 URL: {existing['url']}")
-                save_log(data, post, existing, kst_date)
-                sys.exit(0)
-            log("  중복 없음 — 발행 진행")
-        except Exception as e:
-            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
+    log("▶ Step 4: 중복 체크 없음 — 발행 진행")
 
     log("▶ Step 5: Blogger 발행")
     try:

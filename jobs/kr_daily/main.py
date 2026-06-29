@@ -19,7 +19,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.validator import validate_post, apply_corrections
-from shared.blog_publisher import publish_post, check_today_post
+from shared.blog_publisher import publish_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 LOG_DIR = REPO_ROOT / "logs"
@@ -114,8 +114,7 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: 중복 발행 체크 (현재 비활성화)")
-    log("  중복 체크 스킵 — 발행 진행")
+    log("▶ Step 4: 중복 체크 없음 — 발행 진행")
 
     log("▶ Step 5: Blogger 발행")
     try:
