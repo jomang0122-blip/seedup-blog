@@ -25,53 +25,43 @@ def _naver_soup(url: str, params: dict = None) -> BeautifulSoup:
 
 
 def get_latest_trading_date() -> str:
-    """pykrx로 최근 거래일 탐색 (KRX 공식 데이터 기준)."""
-    try:
-        from pykrx import stock as pyk
-        date = datetime.today()
-        for _ in range(10):
-            date_str = date.strftime("%Y%m%d")
-            df = pyk.get_index_ohlcv_by_date(date_str, date_str, "1001")
-            if df is not None and not df.empty:
-                return date_str
-            date -= timedelta(days=1)
-    except Exception:
-        pass
+    """FDR로 최근 거래일 탐색 (빠른 응답, 날짜 확인용)."""
+    date = datetime.today()
+    for _ in range(10):
+        date_str = date.strftime("%Y-%m-%d")
+        try:
+            df = fdr.DataReader("KS11", date_str, date_str)
+            if not df.empty:
+                return date.strftime("%Y%m%d")
+        except Exception:
+            pass
+        date -= timedelta(days=1)
     raise RuntimeError("최근 거래일을 찾을 수 없습니다.")
 
 
 def get_index_data(date_str: str) -> dict:
-    """KOSPI/KOSDAQ 지수 데이터 수집 (pykrx — KRX 공식 데이터)."""
-    try:
-        from pykrx import stock as pyk
-    except ImportError:
-        print("  [지수] pykrx 미설치")
-        return {}
-
-    # 직전 5거래일 포함해서 가져와 전일 대비 등락률 계산
-    end_dt   = datetime.strptime(date_str, "%Y%m%d")
-    start_dt = end_dt - timedelta(days=7)
-    start_str = start_dt.strftime("%Y%m%d")
-
+    """KOSPI/KOSDAQ 지수 데이터 수집 (네이버 모바일 API — 실시간)."""
+    naver_map = {
+        "kospi":  "KOSPI",
+        "kosdaq": "KOSDAQ",
+    }
     result = {}
-    for key, code in [("kospi", "1001"), ("kosdaq", "2001")]:
+    for key, code in naver_map.items():
         try:
-            df = pyk.get_index_ohlcv_by_date(start_str, date_str, code)
-            if df is None or df.empty:
-                result[key] = {}
-                continue
-            close_col  = "종가" if "종가" in df.columns else df.columns[3]
-            vol_col    = "거래량" if "거래량" in df.columns else None
-            today_close = float(df[close_col].iloc[-1])
-            prev_close  = float(df[close_col].iloc[-2]) if len(df) >= 2 else today_close
-            change      = today_close - prev_close
-            change_pct  = change / prev_close * 100 if prev_close else 0
-            volume      = int(df[vol_col].iloc[-1]) if vol_col else 0
+            resp = requests.get(
+                f"https://m.stock.naver.com/api/index/{code}/basic",
+                headers=_NAVER_HEADERS,
+                timeout=10,
+            )
+            data = resp.json()
+            close      = float(data.get("closePrice", "0").replace(",", ""))
+            change     = float(data.get("compareToPreviousClosePrice", "0").replace(",", ""))
+            change_pct = float(data.get("fluctuationsRatio", "0").replace(",", ""))
             result[key] = {
-                "close":      round(today_close, 2),
+                "close":      round(close, 2),
                 "change":     round(change, 2),
                 "change_pct": round(change_pct, 2),
-                "volume":     volume,
+                "volume":     0,
             }
         except Exception as e:
             print(f"  [{key}] 지수 수집 실패: {e}")
