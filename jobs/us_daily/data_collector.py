@@ -12,7 +12,7 @@ FIXED_TICKERS = {
     "SPCX": "스페이스엑스",
     "IONQ": "아이온큐",
     "AAPL": "애플",
-    "GOOGL": "구글",
+    "GOOGL": "알파벳(구글)",
     "MSFT": "마이크로소프트",
     "META": "메타",
     "AMZN": "아마존",

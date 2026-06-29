@@ -13,3 +13,4 @@ requests==2.34.2
 yfinance==0.2.65
 pytz==2024.2
 pykrx==1.0.48
+markdown==3.7
