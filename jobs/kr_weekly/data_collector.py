@@ -125,24 +125,35 @@ def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 
 
 def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """KOSPI 주간 급등락 TOP5 (이번 금요일 종가 vs 이전 금요일 종가 비교)."""
+    """KOSPI 주간 급등락 TOP5 (pykrx get_market_price_change_by_ticker 사용)."""
     try:
         from pykrx import stock as pyk
 
-        df_this = pyk.get_market_ohlcv_by_ticker(this_fri_str, market="KOSPI")
-        df_prev = pyk.get_market_ohlcv_by_ticker(prev_fri_str, market="KOSPI")
-        if df_this.empty or df_prev.empty:
+        prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
+        week_start  = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")  # 월요일
+
+        df = pyk.get_market_price_change_by_ticker(week_start, this_fri_str, "KOSPI")
+        if df is None or df.empty:
+            print("  [주간 종목] pykrx 결과 없음")
             return {"top_gainers": [], "top_losers": []}
 
-        close_col = "종가" if "종가" in df_this.columns else df_this.columns[3]
-        common    = df_this.index.intersection(df_prev.index)
-        this_c    = df_this.loc[common, close_col]
-        prev_c    = df_prev.loc[common, close_col]
+        pct_col   = "등락률"   if "등락률"   in df.columns else None
+        close_col = "종가"     if "종가"     in df.columns else None
+        cap_col   = "시가총액" if "시가총액" in df.columns else None
 
-        weekly_pct = ((this_c - prev_c) / prev_c * 100).dropna()
-        # 1000원 미만 소형주 제외
-        valid = this_c[this_c > 1000].index
-        weekly_pct = weekly_pct[weekly_pct.index.isin(valid)]
+        if pct_col is None:
+            print(f"  [주간 종목] 등락률 컬럼 없음: {df.columns.tolist()}")
+            return {"top_gainers": [], "top_losers": []}
+
+        # 1000원 미만 제외
+        if close_col:
+            df = df[pd.to_numeric(df[close_col], errors="coerce") > 1000]
+        # 시가총액 5천억 미만 소형주 제외
+        if cap_col:
+            df = df[pd.to_numeric(df[cap_col], errors="coerce") > 500_000_000_000]
+
+        df[pct_col] = pd.to_numeric(df[pct_col], errors="coerce")
+        df = df.dropna(subset=[pct_col])
 
         def _to_item(ticker, pct):
             try:
@@ -151,8 +162,8 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
                 name = ticker
             return {"name": name, "ticker": ticker, "change_pct": round(float(pct), 2)}
 
-        gainers = [_to_item(t, p) for t, p in weekly_pct.nlargest(5).items()]
-        losers  = [_to_item(t, p) for t, p in weekly_pct.nsmallest(5).items()]
+        gainers = [_to_item(t, p) for t, p in df[pct_col].nlargest(5).items()]
+        losers  = [_to_item(t, p) for t, p in df[pct_col].nsmallest(5).items()]
         return {"top_gainers": gainers, "top_losers": losers}
 
     except Exception as e:

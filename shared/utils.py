@@ -15,8 +15,11 @@ def md_to_html(text: str) -> str:
     모든 job(kr_daily, us_daily, kr_weekly, us_weekly)이 공유하는 공통 함수.
     """
     try:
+        import re
         import markdown as md
         from bs4 import BeautifulSoup
+        # Python markdown 라이브러리는 헤더(#) 앞에 빈 줄이 없으면 인식 못 함 → 보장
+        text = re.sub(r'([^\n])\n(#{1,6} )', r'\1\n\n\2', text)
         html = md.markdown(text, extensions=["tables"])
         soup = BeautifulSoup(html, "html.parser")
         for table in soup.find_all("table"):
