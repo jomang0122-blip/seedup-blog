@@ -1,7 +1,7 @@
-name: SeedUP 블로그 자동 발행
+name: SeedUP — 국내증시 데일리
 
 on:
-  # cron-job.org 에서 workflow_dispatch로 트리거 (schedule 제거)
+  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 16:30 평일)
   workflow_dispatch:
     inputs:
       date:
@@ -60,7 +60,9 @@ jobs:
           CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
         run: echo "$CONFIG_YAML" > config.yaml
 
-      - name: 블로그 포스팅 실행
+      - name: 국내증시 데일리 발행
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           ARGS=""
           if [ "${{ github.event.inputs.date }}" != "" ]; then
@@ -72,7 +74,7 @@ jobs:
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             ARGS="$ARGS --force"
           fi
-          python main.py $ARGS
+          python jobs/kr_daily/main.py $ARGS
 
       - name: 갱신된 token.json을 Secret에 업데이트
         if: github.event.inputs.dry_run != 'true'
