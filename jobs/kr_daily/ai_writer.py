@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER
+from shared.utils import DISCLAIMER, md_to_html
 
 client = Anthropic()
 
@@ -67,24 +67,6 @@ def _build_news_anchor(headlines: list, stock_pct_map: dict = None) -> str:
         lines.append(f"{i + 1}. {h}{pct_tag}")
     return "\n".join(lines)
 
-
-def _md_to_html(text: str) -> str:
-    """마크다운 표·제목·강조를 HTML로 변환하고 테이블에 인라인 스타일 주입."""
-    try:
-        import markdown as md
-        from bs4 import BeautifulSoup
-        html = md.markdown(text, extensions=["tables"])
-        soup = BeautifulSoup(html, "html.parser")
-        for table in soup.find_all("table"):
-            table["border"] = "1"
-            table["style"] = "border-collapse:collapse;width:100%;font-size:14px;"
-        for th in soup.find_all("th"):
-            th["style"] = "padding:8px;background:#f2f4f6;text-align:left;"
-        for td in soup.find_all("td"):
-            td["style"] = "padding:8px;vertical-align:top;"
-        return str(soup)
-    except ImportError:
-        return text
 
 
 def _build_prompt(data: dict) -> str:
@@ -248,7 +230,7 @@ def _parse_response(raw: str) -> dict:
         elif in_content:
             content_lines.append(line)
 
-    content = _md_to_html("\n".join(content_lines).strip()) + "\n" + DISCLAIMER
+    content = md_to_html("\n".join(content_lines).strip()) + "\n" + DISCLAIMER
     return {"title": title, "labels": labels, "content": content, "char_count": len(content)}
 
 

@@ -8,3 +8,24 @@ DISCLAIMER = (
     '모든 투자에 대한 판단과 책임은 투자자 본인에게 있습니다. '
     'SeedUP 투자 블로그는 본 내용으로 인한 손실에 대해 책임을 지지 않습니다. ⚠️</p>'
 )
+
+
+def md_to_html(text: str) -> str:
+    """마크다운 → HTML 변환 + 테이블 인라인 스타일 주입.
+    모든 job(kr_daily, us_daily, kr_weekly, us_weekly)이 공유하는 공통 함수.
+    """
+    try:
+        import markdown as md
+        from bs4 import BeautifulSoup
+        html = md.markdown(text, extensions=["tables"])
+        soup = BeautifulSoup(html, "html.parser")
+        for table in soup.find_all("table"):
+            table["border"] = "1"
+            table["style"] = "border-collapse:collapse;width:100%;font-size:14px;"
+        for th in soup.find_all("th"):
+            th["style"] = "padding:8px;background:#f2f4f6;text-align:left;"
+        for td in soup.find_all("td"):
+            td["style"] = "padding:8px;vertical-align:top;"
+        return str(soup)
+    except ImportError:
+        return text
