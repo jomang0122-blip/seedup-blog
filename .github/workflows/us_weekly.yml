@@ -1,11 +1,16 @@
-name: SeedUP — 미국증시 위클리 (테스트)
+name: SeedUP — 미증시 위클리
 
 on:
-  # cron-job.org 에서 workflow_dispatch로 트리거 (schedule 제거)
+  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 일요일 16:00)
   workflow_dispatch:
     inputs:
       dry_run:
         description: '미리보기만 (발행 안 함)'
+        required: false
+        type: boolean
+        default: false
+      force:
+        description: '요일 체크·중복 체크 무시하고 강제 재발행'
         required: false
         type: boolean
         default: false
@@ -51,13 +56,18 @@ jobs:
           CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
         run: echo "$CONFIG_YAML" > config.yaml
 
-      - name: 미국증시 위클리 테스트 발행
-        if: ${{ github.event.inputs.dry_run != 'true' }}
-        run: python test_publish.py --type us_weekly
-
-      - name: DRY-RUN 확인
-        if: ${{ github.event.inputs.dry_run == 'true' }}
-        run: echo "[DRY-RUN] 미국증시 위클리 스케줄 동작 확인 완료"
+      - name: 미국증시 위클리 발행
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          python jobs/us_weekly/main.py $ARGS
 
       - name: 갱신된 token.json을 Secret에 업데이트
         if: ${{ github.event.inputs.dry_run != 'true' }}
