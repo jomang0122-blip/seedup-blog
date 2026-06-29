@@ -81,123 +81,130 @@ def _fmt_amount(amount: int) -> str:
     return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
 
 
-def _find_available_end_date(pyk, week_start: str, this_fri_str: str, market: str, investor_key: str) -> tuple:
-    """pykrx 데이터 지연 대응 — 금요일부터 최대 3일 앞으로 당겨 가용 날짜 탐색."""
-    for delta in range(4):
-        end_dt  = datetime.strptime(this_fri_str, "%Y%m%d") - timedelta(days=delta)
-        end_str = end_dt.strftime("%Y%m%d")
-        if end_str < week_start:
-            break
-        try:
-            df = pyk.get_market_net_purchases_of_equities_by_ticker(
-                week_start, end_str, market, investor_key
-            )
-            if df is not None and not df.empty:
-                print(f"  [수급] 데이터 취득 성공 (종료일: {end_str})")
-                return df, end_str
-        except Exception:
-            pass
-    return None, None
+def _week_trading_days(prev_fri_str: str, this_fri_str: str) -> list:
+    """이전 금요일 다음 월요일 ~ 이번 금요일의 평일 목록."""
+    start = datetime.strptime(prev_fri_str, "%Y%m%d") + timedelta(days=3)
+    end   = datetime.strptime(this_fri_str, "%Y%m%d")
+    days  = []
+    d = start
+    while d <= end:
+        if d.weekday() < 5:
+            days.append(d.strftime("%Y%m%d"))
+        d += timedelta(days=1)
+    return days
 
 
 def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """외국인/기관/연기금 KOSPI 주간 순매수 TOP3 (pykrx)."""
+    """외국인/기관/연기금 KOSPI 주간 순매수 TOP3.
+    날짜 범위 쿼리 대신 하루씩 단일 쿼리 후 합산 (pykrx 범위 쿼리 미지원 대응).
+    """
     try:
         from pykrx import stock as pyk
     except ImportError:
         print("  [수급] pykrx 미설치 — 수급 데이터 생략")
         return {}
 
-    prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
-    week_start  = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")  # 월요일
+    trading_days = _week_trading_days(prev_fri_str, this_fri_str)
+    print(f"  [수급] 주간 거래일: {trading_days}")
 
     investor_map = {"외국인": "외국인", "기관": "기관합계", "연기금": "연기금등"}
     result = {}
+
     for label, key in investor_map.items():
-        try:
-            df, used_end = _find_available_end_date(pyk, week_start, this_fri_str, "KOSPI", key)
-            if df is None or df.empty:
-                print(f"  [{label}] 수급 데이터 없음 (4일 시도 모두 실패)")
-                result[label] = {"buy": [], "sell": []}
-                continue
-            print(f"  [{label}] 컬럼: {df.columns.tolist()}")
-            amt_col = next(
-                (c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns), None
-            )
-            if amt_col is None:
-                print(f"  [{label}] 순매수 컬럼 없음 — 가용 컬럼: {df.columns.tolist()}")
-                result[label] = {"buy": [], "sell": []}
-                continue
-            name_col = "종목명" if "종목명" in df.columns else None
+        accumulated: dict = {}  # ticker → {"name": str, "net_amount": int}
+        for day in trading_days:
+            try:
+                df = pyk.get_market_net_purchases_of_equities_by_ticker(day, day, "KOSPI", key)
+                if df is None or df.empty:
+                    continue
+                amt_col  = next((c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns), None)
+                if amt_col is None:
+                    continue
+                name_col = "종목명" if "종목명" in df.columns else None
+                for ticker, row in df.iterrows():
+                    name = str(row[name_col]) if name_col else str(ticker)
+                    amt  = int(row[amt_col])
+                    if ticker in accumulated:
+                        accumulated[ticker]["net_amount"] += amt
+                    else:
+                        accumulated[ticker] = {"name": name, "net_amount": amt}
+            except Exception as e:
+                print(f"  [{label}] {day} 수집 실패: {e}")
 
-            def _row_to_item(row):
-                name = str(row[name_col]) if name_col else str(row.name)
-                return {"name": name, "net_amount": int(row[amt_col])}
-
-            buy3  = [_row_to_item(r) for _, r in df.nlargest(3, amt_col).iterrows()]
-            sell3 = [_row_to_item(r) for _, r in df.nsmallest(3, amt_col).iterrows()]
-            print(f"  [{label}] 순매수 TOP3: {[s['name'] for s in buy3]}")
-            result[label] = {"buy": buy3, "sell": sell3}
-        except Exception as e:
-            print(f"  [{label}] 주간 수급 수집 실패: {e}")
+        if not accumulated:
+            print(f"  [{label}] 주간 수급 데이터 없음")
             result[label] = {"buy": [], "sell": []}
+            continue
+
+        sorted_items = sorted(accumulated.values(), key=lambda x: x["net_amount"], reverse=True)
+        buy3  = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[:3]]
+        sell3 = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[-3:]]
+        print(f"  [{label}] 주간 순매수 TOP3: {[s['name'] for s in buy3]}")
+        result[label] = {"buy": buy3, "sell": sell3}
+
     return result
 
 
+def _ohlcv_snapshot(pyk, date_str: str, direction: int = 1) -> pd.DataFrame:
+    """단일 날짜 OHLCV 스냅샷 취득 — 없으면 direction 방향으로 최대 3일 탐색."""
+    for delta in range(4):
+        d = (datetime.strptime(date_str, "%Y%m%d") + timedelta(days=delta * direction)).strftime("%Y%m%d")
+        try:
+            df = pyk.get_market_ohlcv_by_ticker(d, market="KOSPI")
+            if df is not None and not df.empty:
+                print(f"  [종목] OHLCV 스냅샷: {d}")
+                return df
+        except Exception:
+            pass
+    return None
+
+
 def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """KOSPI 주간 급등락 TOP5 (pykrx get_market_price_change_by_ticker 사용)."""
+    """KOSPI 주간 급등락 TOP5.
+    주초·주말 단일 OHLCV 스냅샷을 비교해 주간 등락률 산출 (범위 쿼리 대신 단일 쿼리 2회).
+    """
     try:
         from pykrx import stock as pyk
 
         prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
-        week_start  = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")  # 월요일
+        week_mon_str = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")
 
-        # pykrx 데이터 지연 대응 — 금요일부터 최대 3일 앞으로 당겨서 시도
-        df = None
-        for delta in range(4):
-            end_dt  = datetime.strptime(this_fri_str, "%Y%m%d") - timedelta(days=delta)
-            end_str = end_dt.strftime("%Y%m%d")
-            if end_str < week_start:
-                break
-            try:
-                df = pyk.get_market_price_change_by_ticker(week_start, end_str, "KOSPI")
-                if df is not None and not df.empty:
-                    print(f"  [주간 종목] 데이터 취득 성공 (종료일: {end_str})")
-                    break
-            except Exception:
-                df = None
+        # 주초(월요일→이후 방향) / 주말(금요일→이전 방향) 스냅샷
+        df_start = _ohlcv_snapshot(pyk, week_mon_str, direction=1)
+        df_end   = _ohlcv_snapshot(pyk, this_fri_str, direction=-1)
 
-        if df is None or df.empty:
-            print("  [주간 종목] pykrx 결과 없음 (4일 시도 모두 실패)")
+        if df_start is None or df_end is None:
+            print("  [주간 종목] OHLCV 스냅샷 취득 실패")
             return {"top_gainers": [], "top_losers": []}
 
-        pct_col   = "등락률"   if "등락률"   in df.columns else None
-        close_col = "종가"     if "종가"     in df.columns else None
-        cap_col   = "시가총액" if "시가총액" in df.columns else None
+        close_col = next((c for c in ["종가", "Close"] if c in df_end.columns), None)
+        cap_col   = next((c for c in ["시가총액", "Marcap"] if c in df_end.columns), None)
 
-        if pct_col is None:
-            print(f"  [주간 종목] 등락률 컬럼 없음: {df.columns.tolist()}")
+        if close_col is None:
+            print(f"  [주간 종목] 종가 컬럼 없음: {df_end.columns.tolist()}")
             return {"top_gainers": [], "top_losers": []}
 
-        # 1000원 미만 제외
-        if close_col:
-            df = df[pd.to_numeric(df[close_col], errors="coerce") > 1000]
-        # 시가총액 5천억 미만 소형주 제외
+        common = df_end.index.intersection(df_start.index)
+        end_c   = pd.to_numeric(df_end.loc[common, close_col],   errors="coerce")
+        start_c = pd.to_numeric(df_start.loc[common, close_col], errors="coerce")
+
+        mask = (start_c > 1000) & (end_c > 1000)
         if cap_col:
-            df = df[pd.to_numeric(df[cap_col], errors="coerce") > 500_000_000_000]
+            caps = pd.to_numeric(df_end.loc[common, cap_col], errors="coerce")
+            mask = mask & (caps > 500_000_000_000)
 
-        df[pct_col] = pd.to_numeric(df[pct_col], errors="coerce")
-        df = df.dropna(subset=[pct_col])
+        pct = ((end_c - start_c) / start_c * 100)[mask].dropna()
 
-        def _to_item(ticker, pct):
+        def _to_item(ticker, val):
             try:
                 name = pyk.get_market_ticker_name(ticker)
             except Exception:
                 name = ticker
-            return {"name": name, "ticker": ticker, "change_pct": round(float(pct), 2)}
+            return {"name": name, "ticker": ticker, "change_pct": round(float(val), 2)}
 
-        gainers = [_to_item(t, p) for t, p in df[pct_col].nlargest(5).items()]
-        losers  = [_to_item(t, p) for t, p in df[pct_col].nsmallest(5).items()]
+        gainers = [_to_item(t, v) for t, v in pct.nlargest(5).items()]
+        losers  = [_to_item(t, v) for t, v in pct.nsmallest(5).items()]
+        print(f"  [주간 종목] 급등 TOP3: {[g['name'] for g in gainers[:3]]}")
         return {"top_gainers": gainers, "top_losers": losers}
 
     except Exception as e:

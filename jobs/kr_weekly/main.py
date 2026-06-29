@@ -50,7 +50,7 @@ def build_title(data: dict) -> str:
     kospi = data.get("kospi", {})
     pct   = kospi.get("weekly_pct", 0) or 0
     direction = "상승" if pct >= 0 else "하락"
-    return f"[{date_range} 코스피 주간] 코스피 {abs(pct):.1f}% {direction} 주간 시황 리뷰"
+    return f"[{date_range} 국내증시 주간] 코스피 {abs(pct):.1f}% {direction} 주간 시황 리뷰"
 
 
 def save_log(data: dict, post: dict, result: dict, kst_date: str):
