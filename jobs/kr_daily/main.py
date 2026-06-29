@@ -114,20 +114,8 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: 중복 발행 체크")
-    if force:
-        log("  --force 모드 — 중복 체크 생략")
-    else:
-        try:
-            existing = check_today_post(data["date"], label_filter=None)
-            if existing:
-                log(f"  오늘({data['date']}) 이미 발행된 포스트 있음 — 발행 중단")
-                log(f"  기존 URL: {existing['url']}")
-                save_log(data, post, existing)
-                sys.exit(0)
-            log("  중복 없음 — 발행 진행")
-        except Exception as e:
-            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
+    log("▶ Step 4: 중복 발행 체크 (현재 비활성화)")
+    log("  중복 체크 스킵 — 발행 진행")
 
     log("▶ Step 5: Blogger 발행")
     try:
