@@ -222,6 +222,44 @@ def get_top_stocks(date_str: str) -> dict:
         return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}}
 
 
+def _crawl_sector_top_stocks(no: str, top_n: int = 2) -> list:
+    """업종 상세 페이지에서 등락률 기준 상위 종목 top_n개 반환."""
+    url = "https://finance.naver.com/sise/sise_group_detail.naver"
+    try:
+        resp = fetch_with_retry(url, params={"type": "upjong", "no": no}, headers=_NAVER_HEADERS, timeout=10)
+        resp.encoding = "euc-kr"
+        soup = BeautifulSoup(resp.text, "lxml")
+        table = soup.find("table", {"class": "type_1"})
+        if not table:
+            return []
+        stocks = []
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if len(tds) < 4:
+                continue
+            name_tag = tds[0].find("a")
+            if not name_tag:
+                continue
+            name = name_tag.get_text(strip=True)
+            if not name or _is_etf(name):
+                continue
+            pct_raw = tds[3].get_text(strip=True)
+            is_neg = "-" in pct_raw
+            pct_val = re.sub(r"[^\d.]", "", pct_raw)
+            if not pct_val:
+                continue
+            try:
+                pct = float(pct_val) * (-1 if is_neg else 1)
+                stocks.append({"name": name, "change_pct": round(pct, 2)})
+            except ValueError:
+                continue
+        stocks.sort(key=lambda x: x["change_pct"], reverse=True)
+        return stocks[:top_n]
+    except Exception as e:
+        print(f"  [섹터상세-{no}] 실패: {e}")
+        return []
+
+
 def get_sector_data(date_str: str = None) -> dict:
     try:
         main_resp = requests.get(
@@ -244,6 +282,10 @@ def get_sector_data(date_str: str = None) -> dict:
                 continue
             a_tag = cols[0].find("a")
             name = a_tag.get_text(strip=True) if a_tag else cols[0].get_text(strip=True)
+            # 업종 상세 페이지 no 추출
+            href = a_tag.get("href", "") if a_tag else ""
+            no_match = re.search(r"no=(\d+)", href)
+            no = no_match.group(1) if no_match else None
             pct_raw = cols[1].get_text(strip=True)
             if not name or not pct_raw:
                 continue
@@ -251,7 +293,7 @@ def get_sector_data(date_str: str = None) -> dict:
             pct_val = re.sub(r"[^\d.]", "", pct_raw)
             try:
                 pct = float(pct_val) * (-1 if is_neg else 1)
-                sectors.append({"name": name, "change_pct": round(pct, 2)})
+                sectors.append({"name": name, "change_pct": round(pct, 2), "no": no})
             except ValueError:
                 continue
 
@@ -259,9 +301,20 @@ def get_sector_data(date_str: str = None) -> dict:
             return {"top_sectors": [], "bottom_sectors": []}
 
         sectors.sort(key=lambda x: x["change_pct"], reverse=True)
+        top3 = sectors[:3]
+        bot3 = sectors[-3:][::-1]
+
+        # 상위/하위 섹터별 종목 상위 2개 추가 수집
+        for s in top3 + bot3:
+            if s.get("no"):
+                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2)
+                print(f"  [섹터종목] {s['name']}: {[t['name'] for t in s['top_stocks']]}")
+            else:
+                s["top_stocks"] = []
+
         return {
-            "top_sectors": sectors[:3],
-            "bottom_sectors": sectors[-3:][::-1],
+            "top_sectors": top3,
+            "bottom_sectors": bot3,
         }
     except Exception as e:
         print(f"  [섹터] 수집 실패: {e}")
