@@ -10,15 +10,23 @@ def _build_stock_anchor(data: dict) -> str:
     gainers = data.get("top_gainers", [])
     losers = data.get("top_losers", [])
     lines = []
+    non_upper = []
     if gainers:
         parts = []
         for s in gainers:
-            label = " [상한가]" if s.get("is_upper_limit") else ""
+            if s.get("is_upper_limit"):
+                label = " [상한가]"
+            else:
+                label = ""
+                non_upper.append(s["name"])
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%{label}")
         lines.append("급등: " + " | ".join(parts))
     if losers:
         lines.append("급락: " + " | ".join(f"{s['name']} {s['change_pct']:+.2f}%" for s in losers))
-    return "\n".join(lines) if lines else "(종목 데이터 없음)"
+    result = "\n".join(lines) if lines else "(종목 데이터 없음)"
+    if non_upper:
+        result += f"\n⚠️ 상한가 표현 절대 금지 종목 (급등·강세 등으로만 표현): {', '.join(non_upper)}"
+    return result
 
 
 def _build_sector_anchor(data: dict) -> str:

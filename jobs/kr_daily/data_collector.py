@@ -223,13 +223,14 @@ def get_top_stocks(date_str: str) -> dict:
 
 
 def _crawl_sector_top_stocks(no: str, top_n: int = 2) -> list:
-    """업종 상세 페이지에서 등락률 기준 상위 종목 top_n개 반환."""
+    """업종 상세 페이지(type_5 테이블)에서 등락률 기준 상위 종목 top_n개 반환."""
     url = "https://finance.naver.com/sise/sise_group_detail.naver"
     try:
         resp = fetch_with_retry(url, params={"type": "upjong", "no": no}, headers=_NAVER_HEADERS, timeout=10)
         resp.encoding = "euc-kr"
         soup = BeautifulSoup(resp.text, "lxml")
-        table = soup.find("table", {"class": "type_1"})
+        # 종목 목록은 type_5 테이블 (td 10개, tds[0]=종목명, tds[3]=등락률)
+        table = soup.find("table", {"class": "type_5"})
         if not table:
             return []
         stocks = []
