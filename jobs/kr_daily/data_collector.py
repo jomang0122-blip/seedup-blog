@@ -222,8 +222,11 @@ def get_top_stocks(date_str: str) -> dict:
         return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}}
 
 
-def _crawl_sector_top_stocks(no: str, top_n: int = 2) -> list:
-    """업종 상세 페이지(type_5 테이블)에서 등락률 기준 상위 종목 top_n개 반환."""
+def _crawl_sector_top_stocks(no: str, top_n: int = 2, is_rising: bool = True) -> list:
+    """업종 상세 페이지(type_5 테이블)에서 종목 수집.
+    is_rising=True  → 상승률 높은 순 (상승 섹터용)
+    is_rising=False → 하락률 큰 순  (하락 섹터용)
+    """
     url = "https://finance.naver.com/sise/sise_group_detail.naver"
     try:
         resp = fetch_with_retry(url, params={"type": "upjong", "no": no}, headers=_NAVER_HEADERS, timeout=10)
@@ -254,7 +257,8 @@ def _crawl_sector_top_stocks(no: str, top_n: int = 2) -> list:
                 stocks.append({"name": name, "change_pct": round(pct, 2)})
             except ValueError:
                 continue
-        stocks.sort(key=lambda x: x["change_pct"], reverse=True)
+        # 상승 섹터: 상승률 높은 순 / 하락 섹터: 하락률 큰 순
+        stocks.sort(key=lambda x: x["change_pct"], reverse=is_rising)
         return stocks[:top_n]
     except Exception as e:
         print(f"  [섹터상세-{no}] 실패: {e}")
@@ -305,10 +309,16 @@ def get_sector_data(date_str: str = None) -> dict:
         top3 = sectors[:3]
         bot3 = sectors[-3:][::-1]
 
-        # 상위/하위 섹터별 종목 상위 2개 추가 수집
-        for s in top3 + bot3:
+        # 상위 섹터: 상승률 높은 순 / 하위 섹터: 하락률 큰 순
+        for s in top3:
             if s.get("no"):
-                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2)
+                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=True)
+                print(f"  [섹터종목] {s['name']}: {[t['name'] for t in s['top_stocks']]}")
+            else:
+                s["top_stocks"] = []
+        for s in bot3:
+            if s.get("no"):
+                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=False)
                 print(f"  [섹터종목] {s['name']}: {[t['name'] for t in s['top_stocks']]}")
             else:
                 s["top_stocks"] = []
