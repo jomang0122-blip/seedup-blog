@@ -80,11 +80,19 @@ def _is_etf(name: str) -> bool:
 
 
 def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> list:
-    """네이버 sise_deal_rank_iframe에서 외국인/기관 순매수·순매도 TOP3 수집.
+    """네이버 sise_deal_rank_iframe에서 외국인/기관 매수/매도 대금 TOP3 수집.
+
     investor_gubun: "9000"=외국인, "1000"=기관
     direction: "buy" | "sell"
-    단위: tds[0]=종목명, tds[1]=수량(천주), tds[2]=대금(백만원)
-    Returns: [{"name": str, "net_amount": int(원)}]
+    tds 구조: tds[0]=종목명, tds[1]=수량(천주, 부호 포함), tds[2]=대금(백만원, 부호 포함)
+
+    주의: 이 테이블은 '순매수/순매도'가 아니라 방향별 거래대금 합계 순위이다.
+      - type=buy  -> 해당 투자자가 매수한 금액이 큰 종목 TOP (매수총액)
+      - type=sell -> 해당 투자자가 매도한 금액이 큰 종목 TOP (매도총액, tds[2]가 이미 음수)
+    따라서 동일 종목이 buy TOP3과 sell TOP3에 동시 등장할 수 있다.
+    예) 삼성전자: 외국인 매수 1,083억 + 외국인 매도 38,498억 -> 순매수는 -37,415억
+
+    Returns: [{"name": str, "amount_won": int(원, buy=양수, sell=음수)}]
     """
     url = (
         f"https://finance.naver.com/sise/sise_deal_rank_iframe.naver"
@@ -109,14 +117,15 @@ def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> 
             name = name_tag.get_text(strip=True)
             if not name or _is_etf(name):
                 continue
-            amt_raw = tds[2].get_text(strip=True).replace(",", "").lstrip("-")
+            # tds[2]는 sell 테이블에서 이미 음수로 제공됨 -> abs() 로 절대값 추출
+            amt_raw = tds[2].get_text(strip=True).replace(",", "").replace("-", "")
             if not amt_raw.isdigit():
                 continue
-            # 단위: 백만원 → 원 / 순매도는 음수
+            # 단위: 백만원 -> 원 변환 / buy=양수, sell=음수
             amt_won = int(amt_raw) * 1_000_000
             if direction == "sell":
                 amt_won = -amt_won
-            result.append({"name": name, "net_amount": amt_won})
+            result.append({"name": name, "amount_won": amt_won})
             if len(result) >= 3:
                 break
         print(f"  [수급-{label}-{direction}] {len(result)}개: {[r['name'] for r in result]}")
@@ -127,7 +136,10 @@ def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> 
 
 
 def get_investor_data(date_str: str = None) -> dict:
-    """네이버 sise_deal_rank_iframe에서 외국인/기관 순매수·순매도 TOP3 수집."""
+    """네이버 sise_deal_rank_iframe에서 외국인/기관 매수대금/매도대금 TOP3 수집.
+    반환값의 buy/sell은 순매수/순매도가 아닌 방향별 거래대금 합계 TOP이다.
+    동일 종목이 buy와 sell에 동시 등장하는 것은 정상 (삼성전자 등 대형주).
+    """
     investors = {
         "외국인": "9000",
         "기관":   "1000",
@@ -323,7 +335,7 @@ def collect_all(date: str = None) -> dict:
     print(f"[데이터 수집] 날짜: {date}")
 
     index_data = get_index_data(date)
-    investor_data = get_investor_data(date)
+    # get_investor_data()는 kr_weekly용으로 보존 — kr_daily에서는 미사용
     stock_result = get_top_stocks(date)
     sector_data = get_sector_data(date)
     news = get_news()
@@ -332,7 +344,6 @@ def collect_all(date: str = None) -> dict:
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
-        **investor_data,
         **sector_data,
         **stock_result,
         "news": news,
