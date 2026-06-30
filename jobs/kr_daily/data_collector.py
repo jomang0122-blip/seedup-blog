@@ -70,50 +70,74 @@ def get_index_data(date_str: str) -> dict:
     return result
 
 
-def get_investor_data(date_str: str) -> dict:
-    """외국인/기관/연기금 KOSPI 순매수 TOP3 수집 (pykrx)
-    date_str: YYYYMMDD 형식
+def _crawl_investor_naver(url: str, direction: str, label: str) -> list:
+    """네이버 금융 외국인/기관 매매동향 페이지에서 TOP3 수집.
+    direction: "buy"(순매수) | "sell"(순매도)
+    Returns: [{"name": str, "net_amount": int(원)}]
     """
     try:
-        from pykrx import stock as pyk
-    except ImportError:
-        print("  [수급] pykrx 미설치 — 수급 데이터 생략")
-        return {"investor_top3": {}, "foreign_net": None, "institution_net": None}
+        resp = fetch_with_retry(url, headers=_NAVER_HEADERS, timeout=10)
+        resp.encoding = "euc-kr"
+        soup = BeautifulSoup(resp.text, "lxml")
 
-    investor_map = {
-        "외국인": "외국인",
-        "기관":   "기관합계",
-        "연기금": "연기금등",
+        table = soup.find("table", {"class": "type_2"}) or soup.find("table")
+        if not table:
+            print(f"  [수급-{label}] 테이블 없음")
+            return []
+
+        # 헤더에서 순매수대금 컬럼 인덱스 탐색
+        headers = [th.get_text(strip=True) for th in table.find_all("th")]
+        amt_idx = next(
+            (i for i, h in enumerate(headers) if "순매수" in h and "대금" in h),
+            4,  # fallback: 5번째 컬럼
+        )
+
+        result = []
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if len(tds) <= amt_idx:
+                continue
+            name_tag = tds[0].find("a")
+            if not name_tag:
+                continue
+            name = name_tag.get_text(strip=True)
+            if not name:
+                continue
+            amt_raw = tds[amt_idx].get_text(strip=True).replace(",", "")
+            if not amt_raw or not amt_raw.lstrip("-").isdigit():
+                continue
+            # 단위: 백만원 → 원
+            amt_won = int(amt_raw) * 1_000_000
+            if direction == "sell":
+                amt_won = -abs(amt_won)
+            result.append({"name": name, "net_amount": amt_won})
+            if len(result) >= 3:
+                break
+
+        print(f"  [수급-{label}-{direction}] {len(result)}개: {[r['name'] for r in result]}")
+        return result
+    except Exception as e:
+        print(f"  [수급-{label}-{direction}] 실패: {e}")
+        return []
+
+
+def get_investor_data(date_str: str = None) -> dict:
+    """네이버 금융에서 외국인/기관 순매수/순매도 TOP3 수집."""
+    urls = {
+        "외국인": {
+            "buy":  "https://finance.naver.com/fund/foreignBuy.naver?sosok=0",
+            "sell": "https://finance.naver.com/fund/foreignSell.naver?sosok=0",
+        },
+        "기관": {
+            "buy":  "https://finance.naver.com/fund/intrstiBuy.naver?sosok=0",
+            "sell": "https://finance.naver.com/fund/intrstitSell.naver?sosok=0",
+        },
     }
     result = {}
-    for label, key in investor_map.items():
-        try:
-            df = pyk.get_market_net_purchases_of_equities_by_ticker(
-                date_str, date_str, "KOSPI", key
-            )
-            if df is None or df.empty:
-                result[label] = {"buy": [], "sell": []}
-                continue
-            amt_col = next(
-                (c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns),
-                None,
-            )
-            if amt_col is None:
-                result[label] = {"buy": [], "sell": []}
-                continue
-            name_col = "종목명" if "종목명" in df.columns else None
-
-            def _row_to_item(row):
-                name = str(row[name_col]) if name_col else str(row.name)
-                return {"name": name, "net_amount": int(row[amt_col])}
-
-            buy3 = [_row_to_item(r) for _, r in df.nlargest(3, amt_col).iterrows()]
-            sell3 = [_row_to_item(r) for _, r in df.nsmallest(3, amt_col).iterrows()]
-            result[label] = {"buy": buy3, "sell": sell3}
-        except Exception as e:
-            print(f"  [{label}] 수급 수집 실패: {e}")
-            result[label] = {"buy": [], "sell": []}
-
+    for label, dir_urls in urls.items():
+        buy3  = _crawl_investor_naver(dir_urls["buy"],  "buy",  label)
+        sell3 = _crawl_investor_naver(dir_urls["sell"], "sell", label)
+        result[label] = {"buy": buy3, "sell": sell3}
     return {"investor_top3": result, "foreign_net": None, "institution_net": None}
 
 

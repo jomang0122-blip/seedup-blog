@@ -83,3 +83,19 @@ jobs:
         run: |
           TOKEN_CONTENT=$(cat token.json)
           gh secret set GOOGLE_TOKEN_JSON --body "$TOKEN_CONTENT"
+
+      - name: 수급 데이터 커밋 & 푸시
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          git add data/investor_*.json
+          if git diff --staged --quiet; then
+            echo "수급 데이터 변경 없음 — 커밋 생략"
+          else
+            git commit -m "chore: 수급 데이터 업데이트 $(date +'%Y%m%d')"
+            git push origin HEAD:main
+          fi

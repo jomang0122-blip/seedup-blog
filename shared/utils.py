@@ -20,8 +20,8 @@ def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwar
 
 def fmt_amount(amount: int) -> str:
     """순매수거래대금(원) → +/-억 단위 문자열 (kr_daily·kr_weekly 공통)."""
-    val = amount // 100_000_000
-    return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
+    val = abs(amount) // 100_000_000
+    return f"+{val:,}억" if amount >= 0 else f"-{val:,}억"
 
 
 DISCLAIMER = (

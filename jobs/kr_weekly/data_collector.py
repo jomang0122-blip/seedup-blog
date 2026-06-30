@@ -91,51 +91,54 @@ def _week_trading_days(prev_fri_str: str, this_fri_str: str) -> list:
 
 
 def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """외국인/기관/연기금 KOSPI 주간 순매수 TOP3.
-    날짜 범위 쿼리 대신 하루씩 단일 쿼리 후 합산 (pykrx 범위 쿼리 미지원 대응).
-    """
-    try:
-        from pykrx import stock as pyk
-    except ImportError:
-        print("  [수급] pykrx 미설치 — 수급 데이터 생략")
-        return {}
+    """데일리 저장된 수급 JSON 파일(data/investor_YYYYMMDD.json)을 읽어 주간 합산 TOP3 산출."""
+    import json as _json
+    from pathlib import Path
+
+    DATA_DIR = Path(__file__).parent.parent.parent / "data"
 
     trading_days = _week_trading_days(prev_fri_str, this_fri_str)
     print(f"  [수급] 주간 거래일: {trading_days}")
 
-    investor_map = {"외국인": "외국인", "기관": "기관합계", "연기금": "연기금등"}
+    accumulated = {"외국인": {}, "기관": {}}
+    loaded_days = 0
+
+    for day in trading_days:
+        fname = DATA_DIR / f"investor_{day}.json"
+        if not fname.exists():
+            print(f"  [수급] {day} 파일 없음")
+            continue
+        try:
+            payload = _json.loads(fname.read_text(encoding="utf-8"))
+            loaded_days += 1
+            for label in ["외국인", "기관"]:
+                inv = payload.get(label, {})
+                for item in inv.get("buy", []):
+                    accumulated[label][item["name"]] = (
+                        accumulated[label].get(item["name"], 0) + item["net_amount"]
+                    )
+                for item in inv.get("sell", []):
+                    # sell net_amount는 음수로 저장됨
+                    accumulated[label][item["name"]] = (
+                        accumulated[label].get(item["name"], 0) + item["net_amount"]
+                    )
+        except Exception as e:
+            print(f"  [수급] {day} 읽기 실패: {e}")
+
+    print(f"  [수급] 주간 데이터 로드: {loaded_days}/{len(trading_days)}일")
+
+    if loaded_days == 0:
+        return {}
+
     result = {}
-
-    for label, key in investor_map.items():
-        accumulated: dict = {}  # ticker → {"name": str, "net_amount": int}
-        for day in trading_days:
-            try:
-                df = pyk.get_market_net_purchases_of_equities_by_ticker(day, day, "KOSPI", key)
-                if df is None or df.empty:
-                    continue
-                amt_col  = next((c for c in ["순매수거래대금", "순매수금액", "NetBuyValue"] if c in df.columns), None)
-                if amt_col is None:
-                    continue
-                name_col = "종목명" if "종목명" in df.columns else None
-                for ticker, row in df.iterrows():
-                    name = str(row[name_col]) if name_col else str(ticker)
-                    amt  = int(row[amt_col])
-                    if ticker in accumulated:
-                        accumulated[ticker]["net_amount"] += amt
-                    else:
-                        accumulated[ticker] = {"name": name, "net_amount": amt}
-            except Exception as e:
-                print(f"  [{label}] {day} 수집 실패: {e}")
-
-        if not accumulated:
-            print(f"  [{label}] 주간 수급 데이터 없음")
+    for label, acc in accumulated.items():
+        if not acc:
             result[label] = {"buy": [], "sell": []}
             continue
-
-        sorted_items = sorted(accumulated.values(), key=lambda x: x["net_amount"], reverse=True)
-        buy3  = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[:3]]
-        sell3 = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[-3:][::-1]]
-        print(f"  [{label}] 주간 순매수 TOP3: {[s['name'] for s in buy3]}")
+        sorted_items = sorted(acc.items(), key=lambda x: x[1], reverse=True)
+        buy3  = [{"name": n, "net_amount": v} for n, v in sorted_items[:3]       if v > 0]
+        sell3 = [{"name": n, "net_amount": v} for n, v in sorted_items[-3:][::-1] if v < 0]
+        print(f"  [{label}] 주간 순매수 TOP3: {[b['name'] for b in buy3]}")
         result[label] = {"buy": buy3, "sell": sell3}
 
     return result
