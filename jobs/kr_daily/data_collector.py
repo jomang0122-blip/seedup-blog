@@ -121,23 +121,53 @@ def _crawl_investor_naver(url: str, direction: str, label: str) -> list:
         return []
 
 
+def _crawl_deal_rank(url: str, label: str) -> list:
+    """네이버 sise_deal_rank 페이지에서 순매수 상위 TOP3 수집.
+    Returns: [{"name": str, "net_amount": int}]
+    """
+    try:
+        resp = fetch_with_retry(url, headers=_NAVER_HEADERS, timeout=10)
+        resp.encoding = "euc-kr"
+        soup = BeautifulSoup(resp.text, "lxml")
+        table = soup.find("table", {"class": "type_2"}) or soup.find("table")
+        if not table:
+            print(f"  [수급-{label}] 테이블 없음")
+            return []
+        result = []
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if len(tds) < 3:
+                continue
+            name_tag = tds[1].find("a") or tds[1]
+            name = name_tag.get_text(strip=True)
+            if not name:
+                continue
+            amt_raw = tds[2].get_text(strip=True).replace(",", "")
+            try:
+                # 단위: 백만원
+                amt_won = int(amt_raw) * 1_000_000
+            except ValueError:
+                continue
+            result.append({"name": name, "net_amount": amt_won})
+            if len(result) >= 3:
+                break
+        print(f"  [수급-{label}] {len(result)}개: {[r['name'] for r in result]}")
+        return result
+    except Exception as e:
+        print(f"  [수급-{label}] 실패: {e}")
+        return []
+
+
 def get_investor_data(date_str: str = None) -> dict:
-    """네이버 금융에서 외국인/기관 순매수/순매도 TOP3 수집."""
-    urls = {
-        "외국인": {
-            "buy":  "https://finance.naver.com/fund/foreignBuy.naver?sosok=0",
-            "sell": "https://finance.naver.com/fund/foreignSell.naver?sosok=0",
-        },
-        "기관": {
-            "buy":  "https://finance.naver.com/fund/intrstiBuy.naver?sosok=0",
-            "sell": "https://finance.naver.com/fund/intrstitSell.naver?sosok=0",
-        },
+    """네이버 금융 sise_deal_rank에서 외국인/기관 순매수 TOP3 수집."""
+    buy_urls = {
+        "외국인": "https://finance.naver.com/sise/sise_deal_rank.naver",
+        "기관":   "https://finance.naver.com/sise/sise_deal_rank.naver?investor_gubun=1000",
     }
     result = {}
-    for label, dir_urls in urls.items():
-        buy3  = _crawl_investor_naver(dir_urls["buy"],  "buy",  label)
-        sell3 = _crawl_investor_naver(dir_urls["sell"], "sell", label)
-        result[label] = {"buy": buy3, "sell": sell3}
+    for label, url in buy_urls.items():
+        buy3 = _crawl_deal_rank(url, label)
+        result[label] = {"buy": buy3, "sell": []}
     return {"investor_top3": result, "foreign_net": None, "institution_net": None}
 
 
