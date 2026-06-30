@@ -266,14 +266,25 @@ def _parse_response(raw: str, date: str = "") -> dict:
 
 def generate_post(data: dict, model: str = "claude-haiku-4-5-20251001") -> dict:
     prompt = _build_prompt(data)
-    message = client.messages.create(
-        model=model,
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    raw = message.content[0].text
-    result = _parse_response(raw, date=data.get("date", ""))
-    result["labels"] = _build_labels(data)
-    print(f"  [작성] 제목: {result['title']}")
-    print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
-    return result
+    date = data.get("date", "")
+
+    for attempt in range(3):
+        message = client.messages.create(
+            model=model,
+            max_tokens=4096,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text
+        result = _parse_response(raw, date=date)
+        result["labels"] = _build_labels(data)
+        print(f"  [작성] 제목: {result['title']}")
+        print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
+
+        if result["title"] and result["char_count"] > 500:
+            return result
+
+        # 파싱 실패 — 원인 파악용 원본 응답 출력
+        print(f"  [재시도 {attempt + 1}/3] TITLE/CONTENT 파싱 실패. AI 응답 앞 300자:")
+        print(f"  {raw[:300]}")
+
+    raise RuntimeError("AI 응답 파싱 3회 모두 실패 — 발행 중단")
