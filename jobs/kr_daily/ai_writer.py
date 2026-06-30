@@ -6,8 +6,10 @@ from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 client = Anthropic()
 
 
-def _match_news(name: str, headlines: list) -> str:
-    """종목명이 포함된 첫 번째 헤드라인 반환. 없으면 빈 문자열."""
+def _match_news(name: str, headlines: list, stock_news_map: dict) -> str:
+    """종목별 뉴스 맵 우선 조회 → fallback: 헤드라인 리스트 검색."""
+    if name in stock_news_map:
+        return stock_news_map[name]
     for h in headlines:
         if name in h:
             return h
@@ -18,6 +20,7 @@ def _build_stock_anchor(data: dict) -> str:
     gainers = data.get("top_gainers", [])
     losers = data.get("top_losers", [])
     headlines = data.get("crawled_news_features", [])
+    stock_news_map = data.get("stock_news_map", {})
     lines = []
     non_upper = []
 
@@ -29,7 +32,7 @@ def _build_stock_anchor(data: dict) -> str:
             else:
                 label = ""
                 non_upper.append(s["name"])
-            matched = _match_news(s["name"], headlines)
+            matched = _match_news(s["name"], headlines, stock_news_map)
             news_tag = f" [뉴스근거: {matched}]" if matched else " [뉴스없음: 이유항목 완전삭제, 종목명+등락률만 표기]"
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%{label}{news_tag}")
         lines.append("급등:\n" + "\n".join(parts))
@@ -37,7 +40,7 @@ def _build_stock_anchor(data: dict) -> str:
     if losers:
         parts = []
         for s in losers:
-            matched = _match_news(s["name"], headlines)
+            matched = _match_news(s["name"], headlines, stock_news_map)
             news_tag = f" [뉴스근거: {matched}]" if matched else " [뉴스없음: 이유항목 완전삭제, 종목명+등락률만 표기]"
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%{news_tag}")
         lines.append("급락:\n" + "\n".join(parts))

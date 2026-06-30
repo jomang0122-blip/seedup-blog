@@ -392,6 +392,21 @@ def get_featured_stock_news(display: int = 15) -> list:
     return _crawl_featured_stock_news()
 
 
+def get_stock_news_by_name(names: list) -> dict:
+    """특징주 종목명별 뉴스 개별 검색. {종목명: 헤드라인} 반환.
+    1차: '[특징주] 종목명' 검색 / 2차 fallback: '종목명' 검색.
+    """
+    result = {}
+    for name in names:
+        items = _naver_news_search(f"[특징주] {name}", display=3)
+        if not items:
+            items = _naver_news_search(name, display=3)
+        if items:
+            result[name] = items[0]["title"]
+        print(f"  [종목뉴스] {name}: {'있음' if name in result else '없음'}")
+    return result
+
+
 def collect_all(date: str = None) -> dict:
     if date is None:
         date = get_latest_trading_date()
@@ -405,6 +420,13 @@ def collect_all(date: str = None) -> dict:
     news = get_news()
     featured = get_featured_stock_news()
 
+    # 특징주 종목별 개별 뉴스 검색
+    stock_names = [
+        s["name"] for s in
+        stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
+    ]
+    stock_news_map = get_stock_news_by_name(stock_names)
+
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
@@ -412,4 +434,5 @@ def collect_all(date: str = None) -> dict:
         **stock_result,
         "news": news,
         "crawled_news_features": featured,
+        "stock_news_map": stock_news_map,
     }
