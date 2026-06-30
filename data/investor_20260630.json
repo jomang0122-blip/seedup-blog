@@ -3,35 +3,61 @@
   "외국인": {
     "buy": [
       {
-        "name": "삼성전자",
-        "net_amount": 334000000000
+        "name": "삼성전기",
+        "net_amount": 118046000000
       },
       {
-        "name": "SK하이닉스",
-        "net_amount": 2650000000000
+        "name": "HD현대중공업",
+        "net_amount": 65679000000
       },
       {
-        "name": "SK스퀘어",
-        "net_amount": 1697000000000
+        "name": "LG전자",
+        "net_amount": 48182000000
       }
     ],
-    "sell": []
+    "sell": [
+      {
+        "name": "SK하이닉스",
+        "net_amount": -2315029000000
+      },
+      {
+        "name": "삼성전자",
+        "net_amount": -2014229000000
+      },
+      {
+        "name": "삼성전자우",
+        "net_amount": -274788000000
+      }
+    ]
   },
   "기관": {
     "buy": [
       {
         "name": "삼성전기",
-        "net_amount": 2184000000000
+        "net_amount": 114332000000
       },
       {
-        "name": "KODEX 삼성전자단일종목레버리지",
-        "net_amount": 24445000000
+        "name": "SK",
+        "net_amount": 54741000000
       },
       {
-        "name": "TIGER SK하이닉스단일종목레버리지",
-        "net_amount": 29140000000
+        "name": "현대차",
+        "net_amount": 33504000000
       }
     ],
-    "sell": []
+    "sell": [
+      {
+        "name": "SK하이닉스",
+        "net_amount": -2834336000000
+      },
+      {
+        "name": "삼성전자",
+        "net_amount": -1209422000000
+      },
+      {
+        "name": "SK스퀘어",
+        "net_amount": -56424000000
+      }
+    ]
   }
 }
