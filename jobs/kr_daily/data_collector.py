@@ -70,50 +70,55 @@ def get_index_data(date_str: str) -> dict:
     return result
 
 
-def _crawl_investor_naver(url: str, direction: str, label: str) -> list:
-    """네이버 금융 외국인/기관 매매동향 페이지에서 TOP3 수집.
-    direction: "buy"(순매수) | "sell"(순매도)
+_ETF_PREFIXES = (
+    "KODEX", "TIGER", "RISE", "SOL", "ACE", "KBSTAR", "ARIRANG", "HANARO",
+    "KOSEF", "TREX", "SMART", "파워", "FOCUS", "TIMEFOLIO",
+)
+
+def _is_etf(name: str) -> bool:
+    return any(name.startswith(p) for p in _ETF_PREFIXES)
+
+
+def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> list:
+    """네이버 sise_deal_rank_iframe에서 외국인/기관 순매수·순매도 TOP3 수집.
+    investor_gubun: "9000"=외국인, "1000"=기관
+    direction: "buy" | "sell"
+    단위: tds[0]=종목명, tds[1]=수량(천주), tds[2]=대금(백만원)
     Returns: [{"name": str, "net_amount": int(원)}]
     """
+    url = (
+        f"https://finance.naver.com/sise/sise_deal_rank_iframe.naver"
+        f"?sosok=01&investor_gubun={investor_gubun}&type={direction}"
+    )
     try:
         resp = fetch_with_retry(url, headers=_NAVER_HEADERS, timeout=10)
         resp.encoding = "euc-kr"
         soup = BeautifulSoup(resp.text, "lxml")
-
-        table = soup.find("table", {"class": "type_2"}) or soup.find("table")
+        table = soup.find("table", {"class": "type_1"})
         if not table:
-            print(f"  [수급-{label}] 테이블 없음")
+            print(f"  [수급-{label}-{direction}] 테이블 없음")
             return []
-
-        # 헤더에서 순매수대금 컬럼 인덱스 탐색
-        headers = [th.get_text(strip=True) for th in table.find_all("th")]
-        amt_idx = next(
-            (i for i, h in enumerate(headers) if "순매수" in h and "대금" in h),
-            4,  # fallback: 5번째 컬럼
-        )
-
         result = []
         for tr in table.find_all("tr"):
             tds = tr.find_all("td")
-            if len(tds) <= amt_idx:
+            if len(tds) < 3:
                 continue
             name_tag = tds[0].find("a")
             if not name_tag:
                 continue
             name = name_tag.get_text(strip=True)
-            if not name:
+            if not name or _is_etf(name):
                 continue
-            amt_raw = tds[amt_idx].get_text(strip=True).replace(",", "")
-            if not amt_raw or not amt_raw.lstrip("-").isdigit():
+            amt_raw = tds[2].get_text(strip=True).replace(",", "").lstrip("-")
+            if not amt_raw.isdigit():
                 continue
-            # 단위: 백만원 → 원
+            # 단위: 백만원 → 원 / 순매도는 음수
             amt_won = int(amt_raw) * 1_000_000
             if direction == "sell":
-                amt_won = -abs(amt_won)
+                amt_won = -amt_won
             result.append({"name": name, "net_amount": amt_won})
             if len(result) >= 3:
                 break
-
         print(f"  [수급-{label}-{direction}] {len(result)}개: {[r['name'] for r in result]}")
         return result
     except Exception as e:
@@ -121,53 +126,17 @@ def _crawl_investor_naver(url: str, direction: str, label: str) -> list:
         return []
 
 
-def _crawl_deal_rank(url: str, label: str) -> list:
-    """네이버 sise_deal_rank 페이지에서 순매수 상위 TOP3 수집.
-    Returns: [{"name": str, "net_amount": int}]
-    """
-    try:
-        resp = fetch_with_retry(url, headers=_NAVER_HEADERS, timeout=10)
-        resp.encoding = "euc-kr"
-        soup = BeautifulSoup(resp.text, "lxml")
-        table = soup.find("table", {"class": "type_2"}) or soup.find("table")
-        if not table:
-            print(f"  [수급-{label}] 테이블 없음")
-            return []
-        result = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 3:
-                continue
-            name_tag = tds[1].find("a") or tds[1]
-            name = name_tag.get_text(strip=True)
-            if not name:
-                continue
-            amt_raw = tds[2].get_text(strip=True).replace(",", "")
-            try:
-                # 단위: 백만원
-                amt_won = int(amt_raw) * 1_000_000
-            except ValueError:
-                continue
-            result.append({"name": name, "net_amount": amt_won})
-            if len(result) >= 3:
-                break
-        print(f"  [수급-{label}] {len(result)}개: {[r['name'] for r in result]}")
-        return result
-    except Exception as e:
-        print(f"  [수급-{label}] 실패: {e}")
-        return []
-
-
 def get_investor_data(date_str: str = None) -> dict:
-    """네이버 금융 sise_deal_rank에서 외국인/기관 순매수 TOP3 수집."""
-    buy_urls = {
-        "외국인": "https://finance.naver.com/sise/sise_deal_rank.naver",
-        "기관":   "https://finance.naver.com/sise/sise_deal_rank.naver?investor_gubun=1000",
+    """네이버 sise_deal_rank_iframe에서 외국인/기관 순매수·순매도 TOP3 수집."""
+    investors = {
+        "외국인": "9000",
+        "기관":   "1000",
     }
     result = {}
-    for label, url in buy_urls.items():
-        buy3 = _crawl_deal_rank(url, label)
-        result[label] = {"buy": buy3, "sell": []}
+    for label, gubun in investors.items():
+        buy3  = _crawl_deal_rank_iframe(gubun, "buy",  label)
+        sell3 = _crawl_deal_rank_iframe(gubun, "sell", label)
+        result[label] = {"buy": buy3, "sell": sell3}
     return {"investor_top3": result, "foreign_net": None, "institution_net": None}
 
 
