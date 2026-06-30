@@ -185,10 +185,23 @@ def get_top_stocks(date_str: str) -> dict:
         if "Marcap" in df_top5.columns:
             df_top5 = df_top5[pd.to_numeric(df_top5["Marcap"], errors="coerce") > 1_000_000_000_000]
 
-        gainers = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
-                   for _, r in df_top5.nlargest(5, chg_col).iterrows()]
-        losers = [{"name": str(r["Name"]), "change_pct": round(float(r[chg_col]), 2)}
-                  for _, r in df_top5.nsmallest(5, chg_col).iterrows()]
+        _UPPER_LIMIT_THRESHOLD = 29.0
+        gainers = [
+            {
+                "name": str(r["Name"]),
+                "change_pct": round(float(r[chg_col]), 2),
+                "is_upper_limit": round(float(r[chg_col]), 2) >= _UPPER_LIMIT_THRESHOLD,
+            }
+            for _, r in df_top5.nlargest(5, chg_col).iterrows()
+        ]
+        losers = [
+            {
+                "name": str(r["Name"]),
+                "change_pct": round(float(r[chg_col]), 2),
+                "is_upper_limit": False,
+            }
+            for _, r in df_top5.nsmallest(5, chg_col).iterrows()
+        ]
 
         return {"top_gainers": gainers, "top_losers": losers, "stock_pct_map": stock_pct_map}
 

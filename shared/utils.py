@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import re
 import time
 
 
@@ -32,6 +33,40 @@ DISCLAIMER = (
     '모든 투자에 대한 판단과 책임은 투자자 본인에게 있습니다. '
     'SeedUP 투자 블로그는 본 내용으로 인한 손실에 대해 책임을 지지 않습니다. ⚠️</p>'
 )
+
+
+def apply_color_spans(html: str) -> str:
+    """HTML 내 미처리 등락률 수치에 색상 span 태그 자동 적용.
+    이미 span으로 감싸진 수치는 건드리지 않음 (placeholder 보호).
+    """
+    import hashlib
+    placeholders = {}
+
+    def _protect(m):
+        key = f"__PROT_{hashlib.md5(m.group(0).encode()).hexdigest()[:8]}__"
+        placeholders[key] = m.group(0)
+        return key
+
+    # 기존 color span 블록 보호
+    protected = re.sub(
+        r'<span\s+style="color:#(?:e74c3c|3182f6)[^"]*"[^>]*>.*?</span>',
+        _protect, html, flags=re.DOTALL
+    )
+    # 미처리 +X.XX% → 빨강(상승)
+    protected = re.sub(
+        r'(\+\d+\.\d+%)',
+        r'<span style="color:#e74c3c"><b>\1</b></span>',
+        protected
+    )
+    # 미처리 -X.XX% → 파랑(하락) — HTML 속성값 오탐 방지: 숫자·따옴표 뒤는 제외
+    protected = re.sub(
+        r'(?<!["\d])(-\d+\.\d+%)',
+        r'<span style="color:#3182f6"><b>\1</b></span>',
+        protected
+    )
+    for key, val in placeholders.items():
+        protected = protected.replace(key, val)
+    return protected
 
 
 def md_to_html(text: str) -> str:
