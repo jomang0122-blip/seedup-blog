@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html
+from shared.utils import DISCLAIMER, md_to_html, fmt_amount
 
 client = Anthropic()
-
-
-def _fmt_amount(amount: int) -> str:
-    """순매수거래대금(원) → +/-억 단위 문자열"""
-    val = amount // 100_000_000
-    return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
 
 
 def _build_investor_block(investor_top3: dict) -> str:
@@ -24,8 +18,8 @@ def _build_investor_block(investor_top3: dict) -> str:
         else:
             buy = data if isinstance(data, list) else []
             sell = []
-        buy_str = " | ".join(f"{s['name']}({_fmt_amount(s['net_amount'])})" for s in buy) if buy else "(없음)"
-        sell_str = " | ".join(f"{s['name']}({_fmt_amount(s['net_amount'])})" for s in sell) if sell else "(없음)"
+        buy_str = " | ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in buy) if buy else "(없음)"
+        sell_str = " | ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in sell) if sell else "(없음)"
         lines.append(f"{label} 순매수: {buy_str}")
         lines.append(f"{label} 순매도: {sell_str}")
     return "\n".join(lines) if lines else "(수급 데이터 미수집)"

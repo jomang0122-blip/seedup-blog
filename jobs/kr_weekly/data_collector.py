@@ -77,11 +77,6 @@ def get_index_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
     return result
 
 
-def _fmt_amount(amount: int) -> str:
-    val = amount // 100_000_000
-    return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
-
-
 def _week_trading_days(prev_fri_str: str, this_fri_str: str) -> list:
     """이전 금요일 다음 월요일 ~ 이번 금요일의 평일 목록."""
     start = datetime.strptime(prev_fri_str, "%Y%m%d") + timedelta(days=3)

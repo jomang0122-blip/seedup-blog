@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html
+from shared.utils import DISCLAIMER, md_to_html, fmt_amount
 
 client = Anthropic()
-
-
-def _fmt_amount(amount: int) -> str:
-    val = amount // 100_000_000
-    return f"+{val:,}억" if amount >= 0 else f"{val:,}억"
 
 
 def _build_index_block(data: dict) -> str:
@@ -32,8 +27,8 @@ def _build_investor_block(investor_top3: dict) -> str:
         v = investor_top3.get(label, {})
         buy3  = v.get("buy", [])
         sell3 = v.get("sell", [])
-        buy_str  = ", ".join(f"{s['name']}({_fmt_amount(s['net_amount'])})" for s in buy3)  if buy3  else "-"
-        sell_str = ", ".join(f"{s['name']}({_fmt_amount(s['net_amount'])})" for s in sell3) if sell3 else "-"
+        buy_str  = ", ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in buy3)  if buy3  else "-"
+        sell_str = ", ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in sell3) if sell3 else "-"
         lines.append(f"{label} 주간 순매수: {buy_str} | 순매도: {sell_str}")
     return "\n".join(lines)
 

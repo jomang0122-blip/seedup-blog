@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from data_collector import collect_all
-from prompt_builder import generate_post
+from ai_writer import generate_post
 from shared.blog_publisher import publish_post
 
 KST = pytz.timezone("Asia/Seoul")

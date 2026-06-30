@@ -70,13 +70,6 @@ def get_index_data(date_str: str) -> dict:
     return result
 
 
-def _fmt_amount(amount: int) -> str:
-    """순매수거래대금(원) → 억원 단위 문자열"""
-    if amount >= 0:
-        return f"+{amount // 100_000_000:,}억"
-    return f"{amount // 100_000_000:,}억"
-
-
 def get_investor_data(date_str: str) -> dict:
     """외국인/기관/연기금 KOSPI 순매수 TOP3 수집 (pykrx)
     date_str: YYYYMMDD 형식
