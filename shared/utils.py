@@ -1,4 +1,22 @@
 # -*- coding: utf-8 -*-
+import time
+
+
+def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwargs):
+    """requests.get with exponential backoff retry (네트워크 불안정 대응)."""
+    import requests
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, **kwargs)
+            resp.raise_for_status()
+            return resp
+        except Exception as e:
+            last_exc = e
+            if attempt < retries - 1:
+                time.sleep(backoff * (attempt + 1))
+    raise last_exc
+
 
 DISCLAIMER = (
     '<p style="margin-top:30px;padding:15px;background:#f5f5f5;'

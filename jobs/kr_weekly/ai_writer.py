@@ -120,6 +120,11 @@ b) ### 💰 메이저 수급 흐름 (주간)
    - 표 아래 단락 1개: 외국인·기관 수급 방향 해석
 """ if has_investor else ""
 
+    base_labels   = ["국내증시", "코스피", "위클리", "주간시황", "코스닥", "증시리뷰"]
+    sector_labels = [s["name"] for s in data.get("top_sectors", [])[:2]]
+    stock_labels  = [s["name"] for s in data.get("top_gainers", [])[:2]]
+    all_labels    = ",".join(base_labels + sector_labels + stock_labels)
+
     return f"""당신은 대한민국 최고의 국내 주식 시황 분석가이자 SEO 전문가입니다.
 SeedUP INVEST 블로그에 올릴 국내 증시 주간 시황 포스팅을 한국어로 마크다운 형식으로 작성하세요.
 블로그 설명: "매주 국내 증시 주간 흐름을 정리해 드립니다. 이번 주 핵심과 수급·섹터 흐름을 한눈에 확인하세요."
@@ -177,7 +182,7 @@ f) ### 🔮 다음 주 전망 및 주목 일정(한국시간) ({next_week})
    - 플레이스홀더 금지 — 날짜/일정을 모르면 지표명만 작성
 
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항 포함 금지, 시스템이 자동 추가):
-LABELS: 국내증시,코스피,위클리,주간시황,코스닥,증시리뷰
+LABELS: {all_labels}
 CONTENT:
 [마크다운 본문]"""
 

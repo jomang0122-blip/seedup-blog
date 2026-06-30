@@ -20,6 +20,7 @@ load_dotenv()
 
 from data_collector import collect_all
 from ai_writer import generate_post
+from shared.validator import validate_post, apply_corrections
 from shared.blog_publisher import publish_post
 
 KST      = pytz.timezone("Asia/Seoul")
@@ -107,6 +108,20 @@ def run(dry_run: bool = False, force: bool = False):
     except Exception as e:
         log(f"  [오류] 콘텐츠 생성 실패: {e}")
         sys.exit(1)
+
+    log("▶ Step 3-1: 수치 검증")
+    try:
+        validation = validate_post(data, post)
+        if validation["approved"]:
+            log("  검증 통과 — 수치 이상 없음")
+        else:
+            log(f"  오류 {len(validation['issues'])}개 발견 — 자동 수정 적용")
+            for issue in validation["issues"]:
+                log(f"     [{issue['type']}] {issue['description']}")
+            post = apply_corrections(post, validation)
+            log(f"  수정 후 제목: {post['title']}")
+    except Exception as e:
+        log(f"  [경고] 검증 실패 (발행은 계속): {e}")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

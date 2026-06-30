@@ -16,6 +16,7 @@ import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
 import pytz
+from shared.utils import fetch_with_retry
 
 KST = pytz.timezone("Asia/Seoul")
 
@@ -138,7 +139,7 @@ def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 
         sorted_items = sorted(accumulated.values(), key=lambda x: x["net_amount"], reverse=True)
         buy3  = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[:3]]
-        sell3 = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[-3:]]
+        sell3 = [{"name": s["name"], "net_amount": s["net_amount"]} for s in sorted_items[-3:][::-1]]
         print(f"  [{label}] 주간 순매수 TOP3: {[s['name'] for s in buy3]}")
         result[label] = {"buy": buy3, "sell": sell3}
 
@@ -215,7 +216,7 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 def get_sector_data() -> dict:
     """네이버 금융 업종 등락률 (상위 3개, 하위 3개)."""
     try:
-        resp = requests.get(
+        resp = fetch_with_retry(
             "https://finance.naver.com/sise/sise_group.nhn",
             params={"type": "upjong"},
             headers=_NAVER_HEADERS,
@@ -261,7 +262,7 @@ def get_news_weekly() -> list:
         if not client_id or not client_secret:
             break
         try:
-            resp = requests.get(
+            resp = fetch_with_retry(
                 "https://openapi.naver.com/v1/search/news.json",
                 headers={
                     "X-Naver-Client-Id": client_id,

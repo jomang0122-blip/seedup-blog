@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
+from shared.utils import fetch_with_retry
 
 
 _NAVER_HEADERS = {
@@ -19,7 +20,7 @@ _NAVER_HEADERS = {
 }
 
 def _naver_soup(url: str, params: dict = None) -> BeautifulSoup:
-    resp = requests.get(url, params=params, headers=_NAVER_HEADERS, timeout=10)
+    resp = fetch_with_retry(url, params=params, headers=_NAVER_HEADERS, timeout=10)
     resp.encoding = "euc-kr"
     return BeautifulSoup(resp.text, "lxml")
 
@@ -48,7 +49,7 @@ def get_index_data(date_str: str) -> dict:
     result = {}
     for key, code in naver_map.items():
         try:
-            resp = requests.get(
+            resp = fetch_with_retry(
                 f"https://m.stock.naver.com/api/index/{code}/basic",
                 headers=_NAVER_HEADERS,
                 timeout=10,
@@ -232,7 +233,7 @@ def _naver_news_search(query: str, display: int = 3) -> list:
     if not client_id or not client_secret:
         return []
     try:
-        resp = requests.get(
+        resp = fetch_with_retry(
             "https://openapi.naver.com/v1/search/news.json",
             headers={
                 "X-Naver-Client-Id": client_id,
