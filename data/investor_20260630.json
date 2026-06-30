@@ -4,59 +4,59 @@
     "buy": [
       {
         "name": "삼성전기",
-        "net_amount": 118046000000
+        "net_amount": 108389000000
       },
       {
-        "name": "HD현대중공업",
-        "net_amount": 65679000000
+        "name": "LG에너지솔루션",
+        "net_amount": 62309000000
       },
       {
-        "name": "LG전자",
-        "net_amount": 48182000000
+        "name": "두산에너빌리티",
+        "net_amount": 43082000000
       }
     ],
     "sell": [
       {
-        "name": "SK하이닉스",
-        "net_amount": -2315029000000
+        "name": "삼성전자",
+        "net_amount": -3849834000000
       },
       {
-        "name": "삼성전자",
-        "net_amount": -2014229000000
+        "name": "SK하이닉스",
+        "net_amount": -3287412000000
       },
       {
         "name": "삼성전자우",
-        "net_amount": -274788000000
+        "net_amount": -236728000000
       }
     ]
   },
   "기관": {
     "buy": [
       {
-        "name": "삼성전기",
-        "net_amount": 114332000000
+        "name": "삼성전자",
+        "net_amount": 801014000000
       },
       {
-        "name": "SK",
-        "net_amount": 54741000000
+        "name": "SK하이닉스",
+        "net_amount": 728212000000
       },
       {
-        "name": "현대차",
-        "net_amount": 33504000000
+        "name": "SK스퀘어",
+        "net_amount": 233922000000
       }
     ],
     "sell": [
       {
-        "name": "SK하이닉스",
-        "net_amount": -2834336000000
+        "name": "한미반도체",
+        "net_amount": -45703000000
       },
       {
-        "name": "삼성전자",
-        "net_amount": -1209422000000
+        "name": "삼성물산",
+        "net_amount": -25128000000
       },
       {
-        "name": "SK스퀘어",
-        "net_amount": -56424000000
+        "name": "PLUS 글로벌HBM반도체",
+        "net_amount": -19146000000
       }
     ]
   }
