@@ -39,18 +39,19 @@ def apply_color_spans(html: str) -> str:
     """HTML 내 미처리 등락률 수치에 색상 span 태그 자동 적용.
     이미 span으로 감싸진 수치는 건드리지 않음 (placeholder 보호).
     """
-    import hashlib
     placeholders = {}
+    _idx = [0]
 
     def _protect(m):
-        key = f"__PROT_{hashlib.md5(m.group(0).encode()).hexdigest()[:8]}__"
+        key = f"__P{_idx[0]}__"
+        _idx[0] += 1
         placeholders[key] = m.group(0)
         return key
 
-    # 기존 color span 블록 보호
+    # 기존 color span 보호 — DOTALL 없이 단순 패턴 (내용: <b>±X.XX%</b>)
     protected = re.sub(
-        r'<span\s+style="color:#(?:e74c3c|3182f6)[^"]*"[^>]*>.*?</span>',
-        _protect, html, flags=re.DOTALL
+        r'<span style="color:#(?:e74c3c|3182f6)"><b>[^<]+</b></span>',
+        _protect, html
     )
     # 미처리 +X.XX% → 빨강(상승)
     protected = re.sub(
@@ -58,7 +59,7 @@ def apply_color_spans(html: str) -> str:
         r'<span style="color:#e74c3c"><b>\1</b></span>',
         protected
     )
-    # 미처리 -X.XX% → 파랑(하락) — HTML 속성값 오탐 방지: 숫자·따옴표 뒤는 제외
+    # 미처리 -X.XX% → 파랑(하락) — 숫자·따옴표 뒤는 제외
     protected = re.sub(
         r'(?<!["\d])(-\d+\.\d+%)',
         r'<span style="color:#3182f6"><b>\1</b></span>',
