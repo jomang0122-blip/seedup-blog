@@ -409,6 +409,76 @@ def get_stock_news_by_name(names: list) -> dict:
     return result
 
 
+def _parse_name_from_headline(headline: str) -> str:
+    """'[특징주] 종목명, ...' 형태 헤드라인에서 종목명만 추출."""
+    m = re.match(r"\[특징주\]\s*([^\s,·…]+)", headline)
+    return m.group(1).strip() if m else ""
+
+
+def _is_today_news(pub_date: str, date_str: str) -> bool:
+    """Naver pubDate(RFC822)가 date_str(YYYYMMDD) 날짜인지 확인."""
+    try:
+        from email.utils import parsedate
+        parsed = parsedate(pub_date)
+        if parsed:
+            return f"{parsed[0]}{parsed[1]:02d}{parsed[2]:02d}" == date_str
+    except Exception:
+        pass
+    return False
+
+
+def extract_and_verify_featured_stocks(
+    headlines: list,
+    stock_pct_map: dict,
+    date_str: str,
+    min_change_pct: float = 2.0,
+) -> list:
+    """crawled_news_features 헤드라인 기반 뉴스기반 특징주 3단계 검증.
+
+    ① stock_pct_map 교차검증 — 오늘 실제 거래된 종목인지 (허구 종목 차단)
+    ② 등락률 임계값 |change_pct| >= min_change_pct — 보합 종목 차단
+    ③ 네이버 뉴스 API 오늘 날짜 기사 확인 — 오래된/허구 뉴스 차단
+
+    Returns: [{"name": str, "change_pct": float, "news": str}]
+    """
+    seen = set()
+    verified = []
+
+    for headline in headlines:
+        name = _parse_name_from_headline(headline)
+        if not name or name in seen:
+            continue
+        seen.add(name)
+
+        # ① 실제 종목 확인 (stock_pct_map = 오늘 전 종목 등락률 맵)
+        if name not in stock_pct_map:
+            print(f"  [검증①실패] {name}: 주가 데이터 없음")
+            continue
+
+        change_pct = stock_pct_map[name]
+
+        # ② 등락률 임계값 — 보합 종목 제외
+        if abs(change_pct) < min_change_pct:
+            print(f"  [검증②실패] {name}: {change_pct:+.2f}% < ±{min_change_pct}% (보합)")
+            continue
+
+        # ③ 네이버 뉴스 오늘 날짜 기사 확인
+        items = _naver_news_search(f"[특징주] {name}", display=5)
+        today_items = [i for i in items if _is_today_news(i.get("pub_date", ""), date_str)]
+        if not today_items:
+            print(f"  [검증③실패] {name}: 오늘({date_str}) [특징주] 뉴스 없음")
+            continue
+
+        verified.append({
+            "name": name,
+            "change_pct": change_pct,
+            "news": today_items[0]["title"],
+        })
+        print(f"  [검증완료] {name}: {change_pct:+.2f}% / {today_items[0]['title'][:50]}")
+
+    return verified
+
+
 def collect_all(date: str = None) -> dict:
     if date is None:
         date = get_latest_trading_date()
@@ -422,12 +492,21 @@ def collect_all(date: str = None) -> dict:
     news = get_news()
     featured = get_featured_stock_news()
 
-    # 특징주 종목별 개별 뉴스 검색
+    # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
     stock_names = [
         s["name"] for s in
         stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
     ]
     stock_news_map = get_stock_news_by_name(stock_names)
+
+    # 뉴스기반 특징주 3단계 검증
+    print("[뉴스기반 특징주 검증]")
+    featured_verified = extract_and_verify_featured_stocks(
+        featured,
+        stock_result.get("stock_pct_map", {}),
+        date,
+    )
+    print(f"  → 검증 완료: {len(featured_verified)}개")
 
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
@@ -437,4 +516,5 @@ def collect_all(date: str = None) -> dict:
         "news": news,
         "crawled_news_features": featured,
         "stock_news_map": stock_news_map,
+        "featured_verified": featured_verified,
     }

@@ -6,25 +6,15 @@ from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 client = Anthropic()
 
 
-def _match_headline(name: str, headlines: list) -> str:
-    """오늘 크롤링된 헤드라인에서만 종목명 매칭. stock_news_map 미사용.
-    headlines = crawled_news_features (네이버 당일 [특징주] 뉴스 최대 15건)
-    → 여기 등장한 종목만 뉴스기반 특징주로 인정 (모든 종목이 stock_news_map에 있어 전체 중복 발생하던 문제 방지).
-    """
-    for h in headlines:
-        if name in h:
-            return h
-    return ""
-
-
 def _build_stock_anchor(data: dict) -> str:
     gainers = data.get("top_gainers", [])
     losers = data.get("top_losers", [])
-    headlines = data.get("crawled_news_features", [])
-    stock_news_map = data.get("stock_news_map", {})
+    # 3단계 검증 완료 목록 (data_collector.extract_and_verify_featured_stocks 결과)
+    featured_verified = data.get("featured_verified", [])
+
     lines = []
     non_upper = []
-    news_stocks = []  # 오늘 헤드라인에 등장한 종목만 수집
+    main_names = {s["name"] for s in gainers + losers}
 
     if gainers:
         parts = []
@@ -35,22 +25,20 @@ def _build_stock_anchor(data: dict) -> str:
                 label = ""
                 non_upper.append(s["name"])
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%{label}")
-            headline_match = _match_headline(s["name"], headlines)
-            if headline_match:
-                # 뉴스 내용은 stock_news_map 우선, 없으면 헤드라인 사용
-                news_text = stock_news_map.get(s["name"], headline_match)
-                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}%{label} [뉴스: {news_text}]")
         lines.append("상승 특징주 (종목명+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts))
 
     if losers:
         parts = []
         for s in losers:
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%")
-            headline_match = _match_headline(s["name"], headlines)
-            if headline_match:
-                news_text = stock_news_map.get(s["name"], headline_match)
-                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}% [뉴스: {news_text}]")
         lines.append("하락 특징주 (종목명+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts))
+
+    # 뉴스기반 특징주: Python 검증 완료 종목만, 상승/하락 섹션 중복 제외
+    news_stocks = [
+        f"{v['name']} {v['change_pct']:+.2f}% [뉴스: {v['news']}]"
+        for v in featured_verified
+        if v["name"] not in main_names
+    ]
 
     if news_stocks:
         lines.append("뉴스기반 특징주 (이 목록 종목만 이유 작성 가능):\n" + "\n".join(news_stocks))
