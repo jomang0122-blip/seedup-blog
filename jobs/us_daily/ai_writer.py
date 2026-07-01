@@ -116,7 +116,7 @@ def build_prompt(data: dict) -> str:
         if not has_news else ""
     )
     economic_skip_note = (
-        "\n⚠️ 경제 지표 데이터 없음 → ### 📋 오늘의 경제 지표 소제목 포함 해당 섹션 전체 삭제. 텍스트 한 줄도 출력 금지."
+        "\n⚠️ 구조화된 경제 지표 데이터 없음 → 뉴스 헤드라인에서 경제 지표 언급(고용·물가·PMI·소비자신뢰 등)이 있으면 해당 내용으로 ### 📋 섹션 작성. 뉴스에도 없으면 섹션 전체 생략."
         if not has_economic else ""
     )
 

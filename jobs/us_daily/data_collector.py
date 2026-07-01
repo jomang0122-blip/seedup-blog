@@ -132,33 +132,30 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
 
 
 def collect_economic_calendar(us_date: str) -> list[dict]:
-    """finnhub 경제 캘린더에서 당일 발표된 미국 경제 지표 수집."""
-    token = os.getenv("FINNHUB_API_KEY", "")
-    if not token:
-        print("  [경고] FINNHUB_API_KEY 없음 — 경제 지표 수집 생략")
-        return []
-    try:
-        resp = requests.get(
-            "https://finnhub.io/api/v1/calendar/economic",
-            params={"from": us_date, "to": us_date, "token": token},
-            timeout=10,
-        )
-        resp.raise_for_status()
-        events = resp.json().get("economicCalendar", [])
-        us_events = [e for e in events if e.get("country", "") == "US"]
-        result = []
-        for e in us_events[:6]:
-            result.append({
-                "event": e.get("event", ""),
-                "actual": e.get("actual"),
-                "estimate": e.get("estimate"),
-                "unit": e.get("unit", ""),
-            })
-        print(f"  [경제지표] {len(result)}건 수집")
-        return result
-    except Exception as exc:
-        print(f"  [경고] 경제 지표 수집 실패: {exc}")
-        return []
+    """당일 발표된 미국 경제 지표 수집.
+
+    [유료 플랜 전환 시 활성화]
+    FMP (financialmodelingprep.com) 유료 플랜 가입 후 FMP_API_KEY를 환경변수에 설정하면
+    구조화된 실제값(actual/estimate)을 수집합니다.
+    현재는 무료 플랜이므로 뉴스 기반 AI 추출 방식을 사용합니다.
+
+    유료 전환 시 아래 주석 해제:
+    # token = os.getenv("FMP_API_KEY", "")
+    # if token:
+    #     resp = requests.get(
+    #         "https://financialmodelingprep.com/stable/economic-calendar",
+    #         params={"from": us_date, "to": us_date, "apikey": token},
+    #         timeout=10,
+    #     )
+    #     events = resp.json() if resp.status_code == 200 else []
+    #     us_events = [e for e in events if isinstance(events, list)
+    #                  and e.get("country") == "US" and e.get("actual") is not None]
+    #     return [{"event": e.get("event",""), "actual": e.get("actual"),
+    #              "estimate": e.get("estimate"), "unit": e.get("unit","")}
+    #             for e in us_events[:6]]
+    """
+    print("  [경제지표] 무료 플랜 — 뉴스 기반 AI 추출 방식 사용")
+    return []
 
 
 def collect_news() -> list[str]:
