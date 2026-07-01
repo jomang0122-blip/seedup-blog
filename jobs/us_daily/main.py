@@ -33,6 +33,13 @@ def log(msg: str):
     print(f"[{ts}] {msg}")
 
 
+def _build_labels(data: dict) -> list:
+    """라벨을 Python에서 고정 생성 — AI에게 맡기지 않음"""
+    base = ["미국증시", "데일리", "시황", "미국주식", "나스닥", "S&P500", "뉴욕증시"]
+    mover_labels = [m["ticker"] for m in data.get("top_movers", [])[:2]]
+    return base + mover_labels
+
+
 def build_title(data: dict) -> str:
     """제목을 Python에서 강제 조립 — AI에게 맡기지 않음"""
     us_date = data.get("us_date", "")
@@ -103,7 +110,8 @@ def run(dry_run: bool = False, force: bool = False):
     log("▶ Step 3: AI 블로그 콘텐츠 생성")
     try:
         post = generate_post(data)
-        post["title"] = title  # Python 조립 제목으로 덮어쓰기
+        post["title"] = title              # Python 조립 제목으로 덮어쓰기
+        post["labels"] = _build_labels(data)  # Python 고정 라벨로 덮어쓰기
         if not post["content"]:
             raise ValueError("콘텐츠가 비어 있습니다.")
         log(f"  글자수: {post['char_count']}자")

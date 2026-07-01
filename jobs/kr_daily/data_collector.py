@@ -394,13 +394,12 @@ def get_featured_stock_news(display: int = 15) -> list:
 
 def get_stock_news_by_name(names: list) -> dict:
     """특징주 종목명별 뉴스 개별 검색. {종목명: 헤드라인} 반환.
-    1차: '[특징주] 종목명' 검색 / 2차 fallback: '종목명' 검색.
+    '[특징주] 종목명' 검색만 수행 — fallback 없음.
+    오래된 일반 뉴스가 오늘 이유로 둔갑하는 AI 환각 방지.
     """
     result = {}
     for name in names:
         items = _naver_news_search(f"[특징주] {name}", display=3)
-        if not items:
-            items = _naver_news_search(name, display=3)
         if items:
             result[name] = items[0]["title"]
         print(f"  [종목뉴스] {name}: {'있음' if name in result else '없음'}")

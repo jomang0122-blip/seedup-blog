@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os
+import requests
 import yfinance as yf
 import pytz
 from datetime import datetime
@@ -129,6 +131,36 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
         return []
 
 
+def collect_economic_calendar(us_date: str) -> list[dict]:
+    """finnhub 경제 캘린더에서 당일 발표된 미국 경제 지표 수집."""
+    token = os.getenv("FINNHUB_API_KEY", "")
+    if not token:
+        print("  [경고] FINNHUB_API_KEY 없음 — 경제 지표 수집 생략")
+        return []
+    try:
+        resp = requests.get(
+            "https://finnhub.io/api/v1/calendar/economic",
+            params={"from": us_date, "to": us_date, "token": token},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        events = resp.json().get("economicCalendar", [])
+        us_events = [e for e in events if e.get("country", "") == "US"]
+        result = []
+        for e in us_events[:6]:
+            result.append({
+                "event": e.get("event", ""),
+                "actual": e.get("actual"),
+                "estimate": e.get("estimate"),
+                "unit": e.get("unit", ""),
+            })
+        print(f"  [경제지표] {len(result)}건 수집")
+        return result
+    except Exception as exc:
+        print(f"  [경고] 경제 지표 수집 실패: {exc}")
+        return []
+
+
 def collect_news() -> list[str]:
     """Yahoo Finance 뉴스 헤드라인 수집 (최대 5건)"""
     tickers_to_try = ["^IXIC", "SPY", "QQQ"]
@@ -172,6 +204,9 @@ def collect_all() -> dict:
     print("  뉴스 수집 중...")
     news = collect_news()
 
+    print("  경제 지표 수집 중...")
+    economic_calendar = collect_economic_calendar(us_date)
+
     kst_date = datetime.now(KST).strftime("%Y-%m-%d")
 
     return {
@@ -182,6 +217,7 @@ def collect_all() -> dict:
         "fixed_stocks": fixed_stocks,
         "top_movers": top_movers,
         "news": news,
+        "economic_calendar": economic_calendar,
     }
 
 
