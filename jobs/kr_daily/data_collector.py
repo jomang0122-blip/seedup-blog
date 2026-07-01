@@ -247,6 +247,9 @@ def _crawl_sector_top_stocks(no: str, top_n: int = 2, is_rising: bool = True) ->
             name = name_tag.get_text(strip=True)
             if not name or _is_etf(name):
                 continue
+            # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
+            if re.match(r".*우[BC]?$", name):
+                continue
             pct_raw = tds[3].get_text(strip=True)
             is_neg = "-" in pct_raw
             pct_val = re.sub(r"[^\d.]", "", pct_raw)

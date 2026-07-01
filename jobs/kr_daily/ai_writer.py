@@ -6,10 +6,11 @@ from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 client = Anthropic()
 
 
-def _match_news(name: str, headlines: list, stock_news_map: dict) -> str:
-    """종목별 뉴스 맵 우선 조회 → fallback: 헤드라인 리스트 검색."""
-    if name in stock_news_map:
-        return stock_news_map[name]
+def _match_headline(name: str, headlines: list) -> str:
+    """오늘 크롤링된 헤드라인에서만 종목명 매칭. stock_news_map 미사용.
+    headlines = crawled_news_features (네이버 당일 [특징주] 뉴스 최대 15건)
+    → 여기 등장한 종목만 뉴스기반 특징주로 인정 (모든 종목이 stock_news_map에 있어 전체 중복 발생하던 문제 방지).
+    """
     for h in headlines:
         if name in h:
             return h
@@ -23,7 +24,7 @@ def _build_stock_anchor(data: dict) -> str:
     stock_news_map = data.get("stock_news_map", {})
     lines = []
     non_upper = []
-    news_stocks = []  # 뉴스 매칭된 종목만 별도 수집
+    news_stocks = []  # 오늘 헤드라인에 등장한 종목만 수집
 
     if gainers:
         parts = []
@@ -34,18 +35,21 @@ def _build_stock_anchor(data: dict) -> str:
                 label = ""
                 non_upper.append(s["name"])
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%{label}")
-            matched = _match_news(s["name"], headlines, stock_news_map)
-            if matched:
-                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}%{label} [뉴스: {matched}]")
+            headline_match = _match_headline(s["name"], headlines)
+            if headline_match:
+                # 뉴스 내용은 stock_news_map 우선, 없으면 헤드라인 사용
+                news_text = stock_news_map.get(s["name"], headline_match)
+                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}%{label} [뉴스: {news_text}]")
         lines.append("상승 특징주 (종목명+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts))
 
     if losers:
         parts = []
         for s in losers:
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%")
-            matched = _match_news(s["name"], headlines, stock_news_map)
-            if matched:
-                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}% [뉴스: {matched}]")
+            headline_match = _match_headline(s["name"], headlines)
+            if headline_match:
+                news_text = stock_news_map.get(s["name"], headline_match)
+                news_stocks.append(f"{s['name']} {s['change_pct']:+.2f}% [뉴스: {news_text}]")
         lines.append("하락 특징주 (종목명+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts))
 
     if news_stocks:
