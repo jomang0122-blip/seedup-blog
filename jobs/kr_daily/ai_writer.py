@@ -292,7 +292,14 @@ def _parse_response(raw: str, date: str = "") -> dict:
         elif in_content:
             content_lines.append(line)
 
-    content = apply_color_spans(md_to_html("\n".join(content_lines).strip())) + "\n" + DISCLAIMER
+    # 본문 첫 헤딩이 제목과 중복되면 제거 (AI가 지침 무시하고 #~###### 헤딩으로 제목 반복하는 케이스)
+    md_body = "\n".join(content_lines).strip()
+    first_line = md_body.split("\n", 1)[0] if md_body else ""
+    if re.match(r"^#{1,6}\s", first_line) and ("국내증시]" in first_line or (date_prefix and date_prefix in first_line)):
+        md_body = md_body.split("\n", 1)[1].strip() if "\n" in md_body else ""
+        print("  [후처리] 본문 첫 줄 제목 중복 헤딩 제거")
+
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
     return {"title": title, "content": content, "char_count": len(content)}
 
 

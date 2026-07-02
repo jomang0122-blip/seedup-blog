@@ -4,9 +4,6 @@ token.json
 credentials.json
 config.yaml
 
-# 로그
-logs/
-
 # Python
 __pycache__/
 *.pyc

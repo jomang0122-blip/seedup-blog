@@ -7,27 +7,62 @@ client = Anthropic()
 
 
 def _build_data_summary(data: dict) -> str:
-    lines = [f"날짜: {data.get('date', '')}"]
+    """kr/us x daily/weekly 4종 데이터 구조를 모두 지원하는 검증용 요약."""
+    lines = []
 
-    kospi = data.get("kospi", {})
-    if kospi:
-        lines.append(f"KOSPI 종가: {kospi['close']:,.2f}pt  등락: {kospi['change']:+.2f}pt ({kospi['change_pct']:+.2f}%)")
+    if data.get("date"):
+        lines.append(f"날짜: {data['date']}")
+    if data.get("week_start"):
+        lines.append(f"주간 범위: {data['week_start']} ~ {data.get('week_end', '')}")
+    if data.get("us_date"):
+        lines.append(f"미국 거래일: {data['us_date']}")
 
-    kosdaq = data.get("kosdaq", {})
-    if kosdaq:
-        lines.append(f"KOSDAQ 종가: {kosdaq['close']:,.2f}pt  등락: {kosdaq['change']:+.2f}pt ({kosdaq['change_pct']:+.2f}%)")
+    # 국내 지수 — daily(change_pct) / weekly(weekly_pct) 구조 모두 처리
+    for key, label in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
+        v = data.get(key) or {}
+        if not v or v.get("close") is None:
+            continue
+        if v.get("change_pct") is not None:
+            lines.append(f"{label} 종가: {v['close']:,.2f}pt  등락: {v.get('change', 0):+.2f}pt ({v['change_pct']:+.2f}%)")
+        elif v.get("weekly_pct") is not None:
+            lines.append(f"{label} 주간 종가: {v['close']:,.2f}pt  주간 등락률: {v['weekly_pct']:+.2f}%")
 
+    # 미국 지수 (indices dict) — daily(change_pct) / weekly(weekly_pct)
+    for ticker, v in (data.get("indices") or {}).items():
+        pct = v.get("change_pct") if v.get("change_pct") is not None else v.get("weekly_pct")
+        if v.get("close") is not None and pct is not None:
+            lines.append(f"{v.get('name', ticker)} 종가: {v['close']:,.2f}  등락률: {pct:+.2f}%")
+
+    # 미국 관심 종목 (fixed_stocks)
+    fixed = data.get("fixed_stocks") or {}
+    if fixed:
+        lines.append("관심 종목:")
+        for t, v in fixed.items():
+            pct = v.get("change_pct") if v.get("change_pct") is not None else v.get("weekly_pct")
+            if v.get("close") is not None and pct is not None:
+                lines.append(f"  {t} {v['name']}: ${v['close']:,.2f} ({pct:+.2f}%)")
+            else:
+                lines.append(f"  {t} {v['name']}: 데이터 없음 (본문에는 '확인 불가'로 표기되어야 정상)")
+
+    # 급등락 종목 — kr(top_gainers/losers: name) / us(top_movers: ticker)
     gainers = data.get("top_gainers", [])
     if gainers:
-        lines.append("급등 종목 TOP5 (시총 1조+ KOSPI·우선주 제외):")
+        lines.append("급등 종목:")
         for g in gainers:
             lines.append(f"  {g['name']}: {g['change_pct']:+.2f}%")
 
     losers = data.get("top_losers", [])
     if losers:
-        lines.append("급락 종목 TOP5 (시총 1조+ KOSPI·우선주 제외):")
+        lines.append("급락 종목:")
         for l in losers:
             lines.append(f"  {l['name']}: {l['change_pct']:+.2f}%")
+
+    movers = data.get("top_movers", [])
+    if movers:
+        lines.append("급등락 종목 (워치리스트):")
+        for m in movers:
+            pct = m.get("change_pct") if m.get("change_pct") is not None else m.get("weekly_pct")
+            lines.append(f"  {m['ticker']}({m.get('name', '')}): {pct:+.2f}%")
 
     for label, key in [("상승", "top_sectors"), ("하락", "bottom_sectors")]:
         sectors = data.get(key, [])
@@ -52,7 +87,7 @@ def _build_data_summary(data: dict) -> str:
 def validate_post(data: dict, post: dict) -> dict:
     data_summary = _build_data_summary(data)
 
-    prompt = f"""당신은 한국 주식 시장 데이터 검증 전문가입니다.
+    prompt = f"""당신은 주식 시장 데이터 검증 전문가입니다.
 아래 '실제 수집 데이터'와 '작성된 블로그 포스팅'을 비교하여 수치 오류를 검출하고 수정본을 제시하세요.
 
 ━━━ 실제 수집 데이터 (이것이 진실) ━━━
@@ -67,9 +102,9 @@ def validate_post(data: dict, post: dict) -> dict:
 
 검증 체크리스트:
 1. 제목의 종목명·수치가 데이터와 일치하는가?
-2. 본문의 KOSPI·KOSDAQ 종가 및 등락률이 정확한가?
-3. 특징주 섹션의 종목명·등락률이 데이터와 일치하는가?
-4. 섹터 등락률이 데이터와 일치하는가?
+2. 본문의 지수(KOSPI·KOSDAQ 또는 나스닥·S&P500·다우) 종가 및 등락률이 정확한가?
+3. 종목 섹션(특징주·관심 종목·급등락)의 종목명·등락률이 데이터와 일치하는가?
+4. 섹터 등락률이 데이터와 일치하는가? (섹터 데이터가 있는 경우만)
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시

@@ -21,7 +21,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.validator import validate_post, apply_corrections
-from shared.blog_publisher import publish_post
+from shared.blog_publisher import publish_post, check_today_post
 
 KST      = pytz.timezone("Asia/Seoul")
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -54,7 +54,7 @@ def build_title(data: dict) -> str:
     return f"[{date_range} 국내증시 주간] 코스피 {abs(pct):.1f}% {direction} 주간 시황 리뷰"
 
 
-def save_log(data: dict, post: dict, result: dict, kst_date: str):
+def save_log(data: dict, post: dict, result: dict, kst_date: str, validation_issues: list = None):
     log_file = LOG_DIR / f"kr_weekly_{kst_date.replace('-', '')}.json"
     record = {
         "kst_date":     kst_date,
@@ -65,6 +65,7 @@ def save_log(data: dict, post: dict, result: dict, kst_date: str):
         "url":          result.get("url", ""),
         "char_count":   post.get("char_count", 0),
         "kospi_weekly_pct": data.get("kospi", {}).get("weekly_pct"),
+        "validation_issues": validation_issues or [],
     }
     log_file.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     log(f"로그 저장: {log_file.name}")
@@ -78,6 +79,11 @@ def run(dry_run: bool = False, force: bool = False):
     log(f"SeedUP 국내증시 위클리  {'[DRY-RUN]' if dry_run else '[LIVE]'}  KST {kst_now.strftime('%Y-%m-%d %H:%M')}")
     log("=" * 50)
 
+    # 토요일(5)에만 발행 — force 시 생략
+    if not force and kst_now.weekday() != 5:
+        log(f"  오늘은 {kst_now.strftime('%A')} — 토요일에만 발행합니다. 종료.")
+        sys.exit(0)
+
     log("▶ Step 1: 국내 주간 데이터 수집")
     try:
         data = collect_all()
@@ -88,6 +94,10 @@ def run(dry_run: bool = False, force: bool = False):
     if not data.get("week_start"):
         log("  데이터 없음 — 발행 생략")
         sys.exit(0)
+
+    if not data.get("kospi", {}).get("close"):
+        log("  [오류] KOSPI 지수 누락 — 품질 게이트: 발행 중단")
+        sys.exit(1)
 
     kospi = data.get("kospi", {})
     log(f"  주간 범위: {data['week_start']} ~ {data['week_end']}")
@@ -110,11 +120,13 @@ def run(dry_run: bool = False, force: bool = False):
         sys.exit(1)
 
     log("▶ Step 3-1: 수치 검증")
+    validation_issues = []
     try:
         validation = validate_post(data, post)
         if validation["approved"]:
             log("  검증 통과 — 수치 이상 없음")
         else:
+            validation_issues = validation["issues"]
             log(f"  오류 {len(validation['issues'])}개 발견 — 자동 수정 적용")
             for issue in validation["issues"]:
                 log(f"     [{issue['type']}] {issue['description']}")
@@ -133,7 +145,18 @@ def run(dry_run: bool = False, force: bool = False):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: 중복 체크 없음 — 발행 진행")
+    log("▶ Step 4: 중복 발행 체크")
+    if force:
+        log("  --force 지정 — 중복 체크 생략")
+    else:
+        try:
+            existing = check_today_post(kst_date, label_filter="국내증시 주간]")
+            if existing:
+                log(f"  오늘 이미 발행됨 — 중복 발행 생략: {existing['url']}")
+                sys.exit(0)
+            log("  중복 없음 — 발행 진행")
+        except Exception as e:
+            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
 
     log("▶ Step 5: Blogger 발행")
     try:
@@ -145,7 +168,7 @@ def run(dry_run: bool = False, force: bool = False):
         )
         log(f"  발행 완료!")
         log(f"  URL: {result['url']}")
-        save_log(data, post, result, kst_date)
+        save_log(data, post, result, kst_date, validation_issues)
     except Exception as e:
         log(f"  [오류] 발행 실패: {e}")
         sys.exit(1)

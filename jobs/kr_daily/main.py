@@ -19,7 +19,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.validator import validate_post, apply_corrections
-from shared.blog_publisher import publish_post
+from shared.blog_publisher import publish_post, check_today_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 LOG_DIR  = REPO_ROOT / "logs"
@@ -46,7 +46,7 @@ def save_investor_data(data: dict):
     log(f"수급 데이터 저장: {fname.name}")
 
 
-def save_log(data: dict, post: dict, result: dict):
+def save_log(data: dict, post: dict, result: dict, validation_issues: list = None):
     date_str = data.get("date", datetime.today().strftime("%Y-%m-%d")).replace("-", "")
     log_file = LOG_DIR / f"kr_daily_{date_str}.json"
     record = {
@@ -57,6 +57,7 @@ def save_log(data: dict, post: dict, result: dict):
         "char_count": post["char_count"],
         "kospi_close": data.get("kospi", {}).get("close"),
         "kospi_change_pct": data.get("kospi", {}).get("change_pct"),
+        "validation_issues": validation_issues or [],
     }
     log_file.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     log(f"로그 저장: {log_file.name}")
@@ -94,6 +95,10 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log(f"  [오류] 데이터 수집 실패: {e}")
         sys.exit(1)
 
+    if not data.get("kospi", {}).get("close"):
+        log("  [오류] KOSPI 지수 누락 — 품질 게이트: 발행 중단")
+        sys.exit(1)
+
     log("▶ Step 2: AI 블로그 포스팅 생성")
     try:
         post = generate_post(data)
@@ -106,11 +111,13 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         sys.exit(1)
 
     log("▶ Step 3: 수치 검증 에이전트")
+    validation_issues = []
     try:
         validation = validate_post(data, post)
         if validation["approved"]:
             log("  검증 통과 — 수치 이상 없음")
         else:
+            validation_issues = validation["issues"]
             log(f"  오류 {len(validation['issues'])}개 발견 — 자동 수정 적용")
             for issue in validation["issues"]:
                 log(f"     [{issue['type']}] {issue['description']}")
@@ -129,7 +136,19 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log("DRY-RUN 완료")
         return
 
-    log("▶ Step 4: 중복 체크 없음 — 발행 진행")
+    log("▶ Step 4: 중복 발행 체크")
+    if force:
+        log("  --force 지정 — 중복 체크 생략")
+    else:
+        try:
+            kst_today = datetime.today().strftime("%Y-%m-%d")
+            existing = check_today_post(kst_today, label_filter="국내증시]")
+            if existing:
+                log(f"  오늘 이미 발행됨 — 중복 발행 생략: {existing['url']}")
+                sys.exit(0)
+            log("  중복 없음 — 발행 진행")
+        except Exception as e:
+            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
 
     log("▶ Step 5: Blogger 발행")
     try:
@@ -141,7 +160,7 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         )
         log(f"  발행 완료!")
         log(f"  URL: {result['url']}")
-        save_log(data, post, result)
+        save_log(data, post, result, validation_issues)
         save_investor_data(data)
     except Exception as e:
         log(f"  [오류] 발행 실패: {e}")
