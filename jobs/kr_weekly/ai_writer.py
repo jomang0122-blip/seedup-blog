@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html, fmt_amount
+from shared.utils import DISCLAIMER, md_to_html, fmt_amount, apply_color_spans
 
 client = Anthropic()
 
@@ -197,7 +197,7 @@ def _parse_response(raw: str) -> dict:
         elif in_content:
             content_lines.append(line)
 
-    content = md_to_html("\n".join(content_lines).strip()) + "\n" + DISCLAIMER
+    content = apply_color_spans(md_to_html("\n".join(content_lines).strip())) + "\n" + DISCLAIMER
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 

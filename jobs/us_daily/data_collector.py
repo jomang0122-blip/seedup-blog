@@ -72,22 +72,48 @@ def collect_indices() -> tuple[dict, str]:
 
 
 def collect_fixed_stocks() -> dict:
-    """고정 풀 종목 개별 수집"""
+    """고정 풀 종목 개별 수집 (재시도 + 종목별 뉴스 포함)"""
     result = {}
     for ticker, name in FIXED_TICKERS.items():
         try:
-            hist = yf.Ticker(ticker).history(period="5d")
-            if hist.empty:
+            t = yf.Ticker(ticker)
+            hist = None
+            for period in ("5d", "10d", "1mo"):
+                h = t.history(period=period)
+                if not h.empty:
+                    hist = h
+                    break
+
+            if hist is None:
+                print(f"  [경고] {ticker} 데이터 없음 — N/A 처리")
+                result[ticker] = {"name": name, "close": None, "change_pct": None, "news": ""}
                 continue
+
             close = round(hist["Close"].iloc[-1], 2)
             pct = _pct_change(hist)
+
+            news_title = ""
+            try:
+                for item in (t.news or [])[:5]:
+                    if isinstance(item.get("content"), dict):
+                        title = item["content"].get("title", "")
+                    else:
+                        title = item.get("title", "")
+                    if title:
+                        news_title = title[:120]
+                        break
+            except Exception:
+                pass
+
             result[ticker] = {
                 "name": name,
                 "close": close,
                 "change_pct": pct if pct is not None else 0.0,
+                "news": news_title,
             }
         except Exception as e:
             print(f"  [경고] {ticker} 수집 실패: {e}")
+            result[ticker] = {"name": name, "close": None, "change_pct": None, "news": ""}
 
     return result
 

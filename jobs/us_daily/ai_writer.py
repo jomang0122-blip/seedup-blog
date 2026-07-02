@@ -27,8 +27,16 @@ def _build_indices_block(indices: dict) -> str:
 def _build_stocks_block(fixed_stocks: dict) -> str:
     lines = []
     for ticker, v in fixed_stocks.items():
-        sign = "+" if v["change_pct"] >= 0 else ""
-        lines.append(f"{ticker} {v['name']}: ${v['close']:,.2f}  ({sign}{v['change_pct']:.2f}%)")
+        close = v.get("close")
+        pct = v.get("change_pct")
+        if close is not None and pct is not None:
+            sign = "+" if pct >= 0 else ""
+            price_str = f"${close:,.2f}  ({sign}{pct:.2f}%)"
+        else:
+            price_str = "N/A (데이터 없음)"
+        news = v.get("news", "")
+        news_str = f"  [뉴스: {news}]" if news else ""
+        lines.append(f"{ticker} {v['name']}: {price_str}{news_str}")
     return "\n".join(lines) if lines else "(종목 데이터 없음)"
 
 
@@ -116,7 +124,10 @@ def build_prompt(data: dict) -> str:
         if not has_news else ""
     )
     economic_skip_note = (
-        "\n⚠️ 구조화된 경제 지표 데이터 없음 → 뉴스 헤드라인에서 경제 지표 언급(고용·물가·PMI·소비자신뢰 등)이 있으면 해당 내용으로 ### 📋 섹션 작성. 뉴스에도 없으면 섹션 전체 생략."
+        "\n⚠️ 구조화된 경제 지표 데이터 없음 → 아래 두 가지 소스를 모두 활용해 ### 📋 섹션 작성:\n"
+        "  ① 뉴스 헤드라인에서 경제 지표·연준 발언 언급 추출\n"
+        "  ② AI 지식 기반으로 오늘 날짜에 발표된 주요 지표(고용·물가·PMI·ISM·GDP·소비자신뢰 등) 또는 연준 위원 발언 보완\n"
+        "  두 소스 모두에서 해당 내용이 전혀 없을 때만 섹션 전체 생략."
         if not has_economic else ""
     )
 
@@ -167,7 +178,7 @@ a) ### 📊 3대 지수 ({us_date_kor} 마감)
 b) ### 🔥 오늘의 주목 종목
    - 마크다운 테이블: 종목 | 종가 | 등락률 | 한줄 동향
      * 종목 컬럼: 반드시 **TICKER(한글명)** 형식으로 표기 (예: **NVDA(엔비디아)**)
-     * 한줄 동향: 4~10자 한국어 (예: 차익실현, AI 수혜 기대, 실적 호조, 보합)
+     * 한줄 동향: 데이터 블록 [뉴스] 있으면 뉴스 내용 기반 15~25자 한국어로 구체적 이유 서술. [뉴스] 없으면 당일 등락률과 시장 맥락으로 15자 이내. "상승"·"하락" 단어만 쓰는 것 절대 금지.
    - 표 아래 단락 2~3개: 수치 반복 나열 절대 금지. 대형 기술주 간 수급 인과관계를 담백하게 서술
    - #### 💥 오늘의 급등락 종목 한눈에 보기
    - 데이터 블록 '급등락 종목' 목록을 아래 형식으로 출력 (이유 작성 절대 금지):
@@ -177,10 +188,12 @@ b) ### 🔥 오늘의 주목 종목
      📰 TICKER(한글명) +X.X% — [해당 종목 [뉴스] 내용에서만 추출한 이유]
    - '뉴스기반 급등락: (없음)'이면 이유 섹션 전체 생략
 
-c) ### 📋 오늘의 경제 지표
-   - 데이터 블록 '당일 발표 경제 지표' 내용을 한국어로 정리
-   - 각 지표: 지표명 / 실제 vs 예상 비교 / 시장 영향 한 줄
-   - 데이터 없음이면 이 섹션 전체 생략
+c) ### 📋 오늘의 경제 지표 & 연준 동향
+   - 데이터 블록 '당일 발표 경제 지표' 있으면 우선 사용: 지표명 / 실제 vs 예상 / 시장 영향 한 줄
+   - 데이터 없어도 다음을 반드시 커버:
+     · 오늘 발표된 주요 경제 지표(AI 지식 + 뉴스 기반) — 실제값·예상치 명시
+     · 연준(Fed) 위원 발언이 있으면 발언자·요지·매파/비둘기파 성격 명시
+   - 위 내용이 전혀 없을 때만 섹션 전체 생략
 
 d) ### 📰 오늘의 핵심 뉴스
    - 제공된 뉴스 헤드라인을 한국어로 요약 번호 목록(1. 2. 3.) 3개

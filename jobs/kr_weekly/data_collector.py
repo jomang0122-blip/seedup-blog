@@ -201,8 +201,10 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
                 name = ticker
             return {"name": name, "ticker": ticker, "change_pct": round(float(val), 2)}
 
-        gainers = [_to_item(t, v) for t, v in pct.nlargest(5).items()]
-        losers  = [_to_item(t, v) for t, v in pct.nsmallest(5).items()]
+        gainers = [g for g in [_to_item(t, v) for t, v in pct.nlargest(10).items()]
+                   if not re.match(r".*우[BC]?$", g["name"])][:5]
+        losers  = [l for l in [_to_item(t, v) for t, v in pct.nsmallest(10).items()]
+                   if not re.match(r".*우[BC]?$", l["name"])][:5]
         print(f"  [주간 종목] 급등 TOP3: {[g['name'] for g in gainers[:3]]}")
         return {"top_gainers": gainers, "top_losers": losers}
 
