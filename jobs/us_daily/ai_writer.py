@@ -91,15 +91,6 @@ def _date_kor(us_date: str) -> str:
         return us_date
 
 
-def _tomorrow_kst() -> str:
-    import pytz
-    from datetime import datetime, timedelta
-    kst = pytz.timezone("Asia/Seoul")
-    tomorrow = datetime.now(kst) + timedelta(days=1)
-    weekdays = ["월", "화", "수", "목", "금", "토", "일"]
-    return f"{tomorrow.month}월 {tomorrow.day}일({weekdays[tomorrow.weekday()]})"
-
-
 def _date_calendar(us_date: str) -> str:
     """미국 거래일 기준 7일 달력 — AI 요일 환각 방지용."""
     from datetime import datetime as _dt, timedelta
@@ -119,7 +110,6 @@ def _date_calendar(us_date: str) -> str:
 def build_prompt(data: dict) -> str:
     us_date      = data.get("us_date", "")
     us_date_kor  = _date_kor(us_date)
-    tomorrow_str = _tomorrow_kst()
 
     news_list     = data.get("news", [])
     indices_block = _build_indices_block(data.get("indices", {}))
@@ -218,18 +208,18 @@ c) ### 📋 오늘의 경제 지표 & 연준 동향
    - 데이터 없어도 다음을 반드시 커버 (추측 금지 — 확실한 것만 명시):
      · 오늘 발표된 주요 경제 지표(AI 지식 + 뉴스 기반) — 반드시 실제값과 예상치를 숫자로 명시
      · 연준(Fed) 위원 발언이 있으면 반드시 발언자 이름·요지·매파/비둘기파 성격을 명시
+   - ⚠️ 이 부분에는 "오늘 발표된 것"만 서술 — 앞으로 발표될 일정 서술 금지 (아래 다음 일정 줄에서만)
    - 확실하지 않은 수치는 "확인 불가"로 표기하고 서술 금지
-   - 위 내용이 전혀 없을 때만 섹션 전체 생략
+   - 섹션 마지막 줄에 반드시 아래 형식으로 다음 일정 1개 추가:
+     📅 **다음 주요 일정**: [지표·이벤트명] — M월 D일(요일) 동부 오전/오후 X시(KST 오전/오후 X시)
+     * 요일은 [날짜·요일 달력] 블록에서만 가져올 것
+   - 오늘 발표 내용이 전혀 없으면 다음 일정 줄만 작성
 
 d) ### 📰 오늘의 핵심 뉴스
    - 제공된 뉴스 헤드라인을 한국어로 요약 번호 목록(1. 2. 3.) 3~5개
    - 정부 정책·ETF 편입·수혜주 언급 뉴스가 있으면: 반드시 위 [한국인 관심 종목] 데이터 블록에서 해당 종목의 당일 등락률을 찾아 함께 서술 (예: "애플 +1.73%, 알파벳 +1.07% 상승")
    - 뉴스 없으면 시장 전반 흐름 요약 3개
-
-e) ### 📅 내일 주목할 일정 ({tomorrow_str})
-   - 미국 경제 지표 발표, 실적 발표 등 1~2개 (AI 지식 기반)
-   - 날짜+요일+KST 시각 명시 (예: {tomorrow_str} 오후 9시 30분)
-   - 플레이스홀더 절대 금지 — 날짜/요일을 모르면 생략하고 종목/지표명만 작성
+   - ⚠️ 이 섹션이 마지막 섹션 — "내일 일정" 등 별도 일정 섹션 추가 금지 (일정은 위 📋 섹션의 다음 일정 줄에서만)
 
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
 LABELS: {all_labels}
