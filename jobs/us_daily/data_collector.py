@@ -122,6 +122,11 @@ def collect_fixed_stocks() -> dict:
             close = round(hist["Close"].iloc[-1], 2)
             pct = _pct_change(hist)
 
+            # 데이터 이상 필터: 하루 ±40% 초과는 오류로 간주 → N/A 처리 (행은 유지)
+            if pct is not None and abs(pct) > 40:
+                print(f"  [경고] {ticker} {pct:+.2f}% — 데이터 이상 의심, N/A 처리")
+                close, pct = None, None
+
             news_title = ""
             try:
                 for item in (t.news or [])[:5]:
@@ -170,6 +175,10 @@ def collect_top_movers(top_n: int = 5) -> list[dict]:
             if len(series) < 2:
                 continue
             pct = round((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2] * 100, 2)
+            # 데이터 이상 필터: 대형주 하루 ±40% 초과는 분할 미조정 등 오류로 간주
+            if abs(pct) > 40:
+                print(f"  [경고] {ticker} {pct:+.2f}% — 데이터 이상 의심, 급등락 제외")
+                continue
             changes[ticker] = pct
 
         sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
