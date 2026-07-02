@@ -19,12 +19,13 @@ FIXED_TICKERS = {
     "META": "메타",
     "AMZN": "아마존",
     "PLTR": "팔란티어",
+    "MU": "마이크론",
 }
 
-# 급등락 TOP 3 탐색용 워치리스트 (고정 풀 제외)
+# 급등락 TOP 5 탐색용 워치리스트 (고정 풀 제외)
 NASDAQ_WATCH_LIST = [
     "AVGO", "COST", "NFLX", "AMD", "ADBE", "QCOM", "TXN", "ARM", "SMCI",
-    "MU", "MRVL", "PANW", "AMAT", "LRCX", "INTC", "SNPS", "KLAC",
+    "MRVL", "PANW", "AMAT", "LRCX", "INTC", "SNPS", "KLAC",
     "ASML", "MSTR", "COIN", "HOOD", "RIVN", "SOFI", "RBLX", "SNAP",
     "UBER", "LYFT", "ABNB", "DASH", "CRWD", "ZS", "NET", "DDOG",
 ]
@@ -118,7 +119,7 @@ def collect_fixed_stocks() -> dict:
     return result
 
 
-def collect_top_movers(top_n: int = 3) -> list[dict]:
+def collect_top_movers(top_n: int = 5) -> list[dict]:
     """워치리스트에서 당일 급등락 상위 top_n종목 (절댓값 기준)"""
     try:
         raw = yf.download(
@@ -194,7 +195,7 @@ def collect_news() -> list[str]:
             if not news:
                 continue
             titles = []
-            for item in news[:8]:
+            for item in news[:15]:
                 # yfinance 버전별 구조 대응
                 if isinstance(item.get("content"), dict):
                     title = item["content"].get("title", "")
@@ -203,7 +204,7 @@ def collect_news() -> list[str]:
                 if title:
                     titles.append(title)
             if titles:
-                return titles[:5]
+                return titles[:10]
         except Exception:
             continue
     return []
