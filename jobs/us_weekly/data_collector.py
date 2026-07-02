@@ -23,14 +23,45 @@ FIXED_TICKERS = {
     "META": "메타",
     "AMZN": "아마존",
     "PLTR": "팔란티어",
+    "MU": "마이크론",
 }
 
-NASDAQ_WATCH_LIST = [
-    "AVGO", "COST", "NFLX", "AMD", "ADBE", "QCOM", "TXN", "ARM", "SMCI",
-    "MU", "MRVL", "PANW", "AMAT", "LRCX", "INTC", "SNPS", "KLAC",
-    "ASML", "MSTR", "COIN", "HOOD", "RIVN", "SOFI", "RBLX", "SNAP",
-    "UBER", "LYFT", "ABNB", "DASH", "CRWD", "ZS", "NET", "DDOG",
-]
+# 급등락 탐색용 워치리스트 (고정 풀 제외) — 한글명 매핑 (AI 환각 방지)
+WATCH_NAMES = {
+    "AVGO": "브로드컴",
+    "COST": "코스트코",
+    "NFLX": "넷플릭스",
+    "AMD": "AMD",
+    "ADBE": "어도비",
+    "QCOM": "퀄컴",
+    "TXN": "텍사스인스트루먼트",
+    "ARM": "암홀딩스",
+    "SMCI": "슈퍼마이크로",
+    "MRVL": "마벨테크놀로지",
+    "PANW": "팔로알토네트웍스",
+    "AMAT": "어플라이드머티리얼즈",
+    "LRCX": "램리서치",
+    "INTC": "인텔",
+    "SNPS": "시놉시스",
+    "KLAC": "KLA",
+    "ASML": "ASML",
+    "MSTR": "스트래티지",
+    "COIN": "코인베이스",
+    "HOOD": "로빈후드",
+    "RIVN": "리비안",
+    "SOFI": "소파이",
+    "RBLX": "로블록스",
+    "SNAP": "스냅",
+    "UBER": "우버",
+    "LYFT": "리프트",
+    "ABNB": "에어비앤비",
+    "DASH": "도어대시",
+    "CRWD": "크라우드스트라이크",
+    "ZS": "지스케일러",
+    "NET": "클라우드플레어",
+    "DDOG": "데이터독",
+}
+NASDAQ_WATCH_LIST = list(WATCH_NAMES.keys())
 
 INDEX_TICKERS = {
     "^DJI":  "다우존스",
@@ -95,22 +126,37 @@ def collect_indices() -> tuple[dict, str, str]:
 
 
 def collect_fixed_stocks() -> dict:
-    """한국인 관심 종목 주간 등락률."""
+    """한국인 관심 종목 주간 등락률 (재시도 + N/A 행 유지)."""
     result = {}
     for ticker, name in FIXED_TICKERS.items():
         try:
-            hist = yf.Ticker(ticker).history(period="1mo")
-            if hist.empty:
+            t = yf.Ticker(ticker)
+            hist = None
+            for period in ("1mo", "3mo"):
+                h = t.history(period=period)
+                if not h.empty:
+                    hist = h
+                    break
+
+            if hist is None:
+                print(f"  [경고] {ticker} 데이터 없음 — N/A 처리")
+                result[ticker] = {"name": name, "close": None, "weekly_pct": None}
                 continue
+
             pct = _weekly_pct(hist)
             close = round(hist["Close"].iloc[-1], 2)
-            result[ticker] = {
-                "name": name,
-                "close": close,
-                "weekly_pct": pct if pct is not None else 0.0,
-            }
+
+            # 데이터 이상 필터: 주간 ±60% 초과는 분할 미조정 등 오류로 간주 → N/A
+            if pct is not None and abs(pct) > 60:
+                print(f"  [경고] {ticker} 주간 {pct:+.2f}% — 데이터 이상 의심, N/A 처리")
+                close, pct = None, None
+
+            if pct is None and close is not None:
+                pct = 0.0
+            result[ticker] = {"name": name, "close": close, "weekly_pct": pct}
         except Exception as e:
             print(f"  [경고] {ticker} 수집 실패: {e}")
+            result[ticker] = {"name": name, "close": None, "weekly_pct": None}
     return result
 
 
@@ -134,6 +180,10 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
                 pct = round((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2] * 100, 2)
             else:
                 continue
+            # 데이터 이상 필터: 주간 ±60% 초과는 분할 미조정 등 오류로 간주
+            if abs(pct) > 60:
+                print(f"  [경고] {ticker} 주간 {pct:+.2f}% — 데이터 이상 의심, 급등락 제외")
+                continue
             changes[ticker] = pct
 
         sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
@@ -142,6 +192,7 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
             last_close = round(float(close[t].dropna().iloc[-1]), 2) if t in close.columns else None
             result.append({
                 "ticker": t,
+                "name": WATCH_NAMES.get(t, t),
                 "close": last_close,
                 "weekly_pct": p,
                 "direction": "up" if p >= 0 else "down",

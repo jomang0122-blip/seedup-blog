@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html
+from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 
 client = Anthropic()
 
@@ -27,8 +27,14 @@ def _build_indices_block(indices: dict) -> str:
 def _build_stocks_block(fixed_stocks: dict) -> str:
     lines = []
     for ticker, v in fixed_stocks.items():
-        sign = "+" if (v["weekly_pct"] or 0) >= 0 else ""
-        lines.append(f"{ticker} {v['name']}: ${v['close']:,.2f}  ({sign}{v['weekly_pct']:.2f}%)")
+        close = v.get("close")
+        pct = v.get("weekly_pct")
+        if close is not None and pct is not None:
+            sign = "+" if pct >= 0 else ""
+            price_str = f"${close:,.2f}  ({sign}{pct:.2f}%)"
+        else:
+            price_str = "N/A (데이터 없음)"
+        lines.append(f"{ticker} {v['name']}: {price_str}")
     return "\n".join(lines) if lines else "(종목 데이터 없음)"
 
 
@@ -38,8 +44,9 @@ def _build_movers_block(top_movers: list) -> str:
     lines = []
     for m in top_movers:
         icon = "📈" if m["direction"] == "up" else "📉"
+        label = f"{m['ticker']}({m.get('name', m['ticker'])})"
         close_str = f"${m['close']:,.2f}" if m.get("close") is not None else "-"
-        lines.append(f"{icon} {m['ticker']}: {close_str}  {m['weekly_pct']:+.2f}%")
+        lines.append(f"{icon} {label}: {close_str}  {m['weekly_pct']:+.2f}%")
     return "\n".join(lines)
 
 
@@ -143,12 +150,14 @@ a) ### 📊 주간 3대 지수 성적 ({date_range})
 
 b) ### 🔥 한국인 관심 종목 주간 성적
    - 마크다운 테이블: 종목 | 주간 종가 | 주간 등락률 | 한줄 동향
+     * ⚠️ [한국인 관심 종목] 데이터 블록의 모든 종목을 한 종목도 빠짐없이 테이블에 포함할 것 (임의 삭제 절대 금지)
+     * "N/A (데이터 없음)" 종목도 행 유지 — 종가·등락률 칸에 "확인 불가" 표기
      * 종목 컬럼: 반드시 **TICKER(한글명)** 형식 (예: **NVDA(엔비디아)**)
      * 한줄 동향: 4~10자 한국어
    - 표 아래 단락 1~2개: 주요 종목 간 수급 흐름 서술
    - #### 💥 주간 급등락 TOP3
      마크다운 테이블: 종목 | 주간 종가 | 주간 등락률 | 핵심 이유 한 줄
-     * 종목 컬럼: 📈/📉 이모티콘 + **TICKER** 형식 (예: 📈 **MSTR**)
+     * 종목 컬럼: 📈/📉 이모티콘 + **TICKER(한글명)** 형식 (예: 📈 **MSTR(스트래티지)**) — 한글명은 데이터 블록 표기 그대로, 창작 금지
      * 주간 종가·등락률은 위 [주간 급등락 TOP 3] 데이터 블록 수치 그대로 사용
 
 c) ### 📰 이번 주 핵심 뉴스 & 이슈
@@ -179,7 +188,7 @@ def _parse_response(raw: str) -> dict:
         elif in_content:
             content_lines.append(line)
 
-    content = md_to_html("\n".join(content_lines).strip()) + "\n" + DISCLAIMER
+    content = apply_color_spans(md_to_html("\n".join(content_lines).strip())) + "\n" + DISCLAIMER
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 
