@@ -22,13 +22,42 @@ FIXED_TICKERS = {
     "MU": "마이크론",
 }
 
-# 급등락 TOP 5 탐색용 워치리스트 (고정 풀 제외)
-NASDAQ_WATCH_LIST = [
-    "AVGO", "COST", "NFLX", "AMD", "ADBE", "QCOM", "TXN", "ARM", "SMCI",
-    "MRVL", "PANW", "AMAT", "LRCX", "INTC", "SNPS", "KLAC",
-    "ASML", "MSTR", "COIN", "HOOD", "RIVN", "SOFI", "RBLX", "SNAP",
-    "UBER", "LYFT", "ABNB", "DASH", "CRWD", "ZS", "NET", "DDOG",
-]
+# 급등락 TOP 5 탐색용 워치리스트 (고정 풀 제외) — 한글명 매핑 (AI 환각 방지)
+WATCH_NAMES = {
+    "AVGO": "브로드컴",
+    "COST": "코스트코",
+    "NFLX": "넷플릭스",
+    "AMD": "AMD",
+    "ADBE": "어도비",
+    "QCOM": "퀄컴",
+    "TXN": "텍사스인스트루먼트",
+    "ARM": "암홀딩스",
+    "SMCI": "슈퍼마이크로",
+    "MRVL": "마벨테크놀로지",
+    "PANW": "팔로알토네트웍스",
+    "AMAT": "어플라이드머티리얼즈",
+    "LRCX": "램리서치",
+    "INTC": "인텔",
+    "SNPS": "시놉시스",
+    "KLAC": "KLA",
+    "ASML": "ASML",
+    "MSTR": "스트래티지",
+    "COIN": "코인베이스",
+    "HOOD": "로빈후드",
+    "RIVN": "리비안",
+    "SOFI": "소파이",
+    "RBLX": "로블록스",
+    "SNAP": "스냅",
+    "UBER": "우버",
+    "LYFT": "리프트",
+    "ABNB": "에어비앤비",
+    "DASH": "도어대시",
+    "CRWD": "크라우드스트라이크",
+    "ZS": "지스케일러",
+    "NET": "클라우드플레어",
+    "DDOG": "데이터독",
+}
+NASDAQ_WATCH_LIST = list(WATCH_NAMES.keys())
 
 INDEX_TICKERS = {
     "^DJI": "다우존스",
@@ -148,6 +177,7 @@ def collect_top_movers(top_n: int = 5) -> list[dict]:
         for ticker, pct in sorted_movers[:top_n]:
             result.append({
                 "ticker": ticker,
+                "name": WATCH_NAMES.get(ticker, ticker),
                 "change_pct": pct,
                 "direction": "up" if pct >= 0 else "down",
             })
