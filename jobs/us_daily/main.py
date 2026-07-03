@@ -20,6 +20,7 @@ load_dotenv()
 
 from data_collector import collect_all
 from ai_writer import generate_post
+from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 from shared.validator import validate_post, apply_corrections
 from shared.blog_publisher import publish_post, check_today_post
 
@@ -32,6 +33,131 @@ LOG_DIR.mkdir(exist_ok=True)
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+_HOLIDAY_KR = {
+    "New Year's Day": "새해 첫날",
+    "Martin Luther King Jr. Day": "마틴 루터 킹 데이",
+    "Washington's Birthday": "대통령의 날",
+    "Good Friday": "성금요일",
+    "Memorial Day": "메모리얼 데이",
+    "Juneteenth National Independence Day": "준틴스 데이",
+    "Independence Day": "독립기념일",
+    "Labor Day": "노동절",
+    "Thanksgiving Day": "추수감사절",
+    "Christmas Day": "성탄절",
+}
+_WD_KR = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def _date_kor(d) -> str:
+    return f"{str(d.year)[2:]}년 {d.month}월 {d.day}일"
+
+
+def _already_published_us_date(us_date: str) -> bool:
+    """logs/에서 같은 us_date로 발행된 기록이 있는지 확인 (휴장 감지 기반)."""
+    for f in LOG_DIR.glob("us_daily_*.json"):
+        try:
+            rec = json.loads(f.read_text(encoding="utf-8"))
+            if rec.get("us_date") == us_date and rec.get("url"):
+                return True
+        except Exception:
+            continue
+    return False
+
+
+def _missed_us_weekdays(us_date: str, today_et=None) -> list:
+    """마지막 거래일 이후 ~ 현재 ET 날짜까지 사이의 미국 평일 목록 = 휴장일 후보."""
+    from datetime import timedelta
+    import pytz as _pytz
+    if today_et is None:
+        today_et = datetime.now(_pytz.timezone("America/New_York")).date()
+    last = datetime.strptime(us_date, "%Y-%m-%d").date()
+    out, d = [], last + timedelta(days=1)
+    while d <= today_et:
+        if d.weekday() < 5:
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
+def _holiday_name_kr(d) -> str:
+    name = None
+    try:
+        import holidays as _hol
+        name = _hol.financial_holidays("XNYS", years=d.year).get(d)
+    except Exception:
+        pass
+    if not name:
+        return "미국 증시 휴일"
+    observed = name.endswith(" (observed)")
+    base = name.replace(" (observed)", "")
+    kr = _HOLIDAY_KR.get(base, base)
+    return f"{kr}(대체휴일)" if observed else kr
+
+
+def _next_open_et(after):
+    """휴장일 다음의 첫 개장일(ET) — 주말·연속 휴일 건너뜀."""
+    from datetime import timedelta
+    try:
+        import holidays as _hol
+        cal = _hol.financial_holidays("XNYS", years=[after.year, after.year + 1])
+    except Exception:
+        cal = {}
+    d = after + timedelta(days=1)
+    while d.weekday() >= 5 or d in cal:
+        d += timedelta(days=1)
+    return d
+
+
+def build_holiday_post(data: dict, missed: list) -> dict:
+    """휴장 안내 포스팅 — AI 없이 Python 템플릿 (환각 원천 차단)."""
+    from datetime import timedelta
+    first = missed[0]
+    reason = _holiday_name_kr(first)
+    next_open = _next_open_et(missed[-1])
+    next_report_kst = next_open + timedelta(days=1)
+
+    def _md(d):
+        return f"{d.month}월 {d.day}일({_WD_KR[d.weekday()]})"
+
+    holiday_days_str = ", ".join(_md(d) for d in missed)
+    title = f"[{_date_kor(first)} 미증시 휴장] {reason} 휴장 안내"
+
+    prev_date = datetime.strptime(data["us_date"], "%Y-%m-%d").date()
+    index_rows = "\n".join(
+        f"| {v['name']} | {v['close']:,.2f} | {v['change_pct']:+.2f}% |"
+        for v in data.get("indices", {}).values()
+        if v.get("close") is not None and v.get("change_pct") is not None
+    )
+
+    md_body = f"""📌 **오늘 미국증시 핵심**
+미국 증시는 {holiday_days_str} {reason}로 휴장했습니다. 다음 개장은 미국 동부 {_md(next_open)}이며, 마감 시황은 한국시간 {_md(next_report_kst)} 아침에 전해드립니다.
+
+### 📅 휴장 안내
+
+| 구분 | 내용 |
+|------|------|
+| 휴장일 | {holiday_days_str} |
+| 휴장 사유 | {reason} |
+| 다음 개장일 | 미국 동부 {_md(next_open)} |
+| 다음 마감 시황 | 한국시간 {_md(next_report_kst)} 아침 발행 예정 |
+
+### 📊 직전 거래일 요약 ({_md(prev_date)} 마감)
+
+| 지수 | 종가 | 등락률 |
+|------|------|--------|
+{index_rows}
+
+휴장 기간에는 새로운 거래 데이터가 없어 시황 분석을 생략합니다. 편안한 하루 보내세요!"""
+
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
+    return {
+        "title": title,
+        "content": content,
+        "char_count": len(content),
+        "labels": ["미국증시", "데일리", "휴장", "시황"],
+    }
 
 
 def _build_labels(data: dict) -> list:
@@ -108,6 +234,42 @@ def run(dry_run: bool = False, force: bool = False):
     log(f"  미국 거래일: {data['us_date']}")
     log(f"  나스닥: {ixic.get('close', 'N/A')} ({ixic.get('change_pct', 0):+.2f}%)")
     log(f"  수집 종목: {len(data['fixed_stocks'])}개  급등락: {len(data['top_movers'])}개  뉴스: {len(data['news'])}건")
+
+    # 휴장 감지: 마지막 거래일 리포트가 이미 발행됐으면 신규 마감 데이터 없음
+    if _already_published_us_date(data["us_date"]):
+        missed = _missed_us_weekdays(data["us_date"])
+        if not missed:
+            log(f"  {data['us_date']} 마감 리포트 이미 발행 — 신규 데이터 없음, 종료")
+            sys.exit(0)
+        log(f"  휴장 감지: {[d.isoformat() for d in missed]} — 휴장 안내 발행 모드")
+        post = build_holiday_post(data, missed)
+        log(f"  제목: {post['title']}")
+
+        if dry_run:
+            log("▶ [DRY-RUN] 발행 생략 — 미리보기")
+            print(f"\n제목: {post['title']}\n\n{post['content'][:500]}...(이하 생략)")
+            return
+
+        if not force:
+            try:
+                existing = check_today_post(kst_date, label_filter="미증시 휴장]")
+                if existing:
+                    log(f"  오늘 휴장 안내 이미 발행됨 — 생략: {existing['url']}")
+                    sys.exit(0)
+            except Exception as e:
+                log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
+
+        try:
+            result = publish_post(
+                title=post["title"], content=post["content"],
+                labels=post["labels"], status="LIVE",
+            )
+            log(f"  휴장 안내 발행 완료: {result['url']}")
+            save_log(data, post, result, kst_date, [])
+        except Exception as e:
+            log(f"  [오류] 휴장 안내 발행 실패: {e}")
+            sys.exit(1)
+        return
 
     log("▶ Step 2: 제목 조립 (Python 강제)")
     title = build_title(data)
