@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
+from shared.utils import DISCLAIMER, md_to_html, apply_color_spans, fix_weekday_labels
 
 client = Anthropic()
 
@@ -298,6 +298,9 @@ def _parse_response(raw: str, date: str = "") -> dict:
     if re.match(r"^#{1,6}\s", first_line) and ("국내증시]" in first_line or (date_prefix and date_prefix in first_line)):
         md_body = md_body.split("\n", 1)[1].strip() if "\n" in md_body else ""
         print("  [후처리] 본문 첫 줄 제목 중복 헤딩 제거")
+
+    if date:
+        md_body = fix_weekday_labels(md_body, date)
 
     content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
     return {"title": title, "content": content, "char_count": len(content)}

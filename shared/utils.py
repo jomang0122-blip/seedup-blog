@@ -19,6 +19,59 @@ def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwar
     raise last_exc
 
 
+_WEEKDAYS_KR = ["월", "화", "수", "목", "금", "토", "일"]
+
+
+def fix_weekday_labels(text: str, ref_date: str) -> str:
+    """본문의 'M월 D일(요일)' 패턴에서 잘못된 요일을 실제 요일로 자동 교정.
+
+    AI가 달력 지침을 무시하고 요일을 지어내는 환각 차단용 (B025 원칙).
+    ref_date: 'YYYY-MM-DD' — 연도 판정 기준. 11~12월 리포트에서 1~2월 언급 시 다음 해로 처리.
+    """
+    from datetime import datetime as _dt
+    try:
+        ref = _dt.strptime(ref_date, "%Y-%m-%d")
+    except Exception:
+        return text
+
+    def _repl(m):
+        month, day = int(m.group(1)), int(m.group(2))
+        suffix = m.group(4) or ""
+        year = ref.year + 1 if (ref.month >= 11 and month <= 2) else ref.year
+        try:
+            correct = _WEEKDAYS_KR[_dt(year, month, day).weekday()]
+        except ValueError:
+            return m.group(0)
+        return f"{month}월 {day}일({correct}{suffix})"
+
+    return re.sub(r"(\d{1,2})월\s*(\d{1,2})일\s*\(([월화수목금토일])(요일)?\)", _repl, text)
+
+
+def us_time_rule_block(ref_date: str) -> str:
+    """미국 동부시간(ET)↔한국시간(KST) 변환 규칙 블록 — 프롬프트 주입용.
+
+    서머타임 여부를 Python이 판정해 시차를 명시 (AI 직접 계산 금지).
+    """
+    import pytz
+    from datetime import datetime as _dt
+    try:
+        d = _dt.strptime(ref_date, "%Y-%m-%d")
+        eastern = pytz.timezone("America/New_York")
+        is_dst = bool(eastern.localize(d.replace(hour=12)).dst())
+    except Exception:
+        is_dst = True
+    offset = 13 if is_dst else 14
+    name = "서머타임(EDT)" if is_dst else "표준시(EST)"
+    ex1 = 8 + offset - 12   # 동부 오전 8:30 → KST 오후
+    ex2 = (16 + offset) - 24  # 동부 오후 4시(마감) → KST 다음날 오전
+    return (
+        f"현재 미국 동부는 {name} 적용 중 — 한국시간 = 동부시간 + {offset}시간\n"
+        f"변환 예시 (이 시차로만 계산, 직접 계산 절대 금지):\n"
+        f"  동부 오전 8시 30분 = 한국시간 오후 {ex1}시 30분\n"
+        f"  동부 오후 4시(정규장 마감) = 한국시간 다음날 오전 {ex2}시"
+    )
+
+
 def fmt_amount(amount: int) -> str:
     """순매수거래대금(원) → +/-억 단위 문자열 (kr_daily·kr_weekly 공통)."""
     val = abs(amount) // 100_000_000
