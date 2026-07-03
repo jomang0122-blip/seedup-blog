@@ -45,25 +45,40 @@ def get_week_dates() -> tuple[str, str, str, str]:
     )
 
 
+_NAVER_INDEX_CODE = {"kospi": "KOSPI", "kosdaq": "KOSDAQ"}
+
+
 def get_index_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """KOSPI/KOSDAQ 주간 등락률 (이전 금요일 → 이번 금요일 종가 비교)."""
+    """KOSPI/KOSDAQ 주간 등락률 (이전 금요일 종가는 FDR 과거 조회, 이번 금요일 종가는 네이버 모바일 API).
+
+    이번 금요일 종가를 FDR 과거 데이터로 조회하면 장마감 직후 최신값 반영이 지연돼
+    실제 종가와 다른 값이 나올 수 있음(실측: 마감 2시간 후에도 구값 노출, 2026-07-03).
+    kr_daily가 이미 검증한 네이버 모바일 API(실시간)로 이번 금요일 종가만 별도 조회.
+    """
     result = {}
     prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
     for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
         try:
-            start = (prev_fri_dt - timedelta(days=3)).strftime("%Y-%m-%d")
-            end   = datetime.strptime(this_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+            # 이전 금요일 종가 — FDR 과거 데이터 (직전 5일 창으로 공휴일 대비)
+            start = (prev_fri_dt - timedelta(days=5)).strftime("%Y-%m-%d")
+            end   = prev_fri_dt.strftime("%Y-%m-%d")
             df = fdr.DataReader(ticker, start, end)
             if df.empty:
                 result[key] = {}
                 continue
-            fridays = df[df.index.dayofweek == 4]["Close"].dropna()
-            if len(fridays) >= 2:
-                prev_close = float(fridays.iloc[-2])
-                this_close = float(fridays.iloc[-1])
-            else:
-                prev_close = float(df["Close"].iloc[0])
-                this_close = float(df["Close"].iloc[-1])
+            prev_close = float(df["Close"].dropna().iloc[-1])
+
+            # 이번 금요일 종가 — 네이버 모바일 API 실시간 (kr_daily와 동일 방식)
+            code = _NAVER_INDEX_CODE[key]
+            resp = fetch_with_retry(
+                f"https://m.stock.naver.com/api/index/{code}/basic",
+                headers=_NAVER_HEADERS, timeout=10,
+            )
+            this_close = float(resp.json().get("closePrice", "0").replace(",", ""))
+            if not this_close:
+                result[key] = {}
+                continue
+
             weekly_pct = (this_close - prev_close) / prev_close * 100
             result[key] = {
                 "close":         round(this_close, 2),
