@@ -177,6 +177,13 @@ def get_top_stocks(date_str: str) -> dict:
             str(r["Name"]): round(float(r[chg_col]), 2)
             for _, r in df_kospi.iterrows()
         }
+        stock_cap_map = {}
+        if "Marcap" in df_kospi.columns:
+            stock_cap_map = {
+                str(r["Name"]): float(r["Marcap"])
+                for _, r in df_kospi.iterrows()
+                if pd.notna(r["Marcap"])
+            }
 
         try:
             df_kosdaq = fdr.StockListing("KOSDAQ")
@@ -190,6 +197,8 @@ def get_top_stocks(date_str: str) -> dict:
                     name = str(r["Name"])
                     if name not in stock_pct_map:
                         stock_pct_map[name] = round(float(r[kq_chg]), 2)
+                    if name not in stock_cap_map and "Marcap" in df_kosdaq.columns and pd.notna(r["Marcap"]):
+                        stock_cap_map[name] = float(r["Marcap"])
         except Exception as e:
             print(f"  [종목] KOSDAQ 추가 실패: {e}")
 
@@ -215,17 +224,29 @@ def get_top_stocks(date_str: str) -> dict:
             for _, r in df_top5.nsmallest(5, chg_col).iterrows()
         ]
 
-        return {"top_gainers": gainers, "top_losers": losers, "stock_pct_map": stock_pct_map}
+        return {
+            "top_gainers": gainers,
+            "top_losers": losers,
+            "stock_pct_map": stock_pct_map,
+            "stock_cap_map": stock_cap_map,
+        }
 
     except Exception as e:
         print(f"  [FDR 종목] 실패: {e}")
-        return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}}
+        return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
 
 
-def _crawl_sector_top_stocks(no: str, top_n: int = 2, is_rising: bool = True) -> list:
+_MIN_SECTOR_STOCK_CAP = 500_000_000_000  # 5천억원 — 섹터 대표종목·뉴스 특징주 잡주 차단 기준
+
+
+def _crawl_sector_top_stocks(
+    no: str, top_n: int = 2, is_rising: bool = True,
+    stock_cap_map: dict = None, min_cap: float = _MIN_SECTOR_STOCK_CAP,
+) -> list:
     """업종 상세 페이지(type_5 테이블)에서 종목 수집.
     is_rising=True  → 상승률 높은 순 (상승 섹터용)
     is_rising=False → 하락률 큰 순  (하락 섹터용)
+    stock_cap_map 제공 시 시가총액 min_cap 미만 종목(잡주) 제외.
     """
     url = "https://finance.naver.com/sise/sise_group_detail.naver"
     try:
@@ -250,6 +271,9 @@ def _crawl_sector_top_stocks(no: str, top_n: int = 2, is_rising: bool = True) ->
             # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
             if re.match(r".*우[BC]?$", name):
                 continue
+            # 시가총액 필터 — 잡주(소형 테마주) 대표종목 선정 차단
+            if stock_cap_map is not None and stock_cap_map.get(name, 0) < min_cap:
+                continue
             pct_raw = tds[3].get_text(strip=True)
             is_neg = "-" in pct_raw
             pct_val = re.sub(r"[^\d.]", "", pct_raw)
@@ -268,7 +292,7 @@ def _crawl_sector_top_stocks(no: str, top_n: int = 2, is_rising: bool = True) ->
         return []
 
 
-def get_sector_data(date_str: str = None) -> dict:
+def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
     try:
         main_resp = requests.get(
             "https://finance.naver.com/sise/sise_group.nhn",
@@ -315,13 +339,13 @@ def get_sector_data(date_str: str = None) -> dict:
         # 상위 섹터: 상승률 높은 순 / 하위 섹터: 하락률 큰 순
         for s in top3:
             if s.get("no"):
-                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=True)
+                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=True, stock_cap_map=stock_cap_map)
                 print(f"  [섹터종목] {s['name']}: {[t['name'] for t in s['top_stocks']]}")
             else:
                 s["top_stocks"] = []
         for s in bot3:
             if s.get("no"):
-                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=False)
+                s["top_stocks"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=False, stock_cap_map=stock_cap_map)
                 print(f"  [섹터종목] {s['name']}: {[t['name'] for t in s['top_stocks']]}")
             else:
                 s["top_stocks"] = []
@@ -432,12 +456,15 @@ def extract_and_verify_featured_stocks(
     stock_pct_map: dict,
     date_str: str,
     min_change_pct: float = 2.0,
+    stock_cap_map: dict = None,
+    min_cap: float = _MIN_SECTOR_STOCK_CAP,
 ) -> list:
-    """crawled_news_features 헤드라인 기반 뉴스기반 특징주 3단계 검증.
+    """crawled_news_features 헤드라인 기반 뉴스기반 특징주 4단계 검증.
 
     ① stock_pct_map 교차검증 — 오늘 실제 거래된 종목인지 (허구 종목 차단)
     ② 등락률 임계값 |change_pct| >= min_change_pct — 보합 종목 차단
-    ③ 네이버 뉴스 API 오늘 날짜 기사 확인 — 오래된/허구 뉴스 차단
+    ③ 시가총액 min_cap 이상 — 잡주(소형 테마주) 차단
+    ④ 네이버 뉴스 API 오늘 날짜 기사 확인 — 오래된/허구 뉴스 차단
 
     Returns: [{"name": str, "change_pct": float, "news": str}]
     """
@@ -462,11 +489,16 @@ def extract_and_verify_featured_stocks(
             print(f"  [검증②실패] {name}: {change_pct:+.2f}% < ±{min_change_pct}% (보합)")
             continue
 
-        # ③ 네이버 뉴스 오늘 날짜 기사 확인
+        # ③ 시가총액 필터 — 잡주 차단
+        if stock_cap_map is not None and stock_cap_map.get(name, 0) < min_cap:
+            print(f"  [검증③실패] {name}: 시총 {stock_cap_map.get(name, 0) / 1e8:.0f}억 < {min_cap / 1e8:.0f}억")
+            continue
+
+        # ④ 네이버 뉴스 오늘 날짜 기사 확인
         items = _naver_news_search(f"[특징주] {name}", display=5)
         today_items = [i for i in items if _is_today_news(i.get("pub_date", ""), date_str)]
         if not today_items:
-            print(f"  [검증③실패] {name}: 오늘({date_str}) [특징주] 뉴스 없음")
+            print(f"  [검증④실패] {name}: 오늘({date_str}) [특징주] 뉴스 없음")
             continue
 
         verified.append({
@@ -488,7 +520,7 @@ def collect_all(date: str = None) -> dict:
     index_data = get_index_data(date)
     # get_investor_data()는 kr_weekly용으로 보존 — kr_daily에서는 미사용
     stock_result = get_top_stocks(date)
-    sector_data = get_sector_data(date)
+    sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
     news = get_news()
     featured = get_featured_stock_news()
 
@@ -505,6 +537,7 @@ def collect_all(date: str = None) -> dict:
         featured,
         stock_result.get("stock_pct_map", {}),
         date,
+        stock_cap_map=stock_result.get("stock_cap_map", {}),
     )
     print(f"  → 검증 완료: {len(featured_verified)}개")
 

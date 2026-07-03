@@ -46,6 +46,30 @@ def check_today_post(date_str: str, label_filter: str = None) -> dict | None:
     return None
 
 
+def update_post(post_id: str, title: str, content: str, labels: list = None) -> dict:
+    """기존 Blogger 글 내용 교체 (동일 URL 유지, 중복 글 생성 없음)."""
+    creds = get_credentials()
+    service = build('blogger', 'v3', credentials=creds)
+
+    body = {
+        'title': title,
+        'content': _strip_code_fences(content),
+        'labels': labels or [],
+    }
+
+    post = service.posts().update(
+        blogId=BLOG_ID,
+        postId=post_id,
+        body=body,
+    ).execute()
+
+    return {
+        'id': post['id'],
+        'url': post.get('url', ''),
+        'title': post['title'],
+    }
+
+
 def publish_post(title: str, content: str, labels: list = None, status: str = 'LIVE') -> dict:
     """Blogger에 글 발행. status: 'LIVE' 또는 'DRAFT'"""
     creds = get_credentials()

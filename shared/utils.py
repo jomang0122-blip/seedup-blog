@@ -72,6 +72,27 @@ def us_time_rule_block(ref_date: str) -> str:
     )
 
 
+def next_kr_trading_day_label(date_str: str) -> str:
+    """다음 국내 증시 개장일 레이블 ('7월 6일(월)') — 주말·공휴일·근로자의날·연말휴장 건너뜀.
+
+    AI가 '내일'을 임의로 쓰다가 휴장일(주말 다음날 등)을 가리키는 환각 차단용 (B025 원칙).
+    """
+    from datetime import datetime as _dt, timedelta
+    try:
+        d = _dt.strptime(date_str, "%Y-%m-%d").date()
+    except Exception:
+        return ""
+    try:
+        import holidays as _hol
+        kr = _hol.KR(years=[d.year, d.year + 1])
+    except Exception:
+        kr = {}
+    nd = d + timedelta(days=1)
+    while nd.weekday() >= 5 or nd in kr or (nd.month, nd.day) in [(5, 1), (12, 31)]:
+        nd += timedelta(days=1)
+    return f"{nd.month}월 {nd.day}일({_WEEKDAYS_KR[nd.weekday()]})"
+
+
 def fmt_amount(amount: int) -> str:
     """순매수거래대금(원) → +/-억 단위 문자열 (kr_daily·kr_weekly 공통)."""
     val = abs(amount) // 100_000_000
