@@ -190,7 +190,7 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
         mask = (start_c > 1000) & (end_c > 1000)
         if cap_col:
             caps = pd.to_numeric(df_end.loc[common, cap_col], errors="coerce")
-            mask = mask & (caps > 500_000_000_000)
+            mask = mask & (caps > 1_000_000_000_000)  # 1조원 — kr_daily 급등락 TOP 기준과 통일
 
         pct = ((end_c - start_c) / start_c * 100)[mask].dropna()
 
