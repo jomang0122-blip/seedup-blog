@@ -235,14 +235,25 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
     labels = []
     content_lines = []
     in_content = False
+    found_content_marker = False
+    labels_line_idx = None
 
-    for line in raw.split("\n"):
+    lines = raw.split("\n")
+    for i, line in enumerate(lines):
         if line.startswith("LABELS:"):
             labels = [l.strip() for l in line.removeprefix("LABELS:").strip().split(",") if l.strip()]
+            labels_line_idx = i
         elif line.startswith("CONTENT:"):
             in_content = True
+            found_content_marker = True
         elif in_content:
             content_lines.append(line)
+
+    if not found_content_marker:
+        # AI가 CONTENT: 마커를 누락한 경우 — LABELS: 다음 줄부터 전체를 본문으로 처리
+        start = labels_line_idx + 1 if labels_line_idx is not None else 0
+        content_lines = lines[start:]
+        print("  [파싱 경고] CONTENT: 마커 누락 — LABELS: 다음 줄부터 전체를 본문으로 대체 처리")
 
     md_body = "\n".join(content_lines).strip()
     if us_date:

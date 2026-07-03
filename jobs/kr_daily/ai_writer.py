@@ -285,17 +285,28 @@ def _parse_response(raw: str, date: str = "") -> dict:
     content_lines = []
     in_content = False
     date_prefix = _make_date_prefix(date)
+    found_content_marker = False
+    title_line_idx = None
 
-    for line in raw.split("\n"):
+    lines = raw.split("\n")
+    for i, line in enumerate(lines):
         if line.startswith("TITLE:"):
             raw_title = _strip_html(line.removeprefix("TITLE:").strip())
             # AI가 붙인 대괄호 prefix 제거 후 Python prefix 강제 삽입
             raw_title = re.sub(r"^\[[^\]]*\]\s*", "", raw_title)
             title = f"{date_prefix} {raw_title}".strip() if date_prefix else raw_title
+            title_line_idx = i
         elif line.startswith("CONTENT:"):
             in_content = True
+            found_content_marker = True
         elif in_content:
             content_lines.append(line)
+
+    if not found_content_marker:
+        # AI가 CONTENT: 마커를 누락한 경우 — TITLE: 다음 줄부터 전체를 본문으로 처리
+        start = title_line_idx + 1 if title_line_idx is not None else 0
+        content_lines = lines[start:]
+        print("  [파싱 경고] CONTENT: 마커 누락 — TITLE: 다음 줄부터 전체를 본문으로 대체 처리")
 
     # 본문 첫 헤딩이 제목과 중복되면 제거 (AI가 지침 무시하고 #~###### 헤딩으로 제목 반복하는 케이스)
     md_body = "\n".join(content_lines).strip()
