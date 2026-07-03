@@ -236,7 +236,7 @@ def get_top_stocks(date_str: str) -> dict:
         return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
 
 
-_MIN_SECTOR_STOCK_CAP = 500_000_000_000  # 5천억원 — 섹터 대표종목·뉴스 특징주 잡주 차단 기준
+_MIN_SECTOR_STOCK_CAP = 1_000_000_000_000  # 1조원 — 섹터 대표종목·뉴스 특징주 잡주 차단 기준 (급등락 TOP과 동일 기준)
 
 
 def _crawl_sector_top_stocks(
@@ -403,7 +403,7 @@ def _crawl_featured_stock_news() -> list:
             text = a_tag.get_text(strip=True)
             if "[특징주]" in text and text not in results:
                 results.append(text)
-            if len(results) >= 15:
+            if len(results) >= 30:
                 break
         return results
     except Exception as e:
@@ -411,11 +411,13 @@ def _crawl_featured_stock_news() -> list:
         return []
 
 
-def get_featured_stock_news(display: int = 15) -> list:
+def get_featured_stock_news(display: int = 30) -> list:
+    """헤드라인 후보 30개 수집 — 뉴스기반 특징주는 4단계 검증(실종목·등락률·시총·오늘뉴스)을
+    통과해야 하고, 상승/하락 특징주와 중복되면 제외되므로 후보 풀을 넉넉히 확보해야 함."""
     items = _naver_news_search("[특징주]", display=display)
     results = [i["title"] for i in items if "[특징주]" in i["title"]]
     if results:
-        return results[:15]
+        return results[:30]
     return _crawl_featured_stock_news()
 
 

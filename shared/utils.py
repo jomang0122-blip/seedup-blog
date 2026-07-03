@@ -110,38 +110,38 @@ DISCLAIMER = (
 
 
 def apply_color_spans(html: str) -> str:
-    """HTML 내 미처리 등락률 수치에 색상 span 태그 자동 적용.
-    이미 span으로 감싸진 수치는 건드리지 않음 (placeholder 보호).
+    """HTML 내 등락률 수치에 부호 기준으로 색상 span 태그를 강제 적용.
+
+    AI가 스스로 색상 태그를 붙여도 부호와 색상이 어긋날 수 있어
+    (예: +0.19%를 파란색으로 잘못 감싸는 경우), 기존 색상 태그가 있어도
+    무시하고 부호만 보고 색상을 다시 정한다 (한국 증권 관례: 상승=빨강, 하락=파랑).
     """
     placeholders = {}
     _idx = [0]
 
-    def _protect(m):
+    def _recolor_and_protect(m):
+        val = m.group(1)
+        color = "#e74c3c" if val.startswith("+") else "#3182f6"
         key = f"__P{_idx[0]}__"
         _idx[0] += 1
-        placeholders[key] = m.group(0)
+        placeholders[key] = f'<span style="color:{color}"><b>{val}</b></span>'
         return key
 
-    # 기존 color span 보호 — DOTALL 없이 단순 패턴 (내용: <b>±X.XX%</b>)
-    protected = re.sub(
-        r'<span style="color:#(?:e74c3c|3182f6)"><b>[^<]+</b></span>',
-        _protect, html
+    # 이미 색상 span으로 감싸진 수치 — 색상 무시하고 부호 기준 재작성 후 보호
+    # (보호하지 않으면 아래 2차 정규식이 방금 고친 span을 또 감싸는 이중 중첩 버그 발생)
+    html = re.sub(
+        r'<span style="color:#(?:e74c3c|3182f6)"><b>([+-]\d+\.\d+%)</b></span>',
+        _recolor_and_protect, html
     )
-    # 미처리 +X.XX% → 빨강(상승)
-    protected = re.sub(
-        r'(\+\d+\.\d+%)',
-        r'<span style="color:#e74c3c"><b>\1</b></span>',
-        protected
-    )
-    # 미처리 -X.XX% → 파랑(하락) — 숫자·따옴표 뒤는 제외
-    protected = re.sub(
-        r'(?<!["\d])(-\d+\.\d+%)',
-        r'<span style="color:#3182f6"><b>\1</b></span>',
-        protected
+    # 미처리 수치(색상 태그 없는 +/-X.XX%)에도 부호 기준 색상 적용 — 숫자·따옴표 뒤는 제외
+    html = re.sub(
+        r'(?<!["\d])([+-]\d+\.\d+%)',
+        lambda m: f'<span style="color:{"#e74c3c" if m.group(1).startswith("+") else "#3182f6"}"><b>{m.group(1)}</b></span>',
+        html
     )
     for key, val in placeholders.items():
-        protected = protected.replace(key, val)
-    return protected
+        html = html.replace(key, val)
+    return html
 
 
 def md_to_html(text: str) -> str:
@@ -163,10 +163,15 @@ def md_to_html(text: str) -> str:
         for table in soup.find_all("table"):
             table["border"] = "1"
             table["style"] = "border-collapse:collapse;width:100%;font-size:14px;"
-        for th in soup.find_all("th"):
-            th["style"] = "padding:8px;background:#f2f4f6;text-align:left;"
-        for td in soup.find_all("td"):
-            td["style"] = "padding:8px;vertical-align:top;"
+        # 각 행의 첫 칸(섹터명·지수명 등 라벨 컬럼)은 줄바꿈 금지 — 긴 한글 라벨이
+        # 다른 칸(설명 텍스트) 길이에 밀려 2줄로 쪼개지는 가독성 저하 방지
+        for row in soup.find_all("tr"):
+            for i, cell in enumerate(row.find_all(["th", "td"])):
+                is_header = cell.name == "th"
+                style = "padding:8px;background:#f2f4f6;text-align:left;" if is_header else "padding:8px;vertical-align:top;"
+                if i == 0:
+                    style += "white-space:nowrap;"
+                cell["style"] = style
         return str(soup)
     except ImportError:
         return text
