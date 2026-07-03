@@ -520,7 +520,9 @@ def collect_all(date: str = None) -> dict:
     print(f"[데이터 수집] 날짜: {date}")
 
     index_data = get_index_data(date)
-    # get_investor_data()는 kr_weekly용으로 보존 — kr_daily에서는 미사용
+    # get_investor_data()는 데일리 본문엔 미사용(레이블 오류 이슈로 제거)이지만
+    # kr_weekly 주간 수급 합산의 유일한 데이터 소스라 수집·저장은 계속 필요 (save_investor_data)
+    investor_data = get_investor_data(date)
     stock_result = get_top_stocks(date)
     sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
     news = get_news()
@@ -546,6 +548,7 @@ def collect_all(date: str = None) -> dict:
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
+        **investor_data,
         **sector_data,
         **stock_result,
         "news": news,
