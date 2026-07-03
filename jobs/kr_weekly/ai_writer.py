@@ -19,17 +19,16 @@ def _build_index_block(data: dict) -> str:
     return "\n".join(lines) if lines else "(지수 데이터 없음)"
 
 
-def _build_investor_block(investor_top3: dict) -> str:
-    if not investor_top3:
-        return "(수급 데이터 없음)"
+def _build_market_trend_block(market_trend: list) -> str:
+    if not market_trend:
+        return "(일별 수급 데이터 없음)"
     lines = []
-    for label in ["외국인", "기관"]:
-        v = investor_top3.get(label, {})
-        buy3  = v.get("buy", [])
-        sell3 = v.get("sell", [])
-        buy_str  = ", ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in buy3)  if buy3  else "-"
-        sell_str = ", ".join(f"{s['name']}({fmt_amount(s['net_amount'])})" for s in sell3) if sell3 else "-"
-        lines.append(f"{label} 주간 순매수: {buy_str} | 순매도: {sell_str}")
+    for r in market_trend:
+        kospi_str = f"{r['kospi_pct']:+.2f}%" if r.get("kospi_pct") is not None else "확인불가"
+        lines.append(
+            f"{r['date']}({r['weekday']}): 코스피 {kospi_str} | "
+            f"개인 {fmt_amount(r['individual'])} | 외국인 {fmt_amount(r['foreign'])} | 기관 {fmt_amount(r['institution'])}"
+        )
     return "\n".join(lines)
 
 
@@ -102,19 +101,18 @@ def build_prompt(data: dict) -> str:
     news_block    = _build_news_block(data.get("news", []))
     time_rule_block = us_time_rule_block(week_end)
 
-    investor_top3  = data.get("investor_top3", {})
-    investor_block = _build_investor_block(investor_top3)
-    # 실제 buy/sell 데이터가 하나라도 있어야 섹션 포함
-    has_investor   = any(
-        v.get("buy") or v.get("sell")
-        for v in investor_top3.values()
-    ) if investor_top3 else False
-    investor_data_sec = f"\n[메이저 수급 (주간 합산 TOP3)]\n{investor_block}\n" if has_investor else ""
+    market_trend      = data.get("market_trend", [])
+    market_trend_block = _build_market_trend_block(market_trend)
+    has_market_trend  = bool(market_trend)
+    investor_data_sec = f"\n[코스피 시장 전체 일별 투자자별 순매수 (억원 단위, 개인/외국인/기관)]\n{market_trend_block}\n" if has_market_trend else ""
     investor_prompt_sec = """
-b) ### 💰 메이저 수급 흐름 (주간)
-   - 마크다운 테이블: 투자 주체 | 주간 순매수 TOP3 | 주간 순매도 TOP3
-   - 표 아래 단락 1개: 외국인·기관 수급 방향 해석
-""" if has_investor else ""
+b) ### 💰 이번 주 코스피 투자자별 매매동향
+   - 마크다운 테이블: 날짜(요일) | 코스피 등락률 | 개인 순매수 | 외국인 순매수 | 기관 순매수
+   - 데이터 블록의 5개 거래일을 월~금 순서대로 빠짐없이 모두 표에 포함 (임의 삭제·재배열 금지)
+   - 등락률 셀에만 상승/하락 색상 인라인 스타일 적용 (순매수 금액엔 색상 적용 금지)
+   - 표 아래 단락 1~2개: 요일별 수급 방향과 코스피 등락률의 상관관계 해석
+     (예: 기관 순매수가 강했던 날 코스피 상승폭이 확대됐는지 등, 데이터에서 직접 드러나는 패턴만 서술)
+""" if has_market_trend else ""
 
     has_stocks = bool(data.get("top_gainers") or data.get("top_losers"))
     stocks_skip_note = (
@@ -201,14 +199,26 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     labels        = []
     content_lines = []
     in_content    = False
+    found_content_marker = False
+    labels_line_idx = None
 
-    for line in raw.split("\n"):
+    lines = raw.split("\n")
+    for i, line in enumerate(lines):
         if line.startswith("LABELS:"):
             labels = [l.strip() for l in line.removeprefix("LABELS:").strip().split(",") if l.strip()]
+            labels_line_idx = i
         elif line.startswith("CONTENT:"):
             in_content = True
+            found_content_marker = True
         elif in_content:
             content_lines.append(line)
+
+    if not found_content_marker:
+        # AI가 CONTENT: 마커를 누락한 경우 — LABELS: 다음 줄부터 전체를 본문으로 처리
+        # (마커 부재로 본문이 통째로 빈 문자열이 되는 사고 방지)
+        start = labels_line_idx + 1 if labels_line_idx is not None else 0
+        content_lines = lines[start:]
+        print("  [파싱 경고] CONTENT: 마커 누락 — LABELS: 다음 줄부터 전체를 본문으로 대체 처리")
 
     md_body = "\n".join(content_lines).strip()
     if ref_date:

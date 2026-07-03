@@ -92,71 +92,105 @@ def get_index_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
     return result
 
 
-def _week_trading_days(prev_fri_str: str, this_fri_str: str) -> list:
-    """이전 금요일 다음 월요일 ~ 이번 금요일의 평일 목록."""
-    start = datetime.strptime(prev_fri_str, "%Y%m%d") + timedelta(days=3)
-    end   = datetime.strptime(this_fri_str, "%Y%m%d")
-    days  = []
-    d = start
-    while d <= end:
-        if d.weekday() < 5:
-            days.append(d.strftime("%Y%m%d"))
-        d += timedelta(days=1)
-    return days
+_WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 
-def get_investor_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """데일리 저장된 수급 JSON 파일(data/investor_YYYYMMDD.json)을 읽어 주간 합산 TOP3 산출."""
-    import json as _json
-    from pathlib import Path
+def get_market_investor_trend_weekly(this_fri_str: str) -> list:
+    """네이버 investorDealTrendDay.naver — KOSPI 시장 전체 일별 개인/외국인/기관 순매수(원 단위).
+    한 번의 요청으로 최근 여러 거래일치를 함께 반환 (일자별 개별 수집 불필요).
+    """
+    try:
+        resp = fetch_with_retry(
+            "https://finance.naver.com/sise/investorDealTrendDay.naver",
+            params={"bizdate": this_fri_str, "sosok": "", "page": 1},
+            headers=_NAVER_HEADERS, timeout=10,
+        )
+        resp.encoding = "euc-kr"
+        soup = BeautifulSoup(resp.text, "lxml")
+        table = soup.find("table", {"class": "type_1"})
+        if not table:
+            return []
 
-    DATA_DIR = Path(__file__).parent.parent.parent / "data"
+        def _num(td):
+            raw = td.get_text(strip=True).replace(",", "")
+            try:
+                return int(raw)
+            except ValueError:
+                return None
 
-    trading_days = _week_trading_days(prev_fri_str, this_fri_str)
-    print(f"  [수급] 주간 거래일: {trading_days}")
+        rows = []
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if len(tds) < 4:
+                continue
+            date_text = tds[0].get_text(strip=True)
+            if not re.match(r"^\d{2}\.\d{2}\.\d{2}$", date_text):
+                continue
+            individual, foreign, institution = _num(tds[1]), _num(tds[2]), _num(tds[3])
+            if individual is None or foreign is None or institution is None:
+                continue
+            yy, mm, dd = date_text.split(".")
+            rows.append({
+                "date":        f"20{yy}-{mm}-{dd}",
+                "individual":  individual * 100_000_000,
+                "foreign":     foreign * 100_000_000,
+                "institution": institution * 100_000_000,
+            })
+        rows.sort(key=lambda r: r["date"])
+        print(f"  [시장수급] {len(rows)}개 거래일: {[r['date'] for r in rows]}")
+        return rows
+    except Exception as e:
+        print(f"  [시장수급] 수집 실패: {e}")
+        return []
 
-    accumulated = {"외국인": {}, "기관": {}}
-    loaded_days = 0
 
-    for day in trading_days:
-        fname = DATA_DIR / f"investor_{day}.json"
-        if not fname.exists():
-            print(f"  [수급] {day} 파일 없음")
-            continue
+def get_kospi_daily_pct_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
+    """이번 주 각 거래일의 KOSPI 전일 대비 등락률(%). {YYYY-MM-DD: pct}
+
+    이번 금요일(마지막 값) 종가는 FDR 반영지연 위험이 있어(실측 확인, 2026-07-03)
+    네이버 모바일 API 실시간 값으로 교정 후 등락률을 재계산한다.
+    """
+    try:
+        prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
+        start = (prev_fri_dt - timedelta(days=3)).strftime("%Y-%m-%d")
+        end   = datetime.strptime(this_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+        close = fdr.DataReader("KS11", start, end)["Close"].dropna()
+
         try:
-            payload = _json.loads(fname.read_text(encoding="utf-8"))
-            loaded_days += 1
-            for label in ["외국인", "기관"]:
-                inv = payload.get(label, {})
-                for item in inv.get("buy", []):
-                    accumulated[label][item["name"]] = (
-                        accumulated[label].get(item["name"], 0) + item["net_amount"]
-                    )
-                for item in inv.get("sell", []):
-                    # sell net_amount는 음수로 저장됨
-                    accumulated[label][item["name"]] = (
-                        accumulated[label].get(item["name"], 0) + item["net_amount"]
-                    )
+            resp = fetch_with_retry(
+                "https://m.stock.naver.com/api/index/KOSPI/basic",
+                headers=_NAVER_HEADERS, timeout=10,
+            )
+            live_close = float(resp.json().get("closePrice", "0").replace(",", ""))
+            if live_close:
+                close.iloc[-1] = live_close
         except Exception as e:
-            print(f"  [수급] {day} 읽기 실패: {e}")
+            print(f"  [코스피 종가교정] 실패(FDR 값 유지): {e}")
 
-    print(f"  [수급] 주간 데이터 로드: {loaded_days}/{len(trading_days)}일")
-
-    if loaded_days == 0:
+        pct = close.pct_change() * 100
+        return {idx.strftime("%Y-%m-%d"): round(float(val), 2) for idx, val in pct.items() if pd.notna(val)}
+    except Exception as e:
+        print(f"  [코스피 일별등락] 수집 실패: {e}")
         return {}
 
-    result = {}
-    for label, acc in accumulated.items():
-        if not acc:
-            result[label] = {"buy": [], "sell": []}
-            continue
-        sorted_items = sorted(acc.items(), key=lambda x: x[1], reverse=True)
-        buy3  = [{"name": n, "net_amount": v} for n, v in sorted_items[:3]       if v > 0]
-        sell3 = [{"name": n, "net_amount": v} for n, v in sorted_items[-3:][::-1] if v < 0]
-        print(f"  [{label}] 주간 순매수 TOP3: {[b['name'] for b in buy3]}")
-        result[label] = {"buy": buy3, "sell": sell3}
 
-    return result
+def build_market_trend_weekly(this_fri_str: str, prev_fri_str: str) -> list:
+    """일별 투자자 순매수 + 코스피 등락률 결합 — 이번 주(이전 금요일 초과 ~ 이번 금요일) 거래일만.
+    [{date, weekday, individual, foreign, institution, kospi_pct}]
+    """
+    trend = get_market_investor_trend_weekly(this_fri_str)
+    kospi_pct = get_kospi_daily_pct_weekly(this_fri_str, prev_fri_str)
+    out = []
+    for r in trend:
+        if not (prev_fri_str < r["date"].replace("-", "") <= this_fri_str):
+            continue
+        d = datetime.strptime(r["date"], "%Y-%m-%d")
+        out.append({
+            **r,
+            "weekday":   _WEEKDAY_KR[d.weekday()],
+            "kospi_pct": kospi_pct.get(r["date"]),
+        })
+    return out
 
 
 def _ohlcv_snapshot(pyk, date_str: str, direction: int = 1) -> pd.DataFrame:
@@ -302,7 +336,7 @@ def collect_all() -> dict:
     print(f"  주간 범위: {week_start} ~ {week_end} (이전 금요일 기준)")
 
     index_data    = get_index_data_weekly(this_fri, prev_fri)
-    investor_data = get_investor_data_weekly(this_fri, prev_fri)
+    market_trend  = build_market_trend_weekly(this_fri, prev_fri)
     stock_data    = get_top_stocks_weekly(this_fri, prev_fri)
     sector_data   = get_sector_data()
     news          = get_news_weekly()
@@ -313,7 +347,7 @@ def collect_all() -> dict:
         "this_fri":      this_fri,
         "kst_date":      datetime.now(KST).strftime("%Y-%m-%d"),
         **index_data,
-        "investor_top3": investor_data,
+        "market_trend":  market_trend,
         **stock_data,
         **sector_data,
         "news":          news,
