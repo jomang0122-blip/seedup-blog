@@ -1,23 +1,23 @@
 {
   "date": "2026-07-03",
-  "published_at": "2026-07-03T07:02:18.099240",
-  "title": "[26년 7월 3일 국내증시] 반도체 강세로 KOSPI 8000선 회복, 증권주 동반 상승 마감",
-  "url": "https://www.seedup-invest.com/2026/07/26-7-3-kospi-8000.html",
-  "char_count": 5910,
+  "published_at": "2026-07-03T07:29:15.707488",
+  "title": "[26년 7월 3일 국내증시] 반도체·증권주 강세로 KOSPI 5.76% 급등, 8000선 회복",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-3-kospi-576-8000.html",
+  "char_count": 5760,
   "kospi_close": 8088.34,
   "kospi_change_pct": 5.76,
   "validation_issues": [
     {
-      "type": "sector_component_number",
-      "description": "에너지장비및서비스 섹터의 대표 종목 SK이터닉스 등락률 오류",
+      "type": "sector_representative_stock",
+      "description": "에너지장비및서비스 섹터의 SK이터닉스 등락률 오류",
       "found": "-9.39%",
       "expected": "-9.01%"
     },
     {
-      "type": "news_based_stock_missing",
-      "description": "뉴스 기반 특징주에서 누락된 종목: 콘텐트리중앙 (-30.00%), 현대차 (+1.04%)",
-      "found": "엠씨넥스 (+7.41%)만 추가 기재",
-      "expected": "콘텐트리중앙, 현대차 포함 필요"
+      "type": "sector_representative_stock",
+      "description": "전기장비 섹터의 산일전기 등락률 오류",
+      "found": "-7.14%",
+      "expected": "-7.98%"
     }
   ]
 }
