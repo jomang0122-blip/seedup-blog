@@ -1,21 +1,27 @@
 {
   "date": "2026-07-03",
-  "published_at": "2026-07-03T07:29:15.707488",
-  "title": "[26년 7월 3일 국내증시] 반도체·증권주 강세로 KOSPI 5.76% 급등, 8000선 회복",
-  "url": "https://www.seedup-invest.com/2026/07/26-7-3-kospi-576-8000.html",
-  "char_count": 5760,
+  "published_at": "2026-07-03T07:41:24.969512",
+  "title": "[26년 7월 3일 국내증시] 반도체 강세로 KOSPI 5.76% 급등, 반도체와반도체장비·증권주 주도",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-3-kospi-576.html",
+  "char_count": 5996,
   "kospi_close": 8088.34,
   "kospi_change_pct": 5.76,
   "validation_issues": [
     {
-      "type": "sector_representative_stock",
-      "description": "에너지장비및서비스 섹터의 SK이터닉스 등락률 오류",
+      "type": "sector_data_error",
+      "description": "반도체와반도체장비 섹터의 SK하이닉스 개별 종목 등락률이 실제 데이터와 불일치",
+      "found": "+10.88%",
+      "expected": "+9.47%"
+    },
+    {
+      "type": "sector_data_error",
+      "description": "에너지장비및서비스 섹터의 SK이터닉스 개별 종목 등락률이 실제 데이터와 불일치",
       "found": "-9.39%",
       "expected": "-9.01%"
     },
     {
-      "type": "sector_representative_stock",
-      "description": "전기장비 섹터의 산일전기 등락률 오류",
+      "type": "sector_data_error",
+      "description": "전기장비 섹터의 산일전기 개별 종목 등락률이 실제 데이터와 불일치",
       "found": "-7.14%",
       "expected": "-7.98%"
     }
