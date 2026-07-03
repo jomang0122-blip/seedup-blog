@@ -72,7 +72,7 @@ def get_index_data(date_str: str) -> dict:
 
 _ETF_PREFIXES = (
     "KODEX", "TIGER", "RISE", "SOL", "ACE", "KBSTAR", "ARIRANG", "HANARO",
-    "KOSEF", "TREX", "SMART", "파워", "FOCUS", "TIMEFOLIO",
+    "KOSEF", "TREX", "SMART", "파워", "FOCUS", "TIMEFOLIO", "PLUS", "1Q", "WON",
 )
 
 def _is_etf(name: str) -> bool:
@@ -116,6 +116,9 @@ def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> 
                 continue
             name = name_tag.get_text(strip=True)
             if not name or _is_etf(name):
+                continue
+            # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
+            if re.match(r".*우[BC]?$", name):
                 continue
             # tds[2]는 sell 테이블에서 이미 음수로 제공됨 -> abs() 로 절대값 추출
             amt_raw = tds[2].get_text(strip=True).replace(",", "").replace("-", "")
