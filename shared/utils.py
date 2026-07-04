@@ -93,10 +93,16 @@ def next_kr_trading_day_label(date_str: str) -> str:
     return f"{nd.month}월 {nd.day}일({_WEEKDAYS_KR[nd.weekday()]})"
 
 
-def fmt_amount(amount: int) -> str:
-    """순매수거래대금(원) → +/-억 단위 문자열 (kr_daily·kr_weekly 공통)."""
-    val = abs(amount) // 100_000_000
-    return f"+{val:,}억" if amount >= 0 else f"-{val:,}억"
+def fmt_amount(amount: int, force_eok: bool = False) -> str:
+    """순매수거래대금(원) → 조원(1조↑) 또는 억원 단위 문자열 (kr_daily·kr_weekly 공통).
+    force_eok=True 이면 크기 무관하게 억원 단위 강제.
+    """
+    val_eok = amount // 100_000_000
+    sign = "+" if amount >= 0 else "-"
+    if not force_eok and abs(val_eok) >= 10_000:
+        val_jo = abs(val_eok) / 10_000
+        return f"{sign}{val_jo:.1f}조원"
+    return f"{sign}{abs(val_eok):,}억"
 
 
 DISCLAIMER = (

@@ -110,9 +110,12 @@ def run(dry_run: bool = False, force: bool = False):
 
     log("▶ Step 2-1: 이전 주 위클리 URL 조회 (로그 파일 기반)")
     prev_post_url = ""
+    today_prefix = f"kr_weekly_{kst_date.replace('-', '')}"
     try:
         log_files = sorted(LOG_DIR.glob("kr_weekly_*.json"), reverse=True)
         for lf in log_files:
+            if lf.name.startswith(today_prefix):
+                continue  # 오늘 발행 로그는 건너뜀 (같은 날 재발행 시 자기참조 방지)
             try:
                 record = json.loads(lf.read_text(encoding="utf-8"))
                 url = record.get("url", "")
