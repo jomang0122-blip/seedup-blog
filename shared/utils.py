@@ -156,7 +156,10 @@ def md_to_html(text: str) -> str:
         # (라이브러리는 앞에 빈 줄이 없으면 ### 를 그대로 출력하는 버그 있음)
         def _heading(m):
             level = len(m.group(1))
-            return f'<h{level}>{m.group(2).strip()}</h{level}>'
+            content = m.group(2).strip()
+            content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
+            content = re.sub(r'\*(.+?)\*', r'\1', content)
+            return f'<h{level}>{content}</h{level}>'
         text = re.sub(r'^(#{1,6})\s+(.+)$', _heading, text, flags=re.MULTILINE)
         html = md.markdown(text, extensions=["tables"])
         soup = BeautifulSoup(html, "html.parser")
