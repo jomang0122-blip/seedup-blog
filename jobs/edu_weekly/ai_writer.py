@@ -55,10 +55,12 @@ def _build_prompt(topic: dict) -> str:
     title        = topic["title"]
     category     = topic["category"]
     tags         = topic["tags"]
+    key_facts    = topic.get("key_facts", [])
     guide        = _LEVEL_GUIDE[level]
     labels       = ",".join(["주식투자클래스", "투자기초", level] + tags)
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
+    key_facts_block = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
 
     return f"""당신은 주식 투자 교육 전문가이자 블로그 작가입니다.
 SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형식으로 작성하세요.
@@ -67,6 +69,10 @@ SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형
 제목(변경 금지): {forced_title}
 난이도: {level}
 카테고리: {category}
+
+━━━ 반드시 정확하게 포함할 핵심 사실 (변경·생략 금지) ━━━
+아래 사실들은 검증된 내용입니다. 글에서 반드시 자연스럽게 포함하고, 이와 다른 수치나 설명을 임의로 만들지 마십시오.
+{key_facts_block}
 
 ━━━ 작성 지침 ━━━
 {guide}
@@ -191,7 +197,7 @@ def _insert_after_summary(body: str, key3_html: str) -> str:
 
 # ── 공개 API ─────────────────────────────────────────────────────────────────
 
-def generate_post(topic: dict, model: str = "claude-haiku-4-5-20251001") -> dict:
+def generate_post(topic: dict, model: str = "claude-sonnet-4-6") -> dict:
     """주제 dict → Claude → {title, labels, content, char_count}"""
     prompt  = _build_prompt(topic)
     message = client.messages.create(

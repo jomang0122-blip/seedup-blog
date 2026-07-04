@@ -2,10 +2,11 @@ name: SeedUP — 주식공부 주간
 
 on:
   # GitHub Actions 기본 스케줄 (UTC 기준)
-  # 토요일 KST 10:00 = UTC 01:00 (cron: 0 1 * * 6)
-  # 일요일 KST 10:00 = UTC 01:00 (cron: 0 1 * * 0)
+  # 토·일 KST 10:00 = UTC 01:00
+  # 토·일 KST 14:00 = UTC 05:00
   schedule:
     - cron: '0 1 * * 0,6'
+    - cron: '0 5 * * 0,6'
 
   # cron-job.org 또는 수동 실행 (workflow_dispatch)
   workflow_dispatch:

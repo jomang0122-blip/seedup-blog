@@ -22,7 +22,7 @@ load_dotenv()
 from topic_manager import get_next_topic, mark_published, get_status
 from ai_writer import generate_post
 from validator import validate_sections, count_text_length
-from shared.blog_publisher import publish_post, check_today_post
+from shared.blog_publisher import publish_post
 
 KST       = pytz.timezone("Asia/Seoul")
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -76,16 +76,6 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     log(f"  카테고리: {topic['category']}  태그: {topic['tags']}")
     log(f"  현황: {get_status()}")
 
-    if not dry_run and not force:
-        log("▶ Step 2: 오늘 주식공부 글 중복 체크")
-        try:
-            existing = check_today_post(kst_date, label_filter="주식투자클래스")
-            if existing:
-                log(f"  오늘 이미 주식공부 글 발행됨 — 중복 발행 생략: {existing['url']}")
-                sys.exit(0)
-            log("  중복 없음 — 발행 진행")
-        except Exception as e:
-            log(f"  [경고] 중복 체크 실패 (발행은 계속): {e}")
 
     log("▶ Step 3: AI 글 생성 (Claude Haiku)")
     try:
