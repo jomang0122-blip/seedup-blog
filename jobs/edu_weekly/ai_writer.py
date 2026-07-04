@@ -101,7 +101,9 @@ KEY3:
 [핵심 항목 2 — 20자 이내 한 문장]
 [핵심 항목 3 — 20자 이내 한 문장]
 CONTENT:
-[HTML 본문 — a)~e) 순서대로]"""
+[HTML 본문 — a)~e) 순서대로]
+
+⚠️ CONTENT 이후에 체크리스트, 작성 완료 표시, 메모, 주석, 요약 등 어떤 추가 텍스트도 절대 출력하지 말 것."""
 
 
 # ── 파싱 ─────────────────────────────────────────────────────────────────────
@@ -136,6 +138,9 @@ def _parse_response(raw: str, topic: dict) -> dict:
                 key3_items.append(item)
                 key3_count += 1
         elif mode == "content":
+            # AI가 CONTENT 뒤에 체크리스트/메타 주석을 출력하면 거기서 중단
+            if line.strip().startswith("---") or "작성 완료 체크리스트" in line or line.strip().startswith("### 작성"):
+                break
             content_lines.append(line)
 
     # fallback: CONTENT: 마커 누락 시 LABELS: 이후 전체를 본문으로

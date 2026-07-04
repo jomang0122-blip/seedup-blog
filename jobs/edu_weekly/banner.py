@@ -27,10 +27,7 @@ def generate_banner_card(level: str, category: str, title: str, episode: int) ->
         f'</div>'
         f'<p style="color:{color};font-size:13px;font-weight:600;margin:0 0 6px 0;">{icon} {category}</p>'
         f'<p style="color:#1a1a1a;font-size:22px;font-weight:800;line-height:1.35;margin:0 0 14px 0;">{title}</p>'
-        f'<div style="border-top:1px solid {color}33;padding-top:12px;display:flex;align-items:center;gap:8px;">'
-        f'<span style="background:{color};color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;">시드업 클래스</span>'
-        f'<span style="color:#888;font-size:12px;">SeedUP INVEST 주식 교육 시리즈</span>'
-        f'</div></div>'
+        f'</div>'
     )
 
 
