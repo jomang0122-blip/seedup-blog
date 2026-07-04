@@ -2,10 +2,35 @@
   "kst_date": "2026-07-04",
   "week_start": "2026-06-26",
   "week_end": "2026-07-03",
-  "published_at": "2026-07-04T03:41:46.917899",
-  "title": "[6월 26일~7월 3일 국내증시 주간] 코스피 3.8% 하락 주간 시황 리뷰",
-  "url": "https://www.seedup-invest.com/2026/07/6-267-3-38_01377810412.html",
-  "char_count": 8903,
+  "published_at": "2026-07-04T03:48:57.942116",
+  "title": "[6월 26일~7월 3일 국내증시 주간] 코스피 3.84% 하락 주간 시황 리뷰",
+  "url": "https://www.seedup-invest.com/2026/07/6-267-3-384.html",
+  "char_count": 8766,
   "kospi_weekly_pct": -3.84,
-  "validation_issues": []
+  "validation_issues": [
+    {
+      "type": "title_number",
+      "description": "제목의 코스피 등락률이 실제 데이터와 불일치",
+      "found": "3.8% 하락",
+      "expected": "-3.84% 하락"
+    },
+    {
+      "type": "body_number",
+      "description": "핵심 요약 섹션에서 코스피 주간 등락률이 잘못됨",
+      "found": "+5.76% 상승",
+      "expected": "-3.84% 하락 (주간 종가 기준)"
+    },
+    {
+      "type": "body_number",
+      "description": "투자자별 매매동향 해설에서 월~목요일 누적 외국인 순매도 수치 오류",
+      "found": "-17.8조원",
+      "expected": "-17.8조원은 맞으나, 전체 주간은 -19.8조원이므로 금요일까지 포함한 누적값으로 수정 필요"
+    },
+    {
+      "type": "body_number",
+      "description": "기관 금요일 매수 규모 표현이 부정확함",
+      "found": "+4.4조원",
+      "expected": "+44,079억원 = +4.4조원 (수치는 맞으나 이를 단순화할 때 일관성 필요)"
+    }
+  ]
 }
