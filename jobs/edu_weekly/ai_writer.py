@@ -168,10 +168,9 @@ def _parse_response(raw: str, topic: dict) -> dict:
         # 폴백: 핵심 요약 두 번째 </p> 뒤에 삽입
         body = _insert_after_summary(body, key3_html)
 
-    # 전체 조립: 배너 + h2 제목 + 본문 + 면책조항
+    # 전체 조립: 배너 + 본문 + 면책조항 (h2 제목 제거 — 배너 카드에 이미 표시)
     content = (
         banner_html + "\n"
-        + f"<h2>{forced_title}</h2>\n"
         + body + "\n"
         + _DISCLAIMER
     )
