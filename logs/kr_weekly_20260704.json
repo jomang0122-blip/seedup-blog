@@ -2,25 +2,10 @@
   "kst_date": "2026-07-04",
   "week_start": "2026-06-26",
   "week_end": "2026-07-03",
-  "published_at": "2026-07-04T03:12:15.614932",
+  "published_at": "2026-07-04T03:32:46.136198",
   "title": "[6월 26일~7월 3일 국내증시 주간] 코스피 3.8% 하락 주간 시황 리뷰",
-  "url": "https://www.seedup-invest.com/2026/07/6-267-3-38_0497830598.html",
-  "char_count": 8301,
+  "url": "https://www.seedup-invest.com/2026/07/6-267-3-38_02044145126.html",
+  "char_count": 8592,
   "kospi_weekly_pct": -3.84,
-  "validation_issues": [
-    {
-      "type": "body_text_number",
-      "section": "투자자별 수급 분석",
-      "description": "외국인 누적 매도액이 잘못됨",
-      "found": "약 198억 원",
-      "expected": "약 180조 원대 (또는 정확한 누적값 계산: -77,332 -37,992 -17,028 -43,706 -21,750 = -197,808억 원 ≈ 약 198조 원)"
-    },
-    {
-      "type": "body_text_number",
-      "section": "핵심 뉴스 섹션 3번",
-      "description": "외국인 4일 누적 매도액이 잘못됨",
-      "found": "약 198억 원",
-      "expected": "약 198조 원 (또는 약 180조 원대)"
-    }
-  ]
+  "validation_issues": []
 }
