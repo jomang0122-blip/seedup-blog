@@ -112,9 +112,9 @@ def build_prompt(data: dict, prev_post_url: str = "") -> str:
     time_rule_block = us_time_rule_block(week_end)
 
     prev_link_section = (
-        "g) ### 📎 이전 주 리포트\n"
+        "g) ### 📎 위클리 리포트 모아보기\n"
         "   - 아래 URL을 사용해 링크 한 줄만 출력:\n"
-        f"     👉 [지난 주 국내증시 위클리 리포트 보러가기]({prev_post_url})\n"
+        f"     👉 [국내증시 위클리 리포트 전체 보러가기]({prev_post_url})\n"
         "   - 이 섹션은 링크 한 줄 외 다른 텍스트 추가 금지"
     ) if prev_post_url else ""
 

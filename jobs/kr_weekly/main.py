@@ -108,27 +108,8 @@ def run(dry_run: bool = False, force: bool = False):
     title = build_title(data)
     log(f"  제목: {title}")
 
-    log("▶ Step 2-1: 이전 주 위클리 URL 조회 (로그 파일 기반)")
-    prev_post_url = ""
-    today_prefix = f"kr_weekly_{kst_date.replace('-', '')}"
-    try:
-        log_files = sorted(LOG_DIR.glob("kr_weekly_*.json"), reverse=True)
-        for lf in log_files:
-            if lf.name.startswith(today_prefix):
-                continue  # 오늘 발행 로그는 건너뜀 (같은 날 재발행 시 자기참조 방지)
-            try:
-                record = json.loads(lf.read_text(encoding="utf-8"))
-                url = record.get("url", "")
-                if url:
-                    prev_post_url = url
-                    log(f"  이전 글 발견: {record.get('title', '')[:40]}...")
-                    break
-            except Exception:
-                continue
-        if not prev_post_url:
-            log("  이전 로그 없음 — 내부 링크 생략")
-    except Exception as e:
-        log(f"  [경고] 이전 글 조회 실패 (계속 진행): {e}")
+    prev_post_url = "https://www.seedup-invest.com/search/label/%EC%9C%84%ED%81%B4%EB%A6%AC"
+    log("▶ Step 2-1: 위클리 모아보기 링크 고정 설정")
 
     log("▶ Step 3: AI 블로그 콘텐츠 생성")
     try:
