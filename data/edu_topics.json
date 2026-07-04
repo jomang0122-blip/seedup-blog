@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 52,
-    "published_count": 2,
+    "published_count": 3,
     "last_updated": "2026-07-04"
   },
   "topics": [
@@ -64,9 +64,9 @@
         "주요 증권사: 키움증권(점유율 1위), 미래에셋증권, 삼성증권, NH투자증권, 토스증권 등",
         "증권사마다 수수료 정책이 다르며, 비대면 개설 시 수수료 무료 이벤트를 제공하는 경우가 많다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-04",
+      "post_url": "https://www.seedup-invest.com/2026/07/mts.html"
     },
     {
       "id": 4,
