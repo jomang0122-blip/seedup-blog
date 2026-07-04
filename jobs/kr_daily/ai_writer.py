@@ -322,7 +322,7 @@ def _parse_response(raw: str, date: str = "") -> dict:
     return {"title": title, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-haiku-4-5-20251001") -> dict:
+def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
     prompt = _build_prompt(data)
     date = data.get("date", "")
 
