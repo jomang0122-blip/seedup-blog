@@ -1,0 +1,33 @@
+{
+  "kst_date": "2026-07-05",
+  "week_start": "2026-06-12",
+  "week_end": "2026-06-26",
+  "published_at": "2026-07-04T23:02:45.780852",
+  "title": "[6월 12일~26일 미증시 주간] 나스닥 2.3% 하락 주간 리뷰",
+  "url": "https://www.seedup-invest.com/2026/07/6-1226-23.html",
+  "char_count": 11016,
+  "nasdaq_weekly_pct": -2.28,
+  "validation_issues": [
+    {
+      "type": "table_data",
+      "section": "주간 급등락 TOP3",
+      "description": "MSTR(스트래티지) 종가 데이터 누락 - 실제 데이터에는 종가가 없음",
+      "found": "$100.77",
+      "expected": "종가 데이터 없음 (데이터 미제공)"
+    },
+    {
+      "type": "table_data",
+      "section": "주간 급등락 TOP3",
+      "description": "DASH(도어대시) 종가 데이터 누락 - 실제 데이터에는 종가가 없음",
+      "found": "$192.01",
+      "expected": "종가 데이터 없음 (데이터 미제공)"
+    },
+    {
+      "type": "table_data",
+      "section": "주간 급등락 TOP3",
+      "description": "SNAP(스냅) 종가 데이터 누락 - 실제 데이터에는 종가가 없음",
+      "found": "$4.84",
+      "expected": "종가 데이터 없음 (데이터 미제공)"
+    }
+  ]
+}
