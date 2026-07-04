@@ -62,16 +62,6 @@ _DISCLAIMER = (
 
 # ── 프롬프트 빌더 ─────────────────────────────────────────────────────────────
 
-def _iran_suffix(word: str) -> str:
-    """받침 없으면 '란?', 받침 있으면 '이란?' — 한국어 조사 자동 분기."""
-    if not word:
-        return "이란?"
-    code = ord(word[-1])
-    if 0xAC00 <= code <= 0xD7A3:
-        return "란?" if (code - 0xAC00) % 28 == 0 else "이란?"
-    return "이란?"
-
-
 def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     level        = topic["level"]
     title        = topic["title"]
@@ -82,7 +72,6 @@ def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     labels       = ",".join(["주식투자클래스", "투자기초", level] + tags)
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
-    iran         = _iran_suffix(short_title)
     key_facts_block  = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
     news_block_text  = ""
     if news_headlines:
