@@ -212,7 +212,7 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-haiku-4-5-20251001") -> dict:
+def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
     prompt = build_prompt(data)
     message = client.messages.create(
         model=model,
