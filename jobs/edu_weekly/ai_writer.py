@@ -62,6 +62,16 @@ _DISCLAIMER = (
 
 # ── 프롬프트 빌더 ─────────────────────────────────────────────────────────────
 
+def _iran_suffix(word: str) -> str:
+    """받침 없으면 '란?', 받침 있으면 '이란?' — 한국어 조사 자동 분기."""
+    if not word:
+        return "이란?"
+    code = ord(word[-1])
+    if 0xAC00 <= code <= 0xD7A3:
+        return "란?" if (code - 0xAC00) % 28 == 0 else "이란?"
+    return "이란?"
+
+
 def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     level        = topic["level"]
     title        = topic["title"]
@@ -72,6 +82,7 @@ def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     labels       = ",".join(["주식투자클래스", "투자기초", level] + tags)
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
+    iran         = _iran_suffix(short_title)
     key_facts_block  = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
     news_block_text  = ""
     if news_headlines:
@@ -110,7 +121,7 @@ SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형
 a) <p><strong>📌 핵심 요약</strong></p>
    <p>이 글에서 배울 내용 2문장 (SEO 스니펫용, 키워드 포함)</p>
 b) <!-- KEY3_BOX -->  ← 이 주석을 핵심 요약 바로 뒤에 반드시 삽입 (변경·삭제 금지)
-c) <h3>🎯 {short_title}이란?</h3> — 개념 정의 + 왜 중요한가 (400~500자)
+c) <h3>🎯 {short_title}{iran}</h3> — 개념 정의 + 왜 중요한가 (400~500자)
 d) <h3>💡 실전 활용 예시</h3> — 구체적 수치·상황 포함 (400~500자)
 e) <h3>⚠️ 주의사항</h3>
    - 주의사항 2~3가지 서술 (다음 시간 예고 출력 금지 — 시스템이 자동 삽입)
