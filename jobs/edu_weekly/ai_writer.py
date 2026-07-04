@@ -37,8 +37,19 @@ _LEVEL_GUIDE = {
     ),
 }
 
+_CLASS_LINK = (
+    '<div style="margin:28px 0 0 0;padding:18px 22px;background:#f0f4ff;'
+    'border-radius:10px;border:1px solid #c7d7f5;font-family:-apple-system,\'Malgun Gothic\',sans-serif;">'
+    '<p style="margin:0 0 8px 0;font-size:13px;font-weight:700;color:#3182f6;">📚 시드업 클래스 전체 보기</p>'
+    '<p style="margin:0;font-size:13px;color:#555;">주식 투자 기초부터 고급 전략까지, 시드업 클래스의 모든 강의를 확인하세요.</p>'
+    '<a href="https://www.seedup-invest.com/search/label/%EC%A3%BC%EC%8B%9D%ED%88%AC%EC%9E%90%ED%81%B4%EB%9E%98%EC%8A%A4" '
+    'style="display:inline-block;margin-top:12px;padding:8px 18px;background:#3182f6;color:#fff;'
+    'border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;">→ 전체 강의 목록 보기</a>'
+    '</div>'
+)
+
 _DISCLAIMER = (
-    '<p style="margin-top:30px;padding:15px;background:#f5f5f5;'
+    '<p style="margin-top:20px;padding:15px;background:#f5f5f5;'
     'border-left:4px solid #999;font-size:12px;color:#666;">'
     '⚠️ 본 포스트는 시장 정보 제공 및 교육 목적으로 작성된 것이며, '
     '어떤 식으로든 특정 종목 또는 금융상품의 매매를 추천하는 것이 아닙니다. '
@@ -91,9 +102,8 @@ a) <p><strong>📌 핵심 요약</strong></p>
 b) <!-- KEY3_BOX -->  ← 이 주석을 핵심 요약 바로 뒤에 반드시 삽입 (변경·삭제 금지)
 c) <h3>🎯 {short_title}이란?</h3> — 개념 정의 + 왜 중요한가 (400~500자)
 d) <h3>💡 실전 활용 예시</h3> — 구체적 수치·상황 포함 (400~500자)
-e) <h3>⚠️ 주의사항 & 다음 시간 예고</h3>
-   - 주의사항 2~3가지 서술
-   - 마지막 줄 반드시 포함: <p>📅 다음 시간 예고: [연관 개념명]에 대해 알아봅니다.</p>
+e) <h3>⚠️ 주의사항</h3>
+   - 주의사항 2~3가지 서술 (다음 시간 예고 출력 금지 — 시스템이 자동 삽입)
 
 SEO:
 - 키워드: {', '.join(tags)}
@@ -168,10 +178,11 @@ def _parse_response(raw: str, topic: dict) -> dict:
         # 폴백: 핵심 요약 두 번째 </p> 뒤에 삽입
         body = _insert_after_summary(body, key3_html)
 
-    # 전체 조립: 배너 + 본문 + 면책조항 (h2 제목 제거 — 배너 카드에 이미 표시)
+    # 전체 조립: 배너 + 본문 + 클래스 링크 + 면책조항
     content = (
         banner_html + "\n"
         + body + "\n"
+        + _CLASS_LINK + "\n"
         + _DISCLAIMER
     )
 
