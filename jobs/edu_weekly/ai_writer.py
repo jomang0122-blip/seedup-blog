@@ -14,6 +14,7 @@ load_dotenv()
 
 from anthropic import Anthropic
 from banner import generate_banner_card, generate_key3_box
+from news_search import search_topic_news
 
 client = Anthropic()
 
@@ -61,7 +62,7 @@ _DISCLAIMER = (
 
 # ── 프롬프트 빌더 ─────────────────────────────────────────────────────────────
 
-def _build_prompt(topic: dict) -> str:
+def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     level        = topic["level"]
     title        = topic["title"]
     category     = topic["category"]
@@ -71,7 +72,16 @@ def _build_prompt(topic: dict) -> str:
     labels       = ",".join(["주식투자클래스", "투자기초", level] + tags)
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
-    key_facts_block = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
+    key_facts_block  = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
+    news_block_text  = ""
+    if news_headlines:
+        lines = "\n".join(f"- {h}" for h in news_headlines)
+        news_block_text = (
+            f"\n━━━ 최신 관련 뉴스 (실제 사례로 활용 가능) ━━━\n"
+            f"아래는 이 주제와 관련된 최근 뉴스입니다. 글에서 자연스럽게 실제 사례로 활용하세요.\n"
+            f"뉴스가 직접 관련 없으면 무시하고 key_facts 기반으로만 작성하세요.\n"
+            f"{lines}\n"
+        )
 
     return f"""당신은 주식 투자 교육 전문가이자 블로그 작가입니다.
 SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형식으로 작성하세요.
@@ -84,7 +94,7 @@ SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형
 ━━━ 반드시 정확하게 포함할 핵심 사실 (변경·생략 금지) ━━━
 아래 사실들은 검증된 내용입니다. 글에서 반드시 자연스럽게 포함하고, 이와 다른 수치나 설명을 임의로 만들지 마십시오.
 {key_facts_block}
-
+{news_block_text}
 ━━━ 작성 지침 ━━━
 {guide}
 
@@ -209,7 +219,8 @@ def _insert_after_summary(body: str, key3_html: str) -> str:
 
 def generate_post(topic: dict, model: str = "claude-sonnet-4-6") -> dict:
     """주제 dict → Claude → {title, labels, content, char_count}"""
-    prompt  = _build_prompt(topic)
+    news_headlines = search_topic_news(topic.get("tags", []))
+    prompt  = _build_prompt(topic, news_headlines=news_headlines)
     message = client.messages.create(
         model=model,
         max_tokens=4096,
