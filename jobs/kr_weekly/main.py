@@ -21,7 +21,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.validator import validate_post, apply_corrections
-from shared.blog_publisher import publish_post, check_today_post
+from shared.blog_publisher import publish_post, check_today_post, get_recent_posts_by_label
 
 KST      = pytz.timezone("Asia/Seoul")
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -108,9 +108,22 @@ def run(dry_run: bool = False, force: bool = False):
     title = build_title(data)
     log(f"  제목: {title}")
 
+    log("▶ Step 2-1: 이전 주 위클리 URL 조회")
+    prev_post_url = ""
+    try:
+        recent = get_recent_posts_by_label("위클리", max_results=3)
+        # 오늘 발행 예정 글 제외 — 이미 발행된 것 중 가장 최근 것
+        prev_post_url = recent[0]["url"] if recent else ""
+        if prev_post_url:
+            log(f"  이전 글 발견: {recent[0]['title'][:40]}...")
+        else:
+            log("  이전 글 없음 — 내부 링크 생략")
+    except Exception as e:
+        log(f"  [경고] 이전 글 조회 실패 (계속 진행): {e}")
+
     log("▶ Step 3: AI 블로그 콘텐츠 생성")
     try:
-        post = generate_post(data)
+        post = generate_post(data, prev_post_url=prev_post_url)
         post["title"] = title
         if not post["content"]:
             raise ValueError("콘텐츠가 비어 있습니다.")

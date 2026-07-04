@@ -70,6 +70,28 @@ def update_post(post_id: str, title: str, content: str, labels: list = None) -> 
     }
 
 
+def get_recent_posts_by_label(label: str, max_results: int = 3) -> list:
+    """특정 라벨이 붙은 최근 포스트 목록 반환. [{title, url, published}]"""
+    creds = get_credentials()
+    service = build('blogger', 'v3', credentials=creds)
+    result = service.posts().list(
+        blogId=BLOG_ID,
+        labels=label,
+        maxResults=max_results,
+        orderBy='published',
+        fetchBodies=False,
+        fetchImages=False,
+    ).execute()
+    posts = []
+    for item in result.get('items', []):
+        posts.append({
+            'title':     item.get('title', ''),
+            'url':       item.get('url', ''),
+            'published': item.get('published', ''),
+        })
+    return posts
+
+
 def publish_post(title: str, content: str, labels: list = None, status: str = 'LIVE') -> dict:
     """Blogger에 글 발행. status: 'LIVE' 또는 'DRAFT'"""
     creds = get_credentials()

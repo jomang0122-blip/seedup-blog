@@ -1,0 +1,105 @@
+name: SeedUP — 주식공부 주간
+
+on:
+  # GitHub Actions 기본 스케줄 (UTC 기준)
+  # 토요일 KST 10:00 = UTC 01:00 (cron: 0 1 * * 6)
+  # 일요일 KST 10:00 = UTC 01:00 (cron: 0 1 * * 0)
+  schedule:
+    - cron: '0 1 * * 0,6'
+
+  # cron-job.org 또는 수동 실행 (workflow_dispatch)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '미리보기만 (발행 안 함)'
+        required: false
+        type: boolean
+        default: false
+      force:
+        description: '요일 체크·중복 체크 무시하고 강제 발행'
+        required: false
+        type: boolean
+        default: false
+      topic_id:
+        description: '특정 주제 ID 지정 (비워두면 다음 미발행 주제)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: 인증 파일 복원
+        env:
+          TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
+          CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: |
+          echo "$TOKEN_JSON" > token.json
+          echo "$CREDENTIALS_JSON" > credentials.json
+
+      - name: .env 파일 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" > .env
+
+      - name: config.yaml 복원
+        env:
+          CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
+        run: echo "$CONFIG_YAML" > config.yaml
+
+      - name: 주식공부 발행
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          if [ -n "${{ github.event.inputs.topic_id }}" ]; then
+            ARGS="$ARGS --topic-id ${{ github.event.inputs.topic_id }}"
+          fi
+          python jobs/edu_weekly/main.py $ARGS
+
+      - name: 갱신된 token.json을 Secret에 업데이트
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          TOKEN_CONTENT=$(cat token.json)
+          gh secret set GOOGLE_TOKEN_JSON --body "$TOKEN_CONTENT"
+
+      - name: edu_topics.json + 로그 커밋 & 푸시
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          git add data/edu_topics.json logs/edu_weekly_*.json || true
+          if git diff --staged --quiet; then
+            echo "변경 없음 — 커밋 생략"
+          else
+            git commit -m "chore: 주식공부 발행 완료 $(date +'%Y%m%d')"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
