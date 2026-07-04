@@ -4,8 +4,10 @@
 """
 import io
 import sys
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -45,7 +47,7 @@ def _build_prompt(topic: dict) -> str:
     category = topic["category"]
     tags     = topic["tags"]
     guide    = _LEVEL_GUIDE[level]
-    labels   = ",".join(["주식공부", "투자기초", level] + tags)
+    labels   = ",".join(["주식투자클래스", "투자기초", level] + tags)
 
     short_title = title.split("—")[0].strip()
 
@@ -80,7 +82,7 @@ h) 면책 문구: h3 제목 없이 아래 문구를 <p> 태그로만 출력 (한
    ⚠️ 본 포스트는 시장 정보 제공 및 교육 목적으로 작성된 것이며, 어떤 식으로든 특정 종목 또는 금융상품의 매매를 추천하는 것이 아닙니다. 투자 결정은 반드시 개인의 투자 목표, 위험 선호도, 재무 상황을 고려하여 신중히 진행하시기 바랍니다. SeedUP 투자 블로그는 본 내용으로 인한 모든 직·간접적 손실에 대해 책임을 지지 않습니다. ⚠️
 
 SEO:
-- 제목에 '주식공부', '{level}', 핵심 키워드 자연스럽게 포함
+- 제목에 '주식투자클래스', '{level}', 핵심 키워드 자연스럽게 포함
 - 키워드: {', '.join(tags)}
 
 출력 형식 — 아래 3줄 헤더 뒤에 HTML 본문만 작성:

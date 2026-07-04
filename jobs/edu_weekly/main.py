@@ -12,8 +12,9 @@ from pathlib import Path
 
 import pytz
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -77,7 +78,7 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     if not dry_run and not force:
         log("▶ Step 2: 오늘 주식공부 글 중복 체크")
         try:
-            existing = check_today_post(kst_date, label_filter="주식공부")
+            existing = check_today_post(kst_date, label_filter="주식투자클래스")
             if existing:
                 log(f"  오늘 이미 주식공부 글 발행됨 — 중복 발행 생략: {existing['url']}")
                 sys.exit(0)
@@ -111,7 +112,7 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
         result = publish_post(
             title=post["title"],
             content=post["content"],
-            labels=post.get("labels", ["주식공부", "투자기초"]),
+            labels=post.get("labels", ["주식투자클래스", "투자기초"]),
             status="LIVE",
         )
         log(f"  발행 완료!")
