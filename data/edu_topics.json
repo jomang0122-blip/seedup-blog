@@ -88,15 +88,9 @@
         "NXT 프리마켓(8:00~9:00)·애프터마켓(15:30~20:00)은 KRX 정규장과 별도로 운영되며, 거래량이 적어 호가 스프레드가 넓을 수 있다",
         "NXT 거래는 주요 증권사 MTS에서 가능하며, 초기에는 국내 상장 주식 일부 종목부터 순차 확대되었다"
       ],
-<<<<<<< HEAD
-      "published": true,
-      "published_at": "2026-07-04",
-      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_464.html"
-=======
       "published": false,
       "published_at": null,
       "post_url": null
->>>>>>> 87d1233 (fix(topic4): 넥스트트레이드(NXT) 정보 key_facts 추가, 재발행 초기화)
     },
     {
       "id": 5,
