@@ -21,6 +21,7 @@ load_dotenv()
 
 from topic_manager import get_next_topic, mark_published, get_status
 from ai_writer import generate_post
+from validator import validate_sections, count_text_length
 from shared.blog_publisher import publish_post, check_today_post
 
 KST       = pytz.timezone("Asia/Seoul")
@@ -96,6 +97,15 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     except Exception as e:
         log(f"  [오류] 글 생성 실패: {e}")
         sys.exit(1)
+
+    log("▶ Step 3-1: 섹션·분량 검증")
+    missing = validate_sections(post["content"])
+    if missing:
+        log(f"  [경고] 누락 섹션: {missing}")
+    else:
+        log("  섹션 검증 통과")
+    text_len = count_text_length(post["content"])
+    log(f"  텍스트 길이: {text_len}자 (목표 1400~1700자)")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")
