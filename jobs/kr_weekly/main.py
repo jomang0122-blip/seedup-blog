@@ -108,12 +108,10 @@ def run(dry_run: bool = False, force: bool = False):
     title = build_title(data)
     log(f"  제목: {title}")
 
-    prev_post_url = "https://www.seedup-invest.com/search/label/%EC%9C%84%ED%81%B4%EB%A6%AC"
-    log("▶ Step 2-1: 위클리 모아보기 링크 고정 설정")
 
     log("▶ Step 3: AI 블로그 콘텐츠 생성")
     try:
-        post = generate_post(data, prev_post_url=prev_post_url)
+        post = generate_post(data)
         post["title"] = title
         if not post["content"]:
             raise ValueError("콘텐츠가 비어 있습니다.")

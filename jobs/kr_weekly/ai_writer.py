@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html, fmt_amount, apply_color_spans, fix_weekday_labels, us_time_rule_block
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, fmt_amount, apply_color_spans, fix_weekday_labels, us_time_rule_block
 
 client = Anthropic()
 
@@ -99,7 +99,7 @@ def _next_week_str(week_end: str) -> str:
         return "다음 주"
 
 
-def build_prompt(data: dict, prev_post_url: str = "") -> str:
+def build_prompt(data: dict) -> str:
     week_start = data.get("week_start", "")
     week_end   = data.get("week_end", "")
     date_range = _date_range_kor(week_start, week_end)
@@ -110,13 +110,6 @@ def build_prompt(data: dict, prev_post_url: str = "") -> str:
     sector_block  = _build_sector_block(data.get("top_sectors", []), data.get("bottom_sectors", []))
     news_block    = _build_news_block(data.get("news", []))
     time_rule_block = us_time_rule_block(week_end)
-
-    prev_link_section = (
-        "g) ### 📎 위클리 리포트 모아보기\n"
-        "   - 아래 URL을 사용해 링크 한 줄만 출력:\n"
-        f"     👉 [국내증시 위클리 리포트 전체 보러가기]({prev_post_url})\n"
-        "   - 이 섹션은 링크 한 줄 외 다른 텍스트 추가 금지"
-    ) if prev_post_url else ""
 
     market_trend      = data.get("market_trend", [])
     market_trend_block = _build_market_trend_block(market_trend)
@@ -145,7 +138,7 @@ c) ### 💥 이번 주 급등락 종목
    - 종목별 bullet 항목: **종목명(티커)** <span style="color:#3182f6"><b>-X.XX%</b></span> — 이유 한 줄
 """ if has_stocks else ""
 
-    base_labels   = ["국내증시", "코스피", "위클리", "주간시황", "코스닥", "증시리뷰"]
+    base_labels   = ["국내증시", "코스피", "위클리", "주간시황", "코스닥", "증시리뷰", "국내위클리"]
     sector_labels = [s["name"] for s in data.get("top_sectors", [])[:2]]
     stock_labels  = [s["name"] for s in data.get("top_gainers", [])[:2]]
     all_labels    = ",".join(base_labels + sector_labels + stock_labels)
@@ -213,8 +206,6 @@ f) ### 🔮 다음 주 전망 및 주목 일정(한국시간) ({next_week})
    - 미국 일정의 한국시간 변환은 [시간 변환 규칙] 블록의 시차만 사용 — 직접 계산 금지
    - 플레이스홀더 금지 — 날짜/일정을 모르면 지표명만 작성
 
-{prev_link_section}
-
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항 포함 금지, 시스템이 자동 추가):
 LABELS: {all_labels}
 CONTENT:
@@ -250,12 +241,12 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     if ref_date:
         md_body = fix_weekday_labels(md_body, ref_date)
 
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-haiku-4-5-20251001", prev_post_url: str = "") -> dict:
-    prompt  = build_prompt(data, prev_post_url=prev_post_url)
+def generate_post(data: dict, model: str = "claude-haiku-4-5-20251001") -> dict:
+    prompt  = build_prompt(data)
     message = client.messages.create(
         model=model,
         max_tokens=4096,

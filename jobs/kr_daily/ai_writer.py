@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label
 
 client = Anthropic()
 
@@ -265,7 +265,7 @@ def _strip_html(text: str) -> str:
 
 
 def _build_labels(data: dict) -> list:
-    base = ["코스피", "코스닥", "시황", "주식", "오늘증시", "특징주"]
+    base = ["코스피", "코스닥", "시황", "주식", "오늘증시", "특징주", "국내데일리"]
     sector_labels = [s["name"] for s in data.get("top_sectors", [])[:2]]
     return base + sector_labels
 
@@ -318,7 +318,7 @@ def _parse_response(raw: str, date: str = "") -> dict:
     if date:
         md_body = fix_weekday_labels(md_body, date)
 
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
     return {"title": title, "content": content, "char_count": len(content)}
 
 

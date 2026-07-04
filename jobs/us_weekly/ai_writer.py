@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block
+from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block
 
 client = Anthropic()
 
@@ -105,7 +105,7 @@ def build_prompt(data: dict) -> str:
         if not has_news else ""
     )
 
-    base_labels  = ["미국증시", "위클리", "주간시황", "미국주식", "나스닥", "S&P500", "뉴욕증시"]
+    base_labels  = ["미국증시", "위클리", "주간시황", "미국주식", "나스닥", "S&P500", "뉴욕증시", "미국위클리"]
     mover_labels = [m["ticker"] for m in data.get("top_movers", [])[:2]]
     all_labels   = ",".join(base_labels + mover_labels)
 
@@ -208,7 +208,7 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     if ref_date:
         md_body = fix_weekday_labels(md_body, ref_date)
 
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 

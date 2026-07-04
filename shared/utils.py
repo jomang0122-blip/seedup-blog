@@ -105,6 +105,22 @@ def fmt_amount(amount: int, force_eok: bool = False) -> str:
     return f"{sign}{abs(val_eok):,}억"
 
 
+KR_REPORT_LINKS_HTML = (
+    '<div style="margin-top:24px;padding:16px;background:#f2f4f6;border-radius:8px;">'
+    '<p style="margin:0 0 8px;font-weight:bold;font-size:13px;">📎 국내증시 리포트 모아보기</p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 <a href="https://www.seedup-invest.com/search/label/%EA%B5%AD%EB%82%B4%EB%8D%B0%EC%9D%BC%EB%A6%AC">국내증시 데일리 리포트 모아보기</a></p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 <a href="https://www.seedup-invest.com/search/label/%EA%B5%AD%EB%82%B4%EC%9C%84%ED%81%B4%EB%A6%AC">국내증시 위클리 리포트 모아보기</a></p>'
+    '</div>'
+)
+
+US_REPORT_LINKS_HTML = (
+    '<div style="margin-top:24px;padding:16px;background:#f2f4f6;border-radius:8px;">'
+    '<p style="margin:0 0 8px;font-weight:bold;font-size:13px;">📎 미국증시 리포트 모아보기</p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 <a href="https://www.seedup-invest.com/search/label/%EB%AF%B8%EA%B5%AD%EB%8D%B0%EC%9D%BC%EB%A6%AC">미국증시 데일리 리포트 모아보기</a></p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 <a href="https://www.seedup-invest.com/search/label/%EB%AF%B8%EA%B5%AD%EC%9C%84%ED%81%B4%EB%A6%AC">미국증시 위클리 리포트 모아보기</a></p>'
+    '</div>'
+)
+
 DISCLAIMER = (
     '<p style="margin-top:30px;padding:15px;background:#f5f5f5;'
     'border-left:4px solid #999;font-size:12px;color:#666;">'
