@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 52,
-    "published_count": 5,
-    "last_updated": "2026-07-04"
+    "published_count": 6,
+    "last_updated": "2026-07-05"
   },
   "topics": [
     {
@@ -130,9 +130,9 @@
         "매수 잔량이 매도 잔량보다 훨씬 많으면 수급이 우호적이라고 판단할 수 있지만, 허수 주문도 존재하므로 맹신은 금물이다",
         "한국 주식의 호가 단위는 주가에 따라 다르며, 1,000원 미만은 1원, 1,000~5,000원은 5원, 5,000~10,000원은 10원 단위이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-05",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_05.html"
     },
     {
       "id": 7,
