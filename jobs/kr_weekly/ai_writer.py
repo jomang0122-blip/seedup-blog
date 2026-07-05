@@ -89,12 +89,21 @@ def _date_range_kor(week_start: str, week_end: str) -> str:
 
 
 def _next_week_str(week_end: str) -> str:
-    """다음 주 월~금 날짜 범위 문자열."""
+    """다음 주 월~금 날짜 범위 문자열.
+
+    현재 kr_weekly의 week_end는 get_week_dates()가 순수 달력 계산으로 만든
+    진짜 금요일이라 +3일/+7일 계산이 항상 안전하지만, us_weekly에서 같은
+    가정이 "그 주 실제 마지막 거래일" 방식으로 바뀌며 깨진 사고가 있었다
+    (금요일이 공휴일이면 week_end가 금요일이 아니게 됨 → 날짜가 틀어짐).
+    kr_weekly가 나중에 같은 방식으로 바뀌어도 안전하도록 요일 무관 계산으로
+    미리 통일해둔다.
+    """
     try:
         from datetime import datetime as _dt, timedelta
-        end      = _dt.strptime(week_end, "%Y-%m-%d")
-        next_mon = end + timedelta(days=3)
-        next_fri = end + timedelta(days=7)
+        end = _dt.strptime(week_end, "%Y-%m-%d")
+        days_to_next_monday = (7 - end.weekday()) % 7 or 7
+        next_mon = end + timedelta(days=days_to_next_monday)
+        next_fri = next_mon + timedelta(days=4)
         return f"{next_mon.month}월 {next_mon.day}일~{next_fri.day}일"
     except Exception:
         return "다음 주"
