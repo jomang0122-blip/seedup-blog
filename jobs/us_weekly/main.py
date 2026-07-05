@@ -134,7 +134,9 @@ def run(dry_run: bool = False, force: bool = False):
             for issue in validation["issues"]:
                 log(f"     [{issue['type']}] {issue['description']}")
             post = apply_corrections(post, validation)
+            corr_log = post.pop("_correction_log", {"applied": [], "skipped": []})
             log(f"  수정 후 제목: {post['title']}")
+            log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
     except Exception as e:
         log(f"  [경고] 검증 실패 (발행은 계속): {e}")
 

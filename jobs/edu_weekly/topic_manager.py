@@ -3,6 +3,8 @@
 주식공부 주제 관리 — edu_topics.json 읽기/쓰기/선택
 """
 import json
+import os
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -51,8 +53,21 @@ def mark_published(topic_id: int, post_url: str) -> None:
     data["meta"]["published_count"] = sum(1 for t in data["topics"] if t["published"])
     data["meta"]["last_updated"]    = datetime.now().strftime("%Y-%m-%d")
 
-    with open(TOPICS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    # 원자적 쓰기 — 임시파일에 먼저 쓴 뒤 os.replace()로 교체.
+    # 프로세스가 쓰기 도중 중단돼도 edu_topics.json 원본이 손상되지 않음.
+    tmp_fd, tmp_path = tempfile.mkstemp(
+        dir=TOPICS_FILE.parent, prefix=TOPICS_FILE.stem + "_", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, TOPICS_FILE)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
     print(f"  [주제] ID {topic_id} 발행 완료 처리 — {post_url}")
 

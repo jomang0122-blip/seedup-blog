@@ -77,23 +77,28 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     log(f"  현황: {get_status()}")
 
 
-    log("▶ Step 3: AI 글 생성 (Claude Haiku)")
-    try:
-        post = generate_post(topic)
-        if not post["content"]:
-            raise ValueError("콘텐츠가 비어 있습니다.")
-        log(f"  글자수: {post['char_count']}자")
-        log(f"  라벨: {post['labels']}")
-    except Exception as e:
-        log(f"  [오류] 글 생성 실패: {e}")
+    log("▶ Step 3: AI 글 생성 + 섹션 검증 (Claude Sonnet, 실패 시 재시도)")
+    post = None
+    missing = None
+    for attempt in range(3):
+        try:
+            candidate = generate_post(topic)
+        except Exception as e:
+            log(f"  [재시도 {attempt + 1}/3] 글 생성 실패: {e}")
+            continue
+        missing = validate_sections(candidate["content"])
+        if not missing:
+            post = candidate
+            break
+        log(f"  [재시도 {attempt + 1}/3] 누락 섹션: {missing}")
+
+    if post is None:
+        log(f"  [오류] 3회 모두 검증 실패(마지막 누락 섹션: {missing}) — 발행 중단")
         sys.exit(1)
 
-    log("▶ Step 3-1: 섹션·분량 검증")
-    missing = validate_sections(post["content"])
-    if missing:
-        log(f"  [경고] 누락 섹션: {missing}")
-    else:
-        log("  섹션 검증 통과")
+    log(f"  글자수: {post['char_count']}자")
+    log(f"  라벨: {post['labels']}")
+    log("  섹션 검증 통과")
     text_len = count_text_length(post["content"])
     log(f"  텍스트 길이: {text_len}자 (목표 1400~1700자)")
 

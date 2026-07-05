@@ -3,7 +3,7 @@
 국내증시 위클리 데이터 수집
 - KOSPI/KOSDAQ 주간 등락률 (이전 금요일 종가 기준)
 - 외국인/기관/연기금 주간 수급 TOP3 (pykrx)
-- 주간 급등락 종목 TOP5 (pykrx 금요일 비교)
+- 시가총액 상위 10종목 주간 등락 (FDR, 금요일 종가 비교)
 - 주간 섹터 등락률 (네이버 금융)
 - 주간 뉴스 (네이버 API)
 """
@@ -193,72 +193,62 @@ def build_market_trend_weekly(this_fri_str: str, prev_fri_str: str) -> list:
     return out
 
 
-def _ohlcv_snapshot(pyk, date_str: str, direction: int = 1) -> pd.DataFrame:
-    """단일 날짜 OHLCV 스냅샷 취득 — 없으면 direction 방향으로 최대 3일 탐색."""
-    for delta in range(4):
-        d = (datetime.strptime(date_str, "%Y%m%d") + timedelta(days=delta * direction)).strftime("%Y%m%d")
-        try:
-            df = pyk.get_market_ohlcv_by_ticker(d, market="KOSPI")
-            if df is not None and not df.empty:
-                print(f"  [종목] OHLCV 스냅샷: {d}")
-                return df
-        except Exception:
-            pass
-    return None
+_TOP10_MARKETCAP_MIN = 10  # 시가총액 상위 몇 종목을 볼지
 
 
 def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """KOSPI 주간 급등락 TOP5.
-    주초·주말 단일 OHLCV 스냅샷을 비교해 주간 등락률 산출 (범위 쿼리 대신 단일 쿼리 2회).
+    """시가총액 상위 10종목의 주간(금~금) 등락률.
+
+    과거 pykrx 기반 전체 시장 급등락 TOP5는 GitHub Actions에서 해외 IP 차단으로
+    상시 실패(섹션이 매주 비어 있었음) + 소형 테마주 위주로 노출돼 정보 가치가 낮았음.
+    kr_daily가 이미 검증한 FDR(FinanceDataReader) 기반으로 교체하고, 대상도
+    시가총액 상위 10개 대형주로 한정 — 매주 안정적으로 채워지고 독자가 실제
+    관심 있는 대형주 흐름만 보여준다.
     """
     try:
-        from pykrx import stock as pyk
+        df = fdr.StockListing("KOSPI")
+        if "Marcap" not in df.columns:
+            print(f"  [시총TOP10] Marcap 컬럼 없음: {df.columns.tolist()}")
+            return {"top_gainers": [], "top_losers": []}
+
+        df = df[~df["Name"].astype(str).str.match(r".*우[BC]?$")]  # 우선주 제외
+        top10 = df.nlargest(_TOP10_MARKETCAP_MIN, "Marcap")
 
         prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
-        week_mon_str = (prev_fri_dt + timedelta(days=3)).strftime("%Y%m%d")
+        this_fri_dt = datetime.strptime(this_fri_str, "%Y%m%d")
+        start = (prev_fri_dt - timedelta(days=5)).strftime("%Y-%m-%d")
+        end   = this_fri_dt.strftime("%Y-%m-%d")
 
-        # 주초(월요일→이후 방향) / 주말(금요일→이전 방향) 스냅샷
-        df_start = _ohlcv_snapshot(pyk, week_mon_str, direction=1)
-        df_end   = _ohlcv_snapshot(pyk, this_fri_str, direction=-1)
-
-        if df_start is None or df_end is None:
-            print("  [주간 종목] OHLCV 스냅샷 취득 실패")
-            return {"top_gainers": [], "top_losers": []}
-
-        close_col = next((c for c in ["종가", "Close"] if c in df_end.columns), None)
-        cap_col   = next((c for c in ["시가총액", "Marcap"] if c in df_end.columns), None)
-
-        if close_col is None:
-            print(f"  [주간 종목] 종가 컬럼 없음: {df_end.columns.tolist()}")
-            return {"top_gainers": [], "top_losers": []}
-
-        common = df_end.index.intersection(df_start.index)
-        end_c   = pd.to_numeric(df_end.loc[common, close_col],   errors="coerce")
-        start_c = pd.to_numeric(df_start.loc[common, close_col], errors="coerce")
-
-        mask = (start_c > 1000) & (end_c > 1000)
-        if cap_col:
-            caps = pd.to_numeric(df_end.loc[common, cap_col], errors="coerce")
-            mask = mask & (caps > 1_000_000_000_000)  # 1조원 — kr_daily 급등락 TOP 기준과 통일
-
-        pct = ((end_c - start_c) / start_c * 100)[mask].dropna()
-
-        def _to_item(ticker, val):
+        results = []
+        for _, r in top10.iterrows():
+            code = str(r["Code"]).zfill(6)
+            name = str(r["Name"])
             try:
-                name = pyk.get_market_ticker_name(ticker)
-            except Exception:
-                name = ticker
-            return {"name": name, "ticker": ticker, "change_pct": round(float(val), 2)}
+                hist = fdr.DataReader(code, start, end)["Close"].dropna()
+                if hist.empty:
+                    continue
+                prev_close = this_close = None
+                for idx, close in hist.items():
+                    d = idx.strftime("%Y%m%d")
+                    if d <= prev_fri_str:
+                        prev_close = float(close)
+                    if d <= this_fri_str:
+                        this_close = float(close)
+                if prev_close is None or this_close is None:
+                    continue
+                pct = round((this_close - prev_close) / prev_close * 100, 2)
+                results.append({"name": name, "ticker": code, "change_pct": pct})
+            except Exception as e:
+                print(f"  [시총TOP10] {name} 수집 실패: {e}")
+                continue
 
-        gainers = [g for g in [_to_item(t, v) for t, v in pct.nlargest(10).items()]
-                   if not re.match(r".*우[BC]?$", g["name"])][:5]
-        losers  = [l for l in [_to_item(t, v) for t, v in pct.nsmallest(10).items()]
-                   if not re.match(r".*우[BC]?$", l["name"])][:5]
-        print(f"  [주간 종목] 급등 TOP3: {[g['name'] for g in gainers[:3]]}")
+        gainers = sorted([r for r in results if r["change_pct"] >= 0], key=lambda x: x["change_pct"], reverse=True)
+        losers  = sorted([r for r in results if r["change_pct"] < 0],  key=lambda x: x["change_pct"])
+        print(f"  [시총TOP10 주간] {len(results)}종목 (상승 {len(gainers)} / 하락 {len(losers)})")
         return {"top_gainers": gainers, "top_losers": losers}
 
     except Exception as e:
-        print(f"  [주간 종목] 수집 실패: {e}")
+        print(f"  [시총TOP10 주간] 수집 실패: {e}")
         return {"top_gainers": [], "top_losers": []}
 
 

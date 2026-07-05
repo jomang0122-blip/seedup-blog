@@ -62,6 +62,11 @@ _DISCLAIMER = (
 
 # ── 프롬프트 빌더 ─────────────────────────────────────────────────────────────
 
+def _build_labels(topic: dict) -> list:
+    """라벨을 Python에서 고정 생성 — AI의 LABELS: 출력은 신뢰하지 않고 항상 이 값으로 덮어씀."""
+    return ["주식투자클래스", "투자기초", topic["level"]] + topic.get("tags", [])
+
+
 def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     level        = topic["level"]
     title        = topic["title"]
@@ -69,7 +74,7 @@ def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     tags         = topic["tags"]
     key_facts    = topic.get("key_facts", [])
     guide        = _LEVEL_GUIDE[level]
-    labels       = ",".join(["주식투자클래스", "투자기초", level] + tags)
+    labels       = ",".join(_build_labels(topic))
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
     key_facts_block  = "\n".join(f"- {f}" for f in key_facts) if key_facts else ""
@@ -181,6 +186,12 @@ def _parse_response(raw: str, topic: dict) -> dict:
     forced_title = f"[{level}] {title}"
     body         = "\n".join(content_lines).strip()
 
+    # 본문(배너·면책조항 조립 전)이 비정상적으로 짧으면 여기서 실패 처리 —
+    # 조립 후 content는 배너+면책조항 때문에 항상 비어있지 않게 되어 안전장치가 무력화되므로,
+    # 조립 전 원본 body 단계에서 검사해야 실제로 의미가 있음.
+    if len(body) < 50:
+        raise ValueError(f"AI 본문이 비정상적으로 짧음(조립 전 {len(body)}자) — 파싱 실패로 간주")
+
     # 핵심 박스 삽입
     banner_html = generate_banner_card(level, category, title, episode)
     key3_html   = generate_key3_box(level, key3_items) if key3_items else ""
@@ -201,7 +212,7 @@ def _parse_response(raw: str, topic: dict) -> dict:
 
     return {
         "title":      forced_title,
-        "labels":     labels,
+        "labels":     _build_labels(topic),  # AI의 LABELS: 출력 대신 Python 고정 라벨로 덮어쓰기
         "content":    content,
         "char_count": len(content),
     }

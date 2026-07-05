@@ -160,6 +160,25 @@ def collect_fixed_stocks() -> dict:
     return result
 
 
+_MOVER_NEWS_MIN_PCT = 3.0  # 이 등락률 미만이면 뉴스를 붙이지 않음(보합 종목에 억지 이유 금지)
+
+
+def _mover_news(ticker: str) -> str:
+    """급등락 종목의 실제 개별 뉴스 헤드라인 조회 — 지수 전체 뉴스에서
+    티커 문자열을 억지로 매칭하지 않고, 해당 종목 전용 뉴스만 사용."""
+    try:
+        for item in (yf.Ticker(ticker).news or [])[:5]:
+            if isinstance(item.get("content"), dict):
+                title = item["content"].get("title", "")
+            else:
+                title = item.get("title", "")
+            if title:
+                return title[:120]
+    except Exception:
+        pass
+    return ""
+
+
 def collect_top_movers(top_n: int = 3) -> list[dict]:
     """워치리스트 주간 급등락 TOP N."""
     try:
@@ -190,12 +209,14 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
         result = []
         for t, p in sorted_movers[:top_n]:
             last_close = round(float(close[t].dropna().iloc[-1]), 2) if t in close.columns else None
+            news = _mover_news(t) if abs(p) >= _MOVER_NEWS_MIN_PCT else ""
             result.append({
                 "ticker": t,
                 "name": WATCH_NAMES.get(t, t),
                 "close": last_close,
                 "weekly_pct": p,
                 "direction": "up" if p >= 0 else "down",
+                "news": news,
             })
         return result
     except Exception as e:

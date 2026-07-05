@@ -40,18 +40,18 @@ def _build_stocks_block(fixed_stocks: dict) -> str:
     return "\n".join(lines) if lines else "(종목 데이터 없음)"
 
 
-def _build_movers_block(top_movers: list, news: list = None) -> str:
+def _build_movers_block(top_movers: list) -> str:
+    """급등락 종목별 실제 개별 뉴스(data_collector._mover_news 결과)만 이유 근거로 사용.
+    지수 전체 뉴스에서 티커 문자열을 억지로 찾아 매칭하던 방식(오검출 위험) 제거."""
     if not top_movers:
         return "(급등락 종목 없음)"
-    if news is None:
-        news = []
     parts = []
     news_movers = []
     for m in top_movers:
         icon = "📈" if m["direction"] == "up" else "📉"
         label = f"{m['ticker']}({m.get('name', m['ticker'])})"
         parts.append(f"{icon} {label}: {m['change_pct']:+.2f}%")
-        matched = next((n for n in news if m["ticker"] in n), "")
+        matched = m.get("news", "")
         if matched:
             news_movers.append(f"{icon} {label}: {m['change_pct']:+.2f}% [뉴스: {matched}]")
     result = "급등락 종목 (티커+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts)
@@ -114,7 +114,7 @@ def build_prompt(data: dict) -> str:
     news_list     = data.get("news", [])
     indices_block = _build_indices_block(data.get("indices", {}))
     stocks_block  = _build_stocks_block(data.get("fixed_stocks", {}))
-    movers_block  = _build_movers_block(data.get("top_movers", []), news_list)
+    movers_block  = _build_movers_block(data.get("top_movers", []))
     news_block    = _build_news_block(news_list)
     economic_block = _build_economic_block(data.get("economic_calendar", []))
     calendar_block = _date_calendar(us_date)

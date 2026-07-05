@@ -153,6 +153,25 @@ def collect_fixed_stocks() -> dict:
     return result
 
 
+_MOVER_NEWS_MIN_PCT = 2.0  # 이 등락률 미만이면 뉴스를 붙이지 않음(보합 종목에 억지 이유 금지, kr_daily B022 ②단계와 동일 취지)
+
+
+def _mover_news(ticker: str) -> str:
+    """급등락 종목의 실제 개별 뉴스 헤드라인 조회 (collect_fixed_stocks와 동일 패턴 —
+    지수 전체 뉴스에서 티커 문자열을 억지로 매칭하지 않고, 해당 종목 전용 뉴스만 사용)."""
+    try:
+        for item in (yf.Ticker(ticker).news or [])[:5]:
+            if isinstance(item.get("content"), dict):
+                title = item["content"].get("title", "")
+            else:
+                title = item.get("title", "")
+            if title:
+                return title[:120]
+    except Exception:
+        pass
+    return ""
+
+
 def collect_top_movers(top_n: int = 5) -> list[dict]:
     """워치리스트에서 당일 급등락 상위 top_n종목 (절댓값 기준)"""
     try:
@@ -184,11 +203,13 @@ def collect_top_movers(top_n: int = 5) -> list[dict]:
         sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
         result = []
         for ticker, pct in sorted_movers[:top_n]:
+            news = _mover_news(ticker) if abs(pct) >= _MOVER_NEWS_MIN_PCT else ""
             result.append({
                 "ticker": ticker,
                 "name": WATCH_NAMES.get(ticker, ticker),
                 "change_pct": pct,
                 "direction": "up" if pct >= 0 else "down",
+                "news": news,
             })
         return result
 

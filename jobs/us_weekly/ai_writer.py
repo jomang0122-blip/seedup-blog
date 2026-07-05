@@ -39,15 +39,26 @@ def _build_stocks_block(fixed_stocks: dict) -> str:
 
 
 def _build_movers_block(top_movers: list) -> str:
+    """급등락 종목별 실제 개별 뉴스(data_collector._mover_news 결과)만 이유 근거로 사용.
+    뉴스 매칭 로직이 아예 없어 AI가 근거 없이 이유를 지어내던 문제 수정."""
     if not top_movers:
         return "(급등락 종목 없음)"
     lines = []
+    news_movers = []
     for m in top_movers:
         icon = "📈" if m["direction"] == "up" else "📉"
         label = f"{m['ticker']}({m.get('name', m['ticker'])})"
         close_str = f"${m['close']:,.2f}" if m.get("close") is not None else "-"
         lines.append(f"{icon} {label}: {close_str}  {m['weekly_pct']:+.2f}%")
-    return "\n".join(lines)
+        matched = m.get("news", "")
+        if matched:
+            news_movers.append(f"{icon} {label}: {m['weekly_pct']:+.2f}% [뉴스: {matched}]")
+    result = "\n".join(lines)
+    if news_movers:
+        result += "\n뉴스기반 급등락 (이 목록에 있는 종목만 이유 작성 가능):\n" + "\n".join(news_movers)
+    else:
+        result += "\n뉴스기반 급등락: (없음 — 이유 칸은 모두 '-'로 표기)"
+    return result
 
 
 def _build_news_block(news: list) -> str:
@@ -81,6 +92,13 @@ def _next_week_str(week_end: str) -> str:
         return "다음 주"
 
 
+def _build_labels(data: dict) -> list:
+    """라벨을 Python에서 고정 생성 — AI의 LABELS: 출력은 신뢰하지 않고 항상 이 값으로 덮어씀."""
+    base_labels  = ["미국증시", "위클리", "주간시황", "미국주식", "나스닥", "S&P500", "뉴욕증시", "미국위클리"]
+    mover_labels = [m["ticker"] for m in data.get("top_movers", [])[:2]]
+    return base_labels + mover_labels
+
+
 def build_prompt(data: dict) -> str:
     week_start = data.get("week_start", "")
     week_end   = data.get("week_end", "")
@@ -105,9 +123,7 @@ def build_prompt(data: dict) -> str:
         if not has_news else ""
     )
 
-    base_labels  = ["미국증시", "위클리", "주간시황", "미국주식", "나스닥", "S&P500", "뉴욕증시", "미국위클리"]
-    mover_labels = [m["ticker"] for m in data.get("top_movers", [])[:2]]
-    all_labels   = ",".join(base_labels + mover_labels)
+    all_labels   = ",".join(_build_labels(data))
 
     return f"""당신은 대한민국 최고의 미국 주식 시황 분석가이자 SEO 전문가입니다.
 SeedUP INVEST 블로그에 올릴 미국 증시 주간 시황 포스팅을 한국어로 마크다운 형식으로 작성하세요.
@@ -160,9 +176,10 @@ b) ### 🔥 한국인 관심 종목 주간 성적
      * 한줄 동향: 4~10자 한국어
    - 표 아래 단락 1~2개: 주요 종목 간 수급 흐름 서술
    - #### 💥 주간 급등락 TOP3
-     마크다운 테이블: 종목 | 주간 종가 | 주간 등락률 | 핵심 이유 한 줄
+     마크다운 테이블: 종목 | 주간 종가 | 주간 등락률 | 핵심 이유
      * 종목 컬럼: 📈/📉 이모티콘 + **TICKER(한글명)** 형식 (예: 📈 **MSTR(스트래티지)**) — 한글명은 데이터 블록 표기 그대로, 창작 금지
      * 주간 종가·등락률은 위 [주간 급등락 TOP 3] 데이터 블록 수치 그대로 사용
+     * 핵심 이유 칸: 데이터 블록 '뉴스기반 급등락' 목록에 있는 종목만 그 [뉴스] 내용에서 이유 작성 가능. 목록에 없는 종목은 이유 칸에 "-"만 표기 — 임의 이유 생성 절대 금지
 
 c) ### 📰 이번 주 핵심 뉴스 & 이슈
    - 제공된 뉴스 헤드라인 한국어 요약 번호 목록(1. 2. 3.) 3~5개
@@ -221,5 +238,6 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
     )
     raw = message.content[0].text
     result = _parse_response(raw, data.get("week_end", ""))
+    result["labels"] = _build_labels(data)  # AI의 LABELS: 출력 대신 Python 고정 라벨로 덮어쓰기
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
     return result

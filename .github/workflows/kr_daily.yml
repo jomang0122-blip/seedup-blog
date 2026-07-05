@@ -63,15 +63,19 @@ jobs:
       - name: 국내증시 데일리 발행
         env:
           PYTHONPATH: ${{ github.workspace }}
+          INPUT_DATE: ${{ github.event.inputs.date }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
         run: |
           ARGS=""
-          if [ "${{ github.event.inputs.date }}" != "" ]; then
-            ARGS="$ARGS --date ${{ github.event.inputs.date }}"
+          DATE=$(echo "$INPUT_DATE" | tr -d '[:space:]')
+          if [ -n "$DATE" ]; then
+            ARGS="$ARGS --date $DATE"
           fi
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+          if [ "$INPUT_FORCE" = "true" ]; then
             ARGS="$ARGS --force"
           fi
           python jobs/kr_daily/main.py $ARGS

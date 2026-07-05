@@ -516,37 +516,82 @@ def extract_and_verify_featured_stocks(
     return verified
 
 
+def get_index_data_historical(date_str: str) -> dict:
+    """과거 날짜 지수 데이터 — FDR 과거 종가 조회.
+
+    get_index_data()는 네이버 모바일 실시간 API만 써서 date_str과 무관하게 항상
+    "오늘" 값을 반환한다(--date 백필 파라미터가 무시되는 원인). 실제 과거 날짜가
+    지정된 경우에만 이 함수를 사용해 그 날짜의 정확한 종가·등락률을 조회한다.
+    """
+    result = {}
+    date_fmt = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
+    for key, code in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+        try:
+            start = (datetime.strptime(date_fmt, "%Y-%m-%d") - timedelta(days=10)).strftime("%Y-%m-%d")
+            close_series = fdr.DataReader(code, start, date_fmt)["Close"].dropna()
+            if len(close_series) < 2:
+                result[key] = {}
+                continue
+            close, prev = float(close_series.iloc[-1]), float(close_series.iloc[-2])
+            result[key] = {
+                "close":      round(close, 2),
+                "change":     round(close - prev, 2),
+                "change_pct": round((close - prev) / prev * 100, 2),
+                "volume":     0,
+            }
+        except Exception as e:
+            print(f"  [{key}] 과거 지수 수집 실패: {e}")
+            result[key] = {}
+    return result
+
+
 def collect_all(date: str = None) -> dict:
+    is_backfill = date is not None
     if date is None:
         date = get_latest_trading_date()
 
-    print(f"[데이터 수집] 날짜: {date}")
+    print(f"[데이터 수집] 날짜: {date}" + (" [백필 모드]" if is_backfill else ""))
 
-    index_data = get_index_data(date)
-    # get_investor_data()는 데일리 본문엔 미사용(레이블 오류 이슈로 제거)이지만
-    # kr_weekly 주간 수급 합산의 유일한 데이터 소스라 수집·저장은 계속 필요 (save_investor_data)
-    investor_data = get_investor_data(date)
-    stock_result = get_top_stocks(date)
-    sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
-    news = get_news()
-    featured = get_featured_stock_news()
+    if is_backfill:
+        # 실시간 전용 소스(네이버 수급·FDR 당일 시세·네이버 섹터·뉴스)는 과거 날짜를
+        # 지원하지 않아 그대로 두면 "오늘" 데이터가 과거 날짜로 잘못 표시된다.
+        # 지수(FDR 과거 종가 조회 가능)만 정확히 채우고, 나머지는 비워서
+        # 각 섹션의 기존 skip-note 로직이 자연스럽게 해당 섹션을 생략하도록 한다.
+        print("  [백필 모드] 지수는 과거 종가로 정확히 채움 / 수급·종목·섹터·뉴스는 실시간 전용 소스라 생략")
+        index_data = get_index_data_historical(date)
+        investor_data = {"investor_top3": {}, "foreign_net": None, "institution_net": None}
+        stock_result = {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
+        sector_data = {"top_sectors": [], "bottom_sectors": []}
+        news = []
+        featured = []
+        stock_news_map = {}
+        featured_verified = []
+    else:
+        index_data = get_index_data(date)
+        # get_investor_data()는 데일리 본문엔 미사용(레이블 오류 이슈로 제거)이지만
+        # kr_weekly 주간 수급 합산의 유일한 데이터 소스라 수집·저장은 계속 필요 (save_investor_data)
+        investor_data = get_investor_data(date)
+        stock_result = get_top_stocks(date)
+        sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
+        news = get_news()
+        featured = get_featured_stock_news()
 
-    # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
-    stock_names = [
-        s["name"] for s in
-        stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
-    ]
-    stock_news_map = get_stock_news_by_name(stock_names)
+        # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
+        stock_names = [
+            s["name"] for s in
+            stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
+        ]
+        stock_news_map = get_stock_news_by_name(stock_names)
 
-    # 뉴스기반 특징주 3단계 검증
-    print("[뉴스기반 특징주 검증]")
-    featured_verified = extract_and_verify_featured_stocks(
-        featured,
-        stock_result.get("stock_pct_map", {}),
-        date,
-        stock_cap_map=stock_result.get("stock_cap_map", {}),
-    )
-    print(f"  → 검증 완료: {len(featured_verified)}개")
+        # 뉴스기반 특징주 3단계 검증
+        print("[뉴스기반 특징주 검증]")
+        featured_verified = extract_and_verify_featured_stocks(
+            featured,
+            stock_result.get("stock_pct_map", {}),
+            date,
+            stock_cap_map=stock_result.get("stock_cap_map", {}),
+        )
+        print(f"  → 검증 완료: {len(featured_verified)}개")
 
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",

@@ -59,12 +59,14 @@ jobs:
       - name: 미국증시 위클리 발행
         env:
           PYTHONPATH: ${{ github.workspace }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
         run: |
           ARGS=""
-          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+          if [ "$INPUT_FORCE" = "true" ]; then
             ARGS="$ARGS --force"
           fi
           python jobs/us_weekly/main.py $ARGS

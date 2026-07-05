@@ -162,7 +162,7 @@ def build_holiday_post(data: dict, missed: list) -> dict:
 
 def _build_labels(data: dict) -> list:
     """라벨을 Python에서 고정 생성 — AI에게 맡기지 않음"""
-    base = ["미국증시", "데일리", "시황", "미국주식", "나스닥", "S&P500", "뉴욕증시"]
+    base = ["미국증시", "미국데일리", "데일리", "시황", "미국주식", "나스닥", "S&P500", "뉴욕증시"]
     mover_labels = [m["ticker"] for m in data.get("top_movers", [])[:2]]
     return base + mover_labels
 
@@ -299,7 +299,9 @@ def run(dry_run: bool = False, force: bool = False):
             for issue in validation["issues"]:
                 log(f"     [{issue['type']}] {issue['description']}")
             post = apply_corrections(post, validation)
+            corr_log = post.pop("_correction_log", {"applied": [], "skipped": []})
             log(f"  수정 후 제목: {post['title']}")
+            log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
     except Exception as e:
         log(f"  [경고] 검증 실패 (발행은 계속): {e}")
 
