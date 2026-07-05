@@ -2,23 +2,29 @@
   "kst_date": "2026-07-05",
   "week_start": "2026-06-26",
   "week_end": "2026-07-02",
-  "published_at": "2026-07-05T06:04:34.514386",
+  "published_at": "2026-07-05T06:24:14.025650",
   "title": "[6월 26일~7월 2일 미증시 주간] 나스닥 2.1% 상승 주간 리뷰",
-  "url": "https://www.seedup-invest.com/2026/07/6-267-2-21.html",
-  "char_count": 10084,
+  "url": "https://www.seedup-invest.com/2026/07/6-267-2-21_01474610382.html",
+  "char_count": 10420,
   "nasdaq_weekly_pct": 2.12,
   "validation_issues": [
     {
-      "type": "급등락_종목_종가_누락",
-      "description": "급등락 TOP3 테이블에서 MSTR, RIVN, RBLX의 종가가 실제 수집 데이터에 없음. 해당 종목들은 워치리스트 항목으로만 등락률만 제공되었으므로 종가를 기재할 수 없음",
-      "found": "MSTR $100.77, RIVN $18.63, RBLX $55.41",
-      "expected": "종가 데이터 없음 (실제 수집 데이터에 미제공)"
+      "type": "급등락_종목_종가_오류",
+      "description": "MSTR(스트래티지) 주간 종가가 데이터에 없음 - 포스팅에서 $100.77로 표기했으나 실제 수집 데이터에 MSTR 종가 정보 없음",
+      "found": "$100.77",
+      "expected": "데이터 미제공"
     },
     {
-      "type": "급등락_종목_데이터_무결성",
-      "description": "포스팅의 급등락 TOP3 테이블은 실제 수집 데이터에 없는 종가를 포함하고 있어 데이터 일관성 문제 발생",
-      "found": "MSTR/RIVN/RBLX 종가 표시",
-      "expected": "실제 수집 데이터는 이들 종목에 대해 등락률만 제공"
+      "type": "급등락_종목_종가_오류",
+      "description": "RIVN(리비안) 주간 종가가 데이터에 없음 - 포스팅에서 $18.63으로 표기했으나 실제 수집 데이터에 RIVN 종가 정보 없음",
+      "found": "$18.63",
+      "expected": "데이터 미제공"
+    },
+    {
+      "type": "급등락_종목_종가_오류",
+      "description": "RBLX(로블록스) 주간 종가가 데이터에 없음 - 포스팅에서 $55.41로 표기했으나 실제 수집 데이터에 RBLX 종가 정보 없음",
+      "found": "$55.41",
+      "expected": "데이터 미제공"
     }
   ]
 }
