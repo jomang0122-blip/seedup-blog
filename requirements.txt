@@ -15,3 +15,5 @@ pytz==2024.2
 pykrx==1.0.48
 markdown==3.7
 holidays==0.99
+matplotlib==3.9.2
+mplfinance==0.12.10b0

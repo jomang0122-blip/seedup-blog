@@ -15,6 +15,7 @@ load_dotenv()
 from anthropic import Anthropic
 from banner import generate_banner_card, generate_key3_box
 from news_search import search_topic_news
+from shared.chart_generator import chart_image_html
 
 client = Anthropic()
 
@@ -88,6 +89,16 @@ def _build_prompt(topic: dict, news_headlines: list = None) -> str:
             f"{lines}\n"
         )
 
+    chart_note = ""
+    if topic.get("chart_index"):
+        chart_note = (
+            "\n━━━ 참고 차트 안내 ━━━\n"
+            "이 글 '실전 활용 예시' 섹션 끝에는 시스템이 최근 실제 지수 차트 이미지를 자동으로 첨부합니다.\n"
+            "너는 그 차트의 구체적인 지점·날짜·수치를 알 수 없으므로 절대 단정해서 설명하지 마라.\n"
+            "대신 '실전 활용 예시' 섹션 마지막 문장에 '아래 실제 차트에 오늘 배운 개념을 직접 대입해보세요' 같은,\n"
+            "차트 내용을 추측하지 않는 자연스러운 안내 문장만 한 줄 추가하라.\n"
+        )
+
     return f"""당신은 주식 투자 교육 전문가이자 블로그 작가입니다.
 SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형식으로 작성하세요.
 
@@ -100,6 +111,7 @@ SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형
 아래 사실들은 검증된 내용입니다. 글에서 반드시 자연스럽게 포함하고, 이와 다른 수치나 설명을 임의로 만들지 마십시오.
 {key_facts_block}
 {news_block_text}
+{chart_note}
 ━━━ 작성 지침 ━━━
 {guide}
 
@@ -202,6 +214,18 @@ def _parse_response(raw: str, topic: dict) -> dict:
         # 폴백: 핵심 요약 두 번째 </p> 뒤에 삽입
         body = _insert_after_summary(body, key3_html)
 
+    # 참고 차트 삽입(선정된 4개 주제만) — AI가 차트 내용을 단정하지 않도록
+    # "참고용" 캡션으로만 프레이밍한다(오해 방지, 2026-07-05 확정)
+    if topic.get("chart_index"):
+        chart_html = chart_image_html(topic["chart_index"], days=60)
+        if chart_html:
+            chart_section = (
+                '<p style="margin-top:8px;font-size:13px;color:#888;">'
+                "📊 아래는 최근 실제 지수 차트입니다. 위에서 배운 개념을 직접 대입해 확인해보세요."
+                "</p>" + chart_html
+            )
+            body = _insert_before_caution(body, chart_section)
+
     # 전체 조립: 배너 + 본문 + 클래스 링크 + 면책조항
     content = (
         banner_html + "\n"
@@ -227,6 +251,15 @@ def _insert_after_summary(body: str, key3_html: str) -> str:
         end = m.end()
         return body[:end] + "\n" + key3_html + body[end:]
     return key3_html + "\n" + body
+
+
+def _insert_before_caution(body: str, chart_section: str) -> str:
+    """'⚠️ 주의사항' 소제목 바로 앞에 참고 차트를 삽입 — 못 찾으면 본문 끝에 폴백."""
+    import re
+    m = re.search(r"<h3>\s*⚠", body)
+    if m:
+        return body[:m.start()] + chart_section + "\n" + body[m.start():]
+    return body + "\n" + chart_section
 
 
 # ── 공개 API ─────────────────────────────────────────────────────────────────
