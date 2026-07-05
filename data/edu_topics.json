@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 52,
-    "published_count": 7,
+    "published_count": 8,
     "last_updated": "2026-07-05"
   },
   "topics": [
@@ -172,9 +172,9 @@
         "외국인·기관의 대규모 순매수는 지수 상승에 기여하며, 개인투자자의 비중이 높은 코스닥과 영향 패턴이 다르다",
         "지수 1% 하락은 시가총액 기준 수십조 원이 증발하는 것이며, 이는 글로벌 이벤트·환율·금리에 민감하게 반응한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-05",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_835.html"
     },
     {
       "id": 9,
