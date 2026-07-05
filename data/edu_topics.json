@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 52,
-    "published_count": 8,
+    "published_count": 9,
     "last_updated": "2026-07-05"
   },
   "topics": [
@@ -193,9 +193,9 @@
         "S&P500은 미국 대형주 500개 기업 지수로, 다우지수(30종목)보다 시장 전반을 잘 반영한다",
         "한국 투자자는 미국 나스닥·S&P500 종가와 연준(Fed) 정책 발표를 다음 날 개장 전 반드시 확인하는 것이 기본 루틴이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-05",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_590.html"
     },
     {
       "id": 10,
