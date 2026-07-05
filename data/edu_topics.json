@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 52,
-    "published_count": 9,
+    "published_count": 10,
     "last_updated": "2026-07-05"
   },
   "topics": [
@@ -214,9 +214,9 @@
         "적자 기업은 EPS가 음수이므로 PER을 계산할 수 없다",
         "국내 코스피 평균 PER은 역사적으로 8~14배 수준이나, 시장 상황과 업종마다 다르다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-05",
+      "post_url": "https://www.seedup-invest.com/2026/07/per.html"
     },
     {
       "id": 11,
