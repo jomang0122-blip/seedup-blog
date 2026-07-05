@@ -70,31 +70,40 @@ INDEX_TICKERS = {
 }
 
 
-def _find_friday_closes(hist):
-    """history DataFrame에서 금요일 종가만 추출. 최소 2개 필요."""
-    fridays = hist[hist.index.dayofweek == 4]["Close"].dropna()
-    return fridays
+def _last_trading_close_per_week(series):
+    """(ISO 연도, ISO 주차)로 그룹핑해 각 주의 마지막 거래일 종가만 추출.
+
+    과거엔 "요일이 금요일(dayofweek==4)인 행"만 찾았는데, 금요일이 공휴일(예:
+    미국 독립기념일 대체휴일, Juneteenth)이면 그 주엔 금요일 종가 행 자체가
+    없어서 몇 주 전 금요일까지 건너뛰어버리는 사고가 있었다(실측: 2026-07-05
+    발행에서 6/19·7/3 금요일이 둘 다 공휴일이라 "6월 12일~26일"로 2주를
+    건너뜀). 요일로 찾지 않고 "그 주의 마지막 거래일"을 쓰면 금요일이
+    휴장이어도 목요일 등 실제 마지막 거래일이 자동으로 그 주를 대표한다.
+    """
+    iso = series.index.isocalendar()
+    grouped = series.groupby([iso["year"], iso["week"]])
+    return grouped.tail(1)
 
 
 def _weekly_pct(hist):
-    """이전 금요일 → 이번 금요일 등락률 계산."""
-    fridays = _find_friday_closes(hist)
-    if len(fridays) < 2:
-        # 금요일 데이터가 부족하면 최근 2거래일로 대체
+    """지난 주 마지막 거래일 → 이번 주 마지막 거래일 등락률 계산."""
+    closes = _last_trading_close_per_week(hist["Close"].dropna())
+    if len(closes) < 2:
+        # 그래도 부족하면 최근 2거래일로 대체
         series = hist["Close"].dropna()
         if len(series) < 2:
             return None
         return round((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2] * 100, 2)
-    return round((fridays.iloc[-1] - fridays.iloc[-2]) / fridays.iloc[-2] * 100, 2)
+    return round((closes.iloc[-1] - closes.iloc[-2]) / closes.iloc[-2] * 100, 2)
 
 
 def _week_range_str(hist) -> tuple[str, str]:
     """이번 주 거래 첫날 ~ 마지막날 날짜 문자열 반환."""
-    fridays = _find_friday_closes(hist)
-    if len(fridays) >= 2:
-        prev_fri = fridays.index[-2].strftime("%Y-%m-%d")
-        this_fri = fridays.index[-1].strftime("%Y-%m-%d")
-        return prev_fri, this_fri
+    closes = _last_trading_close_per_week(hist["Close"].dropna())
+    if len(closes) >= 2:
+        prev_end = closes.index[-2].strftime("%Y-%m-%d")
+        this_end = closes.index[-1].strftime("%Y-%m-%d")
+        return prev_end, this_end
     dates = hist.index.strftime("%Y-%m-%d")
     return dates[-5] if len(dates) >= 5 else dates[0], dates[-1]
 
@@ -192,9 +201,9 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
             if ticker not in close.columns:
                 continue
             series = close[ticker].dropna()
-            fridays = series[series.index.dayofweek == 4]
-            if len(fridays) >= 2:
-                pct = round((fridays.iloc[-1] - fridays.iloc[-2]) / fridays.iloc[-2] * 100, 2)
+            week_closes = _last_trading_close_per_week(series)
+            if len(week_closes) >= 2:
+                pct = round((week_closes.iloc[-1] - week_closes.iloc[-2]) / week_closes.iloc[-2] * 100, 2)
             elif len(series) >= 2:
                 pct = round((series.iloc[-1] - series.iloc[-2]) / series.iloc[-2] * 100, 2)
             else:
