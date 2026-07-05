@@ -9,6 +9,7 @@
 """
 import os
 import re
+import time
 import requests
 from datetime import datetime, timedelta
 
@@ -224,8 +225,17 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
             code = str(r["Code"]).zfill(6)
             name = str(r["Name"])
             try:
-                hist = fdr.DataReader(code, start, end)["Close"].dropna()
-                if hist.empty:
+                hist = None
+                for attempt in range(2):
+                    try:
+                        hist = fdr.DataReader(code, start, end)["Close"].dropna()
+                        break
+                    except Exception:
+                        if attempt == 0:
+                            time.sleep(1)
+                        else:
+                            raise
+                if hist is None or hist.empty:
                     continue
                 prev_close = this_close = None
                 for idx, close in hist.items():

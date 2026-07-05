@@ -173,9 +173,12 @@ def validate_post(data: dict, post: dict) -> dict:
 
 def apply_corrections(post: dict, validation: dict) -> dict:
     """검증 결과를 반영. 제목은 corrected_title로 교체하고,
-    본문은 corrections(원본→수정 문자열) 중 원본이 본문에 실제로 존재하는 항목만 치환한다.
-    AI가 수정값 대신 설명 문구를 넣는 과거 사고를 막기 위해 원본 문자열이 본문에 없거나
-    지나치게 긴 항목(설명 문구로 의심)은 건너뛴다 — 발행을 막는 대신 본문을 고쳐서 그대로 발행."""
+    본문은 corrections(원본→수정 문자열) 중 원본이 본문에 정확히 1번만 등장하는
+    항목만 치환한다. AI가 수정값 대신 설명 문구를 넣는 과거 사고를 막기 위해
+    원본 문자열이 본문에 없거나 지나치게 긴 항목(설명 문구로 의심)은 건너뛰고,
+    본문에 2번 이상 등장하는 항목도 건너뛴다(다른 종목·섹터가 우연히 같은
+    문자열을 가진 경우까지 전역 치환되어 엉뚱한 곳이 바뀌는 사고 방지) —
+    발행을 막는 대신 본문을 고쳐서 그대로 발행."""
     corrected = dict(post)
     if validation.get("corrected_title"):
         corrected["title"] = validation["corrected_title"]
@@ -185,9 +188,9 @@ def apply_corrections(post: dict, validation: dict) -> dict:
     for c in validation.get("corrections") or []:
         original = (c or {}).get("original")
         fixed = (c or {}).get("corrected")
-        if not original or fixed is None:
+        if not original or not fixed:
             continue
-        if len(original) > 80 or len(fixed) > 80 or content.count(original) == 0:
+        if len(original) > 80 or len(fixed) > 80 or content.count(original) != 1:
             skipped.append(original)
             continue
         content = content.replace(original, fixed)

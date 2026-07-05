@@ -214,6 +214,10 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
                 log(f"  [오류] 휴장 안내 발행 실패: {e}")
                 sys.exit(1)
             return
+    else:
+        if not is_trading_day(date):
+            log(f"  [오류] 지정한 날짜({date})는 거래일이 아닙니다(주말·공휴일) — 백필 중단")
+            sys.exit(1)
 
     log("▶ Step 1: 시장 데이터 수집")
     try:
@@ -228,6 +232,10 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
 
     if not data.get("kospi", {}).get("close"):
         log("  [오류] KOSPI 지수 누락 — 품질 게이트: 발행 중단")
+        sys.exit(1)
+
+    if not data.get("kosdaq", {}).get("close"):
+        log("  [오류] KOSDAQ 지수 누락 — 품질 게이트: 발행 중단")
         sys.exit(1)
 
     log("▶ Step 2: AI 블로그 포스팅 생성")

@@ -56,8 +56,12 @@ jobs:
       - name: .env 파일 생성
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
         run: |
           echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" > .env
+          echo "NAVER_CLIENT_ID=${NAVER_CLIENT_ID}" >> .env
+          echo "NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}" >> .env
 
       - name: config.yaml 복원
         env:
