@@ -71,14 +71,17 @@ def update_post(post_id: str, title: str, content: str, labels: list = None) -> 
 
 
 def get_recent_posts_by_label(label: str, max_results: int = 3) -> list:
-    """특정 라벨이 붙은 최근 포스트 목록 반환. [{title, url, published}]"""
+    """특정 라벨이 붙은 최근 포스트 목록 반환. [{title, url, published}]
+
+    orderBy는 'PUBLISHED'/'UPDATED'만 허용(소문자 'published'는 TypeError, 2026-07-06 실측).
+    """
     creds = get_credentials()
     service = build('blogger', 'v3', credentials=creds)
     result = service.posts().list(
         blogId=BLOG_ID,
         labels=label,
         maxResults=max_results,
-        orderBy='published',
+        orderBy='PUBLISHED',
         fetchBodies=False,
         fetchImages=False,
     ).execute()

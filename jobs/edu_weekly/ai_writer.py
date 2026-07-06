@@ -3,6 +3,7 @@
 주식공부 글 생성 — 레벨별 Claude 프롬프트 (시드업 클래스 v2)
 """
 import io
+import re
 import sys
 
 if sys.platform == "win32":
@@ -181,6 +182,7 @@ def _parse_response(raw: str, topic: dict) -> dict:
         elif mode == "key3" and key3_count < 3:
             item = line.strip()
             if item:
+                item = re.sub(r"^\[(.+)\]$", r"\1", item)
                 key3_items.append(item)
                 key3_count += 1
         elif mode == "content":
@@ -244,7 +246,6 @@ def _parse_response(raw: str, topic: dict) -> dict:
 
 def _insert_after_summary(body: str, key3_html: str) -> str:
     """핵심 요약 단락(두 번째 </p>) 뒤에 key3 박스를 삽입한다."""
-    import re
     pattern = r'(📌 핵심 요약.+?</p>\s*<p>.+?</p>)'
     m = re.search(pattern, body, flags=re.DOTALL)
     if m:
@@ -255,7 +256,6 @@ def _insert_after_summary(body: str, key3_html: str) -> str:
 
 def _insert_before_caution(body: str, chart_section: str) -> str:
     """'⚠️ 주의사항' 소제목 바로 앞에 참고 차트를 삽입 — 못 찾으면 본문 끝에 폴백."""
-    import re
     m = re.search(r"<h3>\s*⚠", body)
     if m:
         return body[:m.start()] + chart_section + "\n" + body[m.start():]

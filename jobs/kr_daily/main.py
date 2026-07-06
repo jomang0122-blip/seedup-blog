@@ -24,27 +24,12 @@ from shared.blog_publisher import publish_post, check_today_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 LOG_DIR  = REPO_ROOT / "logs"
-DATA_DIR = REPO_ROOT / "data"
 LOG_DIR.mkdir(exist_ok=True)
-DATA_DIR.mkdir(exist_ok=True)
 
 
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
-
-
-def save_investor_data(data: dict):
-    """수급 데이터를 JSON으로 저장 — 위클리 주간 합산에 사용."""
-    date_str = data.get("date", "")
-    investor_top3 = data.get("investor_top3", {})
-    if not investor_top3:
-        return
-    date_nodash = date_str.replace("-", "")
-    fname = DATA_DIR / f"investor_{date_nodash}.json"
-    payload = {"date": date_str, **investor_top3}
-    fname.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    log(f"수급 데이터 저장: {fname.name}")
 
 
 def save_log(data: dict, post: dict, result: dict, validation_issues: list = None):
@@ -302,7 +287,6 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log(f"  발행 완료!")
         log(f"  URL: {result['url']}")
         save_log(data, post, result, validation_issues)
-        save_investor_data(data)
     except Exception as e:
         log(f"  [오류] 발행 실패: {e}")
         sys.exit(1)

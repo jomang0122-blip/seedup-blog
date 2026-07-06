@@ -79,82 +79,6 @@ def _is_etf(name: str) -> bool:
     return any(name.startswith(p) for p in _ETF_PREFIXES)
 
 
-def _crawl_deal_rank_iframe(investor_gubun: str, direction: str, label: str) -> list:
-    """네이버 sise_deal_rank_iframe에서 외국인/기관 매수/매도 대금 TOP3 수집.
-
-    investor_gubun: "9000"=외국인, "1000"=기관
-    direction: "buy" | "sell"
-    tds 구조: tds[0]=종목명, tds[1]=수량(천주, 부호 포함), tds[2]=대금(백만원, 부호 포함)
-
-    주의: 이 테이블은 '순매수/순매도'가 아니라 방향별 거래대금 합계 순위이다.
-      - type=buy  -> 해당 투자자가 매수한 금액이 큰 종목 TOP (매수총액)
-      - type=sell -> 해당 투자자가 매도한 금액이 큰 종목 TOP (매도총액, tds[2]가 이미 음수)
-    따라서 동일 종목이 buy TOP3과 sell TOP3에 동시 등장할 수 있다.
-    예) 삼성전자: 외국인 매수 1,083억 + 외국인 매도 38,498억 -> 순매수는 -37,415억
-
-    Returns: [{"name": str, "amount_won": int(원, buy=양수, sell=음수)}]
-    """
-    url = (
-        f"https://finance.naver.com/sise/sise_deal_rank_iframe.naver"
-        f"?sosok=01&investor_gubun={investor_gubun}&type={direction}"
-    )
-    try:
-        resp = fetch_with_retry(url, headers=_NAVER_HEADERS, timeout=10)
-        resp.encoding = "euc-kr"
-        soup = BeautifulSoup(resp.text, "lxml")
-        table = soup.find("table", {"class": "type_1"})
-        if not table:
-            print(f"  [수급-{label}-{direction}] 테이블 없음")
-            return []
-        result = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 3:
-                continue
-            name_tag = tds[0].find("a")
-            if not name_tag:
-                continue
-            name = name_tag.get_text(strip=True)
-            if not name or _is_etf(name):
-                continue
-            # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
-            if re.match(r".*우[BC]?$", name):
-                continue
-            # tds[2]는 sell 테이블에서 이미 음수로 제공됨 -> abs() 로 절대값 추출
-            amt_raw = tds[2].get_text(strip=True).replace(",", "").replace("-", "")
-            if not amt_raw.isdigit():
-                continue
-            # 단위: 백만원 -> 원 변환 / buy=양수, sell=음수
-            amt_won = int(amt_raw) * 1_000_000
-            if direction == "sell":
-                amt_won = -amt_won
-            result.append({"name": name, "amount_won": amt_won})
-            if len(result) >= 3:
-                break
-        print(f"  [수급-{label}-{direction}] {len(result)}개: {[r['name'] for r in result]}")
-        return result
-    except Exception as e:
-        print(f"  [수급-{label}-{direction}] 실패: {e}")
-        return []
-
-
-def get_investor_data(date_str: str = None) -> dict:
-    """네이버 sise_deal_rank_iframe에서 외국인/기관 매수대금/매도대금 TOP3 수집.
-    반환값의 buy/sell은 순매수/순매도가 아닌 방향별 거래대금 합계 TOP이다.
-    동일 종목이 buy와 sell에 동시 등장하는 것은 정상 (삼성전자 등 대형주).
-    """
-    investors = {
-        "외국인": "9000",
-        "기관":   "1000",
-    }
-    result = {}
-    for label, gubun in investors.items():
-        buy3  = _crawl_deal_rank_iframe(gubun, "buy",  label)
-        sell3 = _crawl_deal_rank_iframe(gubun, "sell", label)
-        result[label] = {"buy": buy3, "sell": sell3}
-    return {"investor_top3": result, "foreign_net": None, "institution_net": None}
-
-
 def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
     df = df.copy()
     df[chg_col] = pd.to_numeric(df[chg_col], errors="coerce")
@@ -557,9 +481,8 @@ def collect_all(date: str = None) -> dict:
         # 지원하지 않아 그대로 두면 "오늘" 데이터가 과거 날짜로 잘못 표시된다.
         # 지수(FDR 과거 종가 조회 가능)만 정확히 채우고, 나머지는 비워서
         # 각 섹션의 기존 skip-note 로직이 자연스럽게 해당 섹션을 생략하도록 한다.
-        print("  [백필 모드] 지수는 과거 종가로 정확히 채움 / 수급·종목·섹터·뉴스는 실시간 전용 소스라 생략")
+        print("  [백필 모드] 지수는 과거 종가로 정확히 채움 / 종목·섹터·뉴스는 실시간 전용 소스라 생략")
         index_data = get_index_data_historical(date)
-        investor_data = {"investor_top3": {}, "foreign_net": None, "institution_net": None}
         stock_result = {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
         sector_data = {"top_sectors": [], "bottom_sectors": []}
         news = []
@@ -568,9 +491,6 @@ def collect_all(date: str = None) -> dict:
         featured_verified = []
     else:
         index_data = get_index_data(date)
-        # get_investor_data()는 데일리 본문엔 미사용(레이블 오류 이슈로 제거)이지만
-        # kr_weekly 주간 수급 합산의 유일한 데이터 소스라 수집·저장은 계속 필요 (save_investor_data)
-        investor_data = get_investor_data(date)
         stock_result = get_top_stocks(date)
         sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
         news = get_news()
@@ -596,7 +516,6 @@ def collect_all(date: str = None) -> dict:
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
         **index_data,
-        **investor_data,
         **sector_data,
         **stock_result,
         "news": news,

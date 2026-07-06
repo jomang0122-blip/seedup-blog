@@ -21,6 +21,18 @@ def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwar
 
 _WEEKDAYS_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
+_KANJI_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
+
+
+def find_kanji(text: str) -> list:
+    """본문에 섞인 한자(CJK 한자 블록) 문자 목록 반환. 비어 있으면 정상.
+
+    AI가 한국어 생성 중 같은 음의 한자 토큰을 섞는 사고 차단용
+    (실사례: 발행 글에 株主·利益 노출, 2026-07-05 발견). 발행 게이트에서
+    검출되면 재생성으로 처리한다.
+    """
+    return _KANJI_RE.findall(text or "")
+
 
 def fix_weekday_labels(text: str, ref_date: str) -> str:
     """본문의 'M월 D일(요일)' 패턴에서 잘못된 요일을 실제 요일로 자동 교정.

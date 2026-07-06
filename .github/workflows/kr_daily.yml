@@ -88,7 +88,7 @@ jobs:
           TOKEN_CONTENT=$(cat token.json)
           gh secret set GOOGLE_TOKEN_JSON --body "$TOKEN_CONTENT"
 
-      - name: 수급 데이터·발행 로그 커밋 & 푸시
+      - name: 발행 로그 커밋 & 푸시
         if: github.event.inputs.dry_run != 'true'
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
@@ -96,11 +96,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
-          git add data/investor_*.json logs/*.json || true
+          git add logs/*.json || true
           if git diff --staged --quiet; then
             echo "변경 없음 — 커밋 생략"
           else
-            git commit -m "chore: 수급 데이터·발행 로그 업데이트 $(date +'%Y%m%d')"
+            git commit -m "chore: 발행 로그 업데이트 $(date +'%Y%m%d')"
             git pull --rebase origin main
             git push origin HEAD:main
           fi

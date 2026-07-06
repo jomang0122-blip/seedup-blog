@@ -22,7 +22,8 @@ load_dotenv()
 from topic_manager import get_next_topic, mark_published, get_status
 from ai_writer import generate_post
 from validator import validate_sections, count_text_length
-from shared.blog_publisher import publish_post
+from shared.utils import find_kanji
+from shared.blog_publisher import publish_post, get_recent_posts_by_label
 
 KST       = pytz.timezone("Asia/Seoul")
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -70,30 +71,55 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     log("▶ Step 1: 주제 선택")
     topic = get_next_topic(topic_id)
     if topic is None:
-        log("  모든 주제(52편) 발행 완료! 새 주제 추가가 필요합니다.")
+        log("  모든 주제 발행 완료! 새 주제 추가가 필요합니다.")
         sys.exit(0)
     log(f"  선택된 주제: [{topic['level']}] {topic['title']}")
     log(f"  카테고리: {topic['category']}  태그: {topic['tags']}")
     log(f"  현황: {get_status()}")
 
+    log("▶ Step 2: 중복 발행 가드 (Blogger 실제 발행 여부 확인)")
+    # mark_published 실패(git push 실패 등) 후 재실행되면 같은 주제가 published=false로
+    # 남아 같은 글이 또 발행된다(실사례: 라이브 10편 vs 기록 6편 불일치, 2026-07-04).
+    # 발행 전에 Blogger에서 같은 제목이 이미 라이브인지 확인하고, 있으면 기록만 복구.
+    expected_title = f"[{topic['level']}] {topic['title']}"
+    if topic_id is None:  # --topic-id 명시 지정은 의도적 재발행으로 보고 가드 생략
+        try:
+            live = get_recent_posts_by_label("주식투자클래스", max_results=100)
+            dup = next((p for p in live if p["title"] == expected_title), None)
+            if dup:
+                log(f"  이미 발행됨: {dup['url']}")
+                mark_published(topic["id"], dup["url"])
+                log("  발행 기록 복구 완료 — 이번 실행은 발행 생략, 다음 실행이 다음 주제 진행")
+                sys.exit(0)
+            log("  중복 없음 — 발행 진행")
+        except Exception as e:
+            log(f"  [경고] 중복 가드 실패 (발행은 계속): {e}")
 
-    log("▶ Step 3: AI 글 생성 + 섹션 검증 (Claude Sonnet, 실패 시 재시도)")
+    log("▶ Step 3: AI 글 생성 + 섹션·한자 검증 (Claude Sonnet, 실패 시 재시도)")
     post = None
-    missing = None
+    fail_reason = None
     for attempt in range(3):
         try:
             candidate = generate_post(topic)
         except Exception as e:
-            log(f"  [재시도 {attempt + 1}/3] 글 생성 실패: {e}")
+            fail_reason = f"글 생성 실패: {e}"
+            log(f"  [재시도 {attempt + 1}/3] {fail_reason}")
             continue
         missing = validate_sections(candidate["content"])
-        if not missing:
-            post = candidate
-            break
-        log(f"  [재시도 {attempt + 1}/3] 누락 섹션: {missing}")
+        if missing:
+            fail_reason = f"누락 섹션: {missing}"
+            log(f"  [재시도 {attempt + 1}/3] {fail_reason}")
+            continue
+        kanji = find_kanji(candidate["title"] + candidate["content"])
+        if kanji:
+            fail_reason = f"한자 검출: {sorted(set(kanji))}"
+            log(f"  [재시도 {attempt + 1}/3] {fail_reason} — 한자 금지 규칙 위반, 재생성")
+            continue
+        post = candidate
+        break
 
     if post is None:
-        log(f"  [오류] 3회 모두 검증 실패(마지막 누락 섹션: {missing}) — 발행 중단")
+        log(f"  [오류] 3회 모두 검증 실패(마지막 사유: {fail_reason}) — 발행 중단")
         sys.exit(1)
 
     log(f"  글자수: {post['char_count']}자")

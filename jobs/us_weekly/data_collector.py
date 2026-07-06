@@ -10,64 +10,12 @@ import yfinance as yf
 import pytz
 from datetime import datetime, timedelta
 
+from shared.us_market import (
+    FIXED_TICKERS, WATCH_NAMES, NASDAQ_WATCH_LIST, INDEX_TICKERS,
+    mover_news, collect_index_news,
+)
+
 KST = pytz.timezone("Asia/Seoul")
-
-FIXED_TICKERS = {
-    "NVDA": "엔비디아",
-    "TSLA": "테슬라",
-    "SPCX": "스페이스엑스",
-    "IONQ": "아이온큐",
-    "AAPL": "애플",
-    "GOOGL": "알파벳(구글)",
-    "MSFT": "마이크로소프트",
-    "META": "메타",
-    "AMZN": "아마존",
-    "PLTR": "팔란티어",
-    "MU": "마이크론",
-}
-
-# 급등락 탐색용 워치리스트 (고정 풀 제외) — 한글명 매핑 (AI 환각 방지)
-WATCH_NAMES = {
-    "AVGO": "브로드컴",
-    "COST": "코스트코",
-    "NFLX": "넷플릭스",
-    "AMD": "AMD",
-    "ADBE": "어도비",
-    "QCOM": "퀄컴",
-    "TXN": "텍사스인스트루먼트",
-    "ARM": "암홀딩스",
-    "SMCI": "슈퍼마이크로",
-    "MRVL": "마벨테크놀로지",
-    "PANW": "팔로알토네트웍스",
-    "AMAT": "어플라이드머티리얼즈",
-    "LRCX": "램리서치",
-    "INTC": "인텔",
-    "SNPS": "시놉시스",
-    "KLAC": "KLA",
-    "ASML": "ASML",
-    "MSTR": "스트래티지",
-    "COIN": "코인베이스",
-    "HOOD": "로빈후드",
-    "RIVN": "리비안",
-    "SOFI": "소파이",
-    "RBLX": "로블록스",
-    "SNAP": "스냅",
-    "UBER": "우버",
-    "LYFT": "리프트",
-    "ABNB": "에어비앤비",
-    "DASH": "도어대시",
-    "CRWD": "크라우드스트라이크",
-    "ZS": "지스케일러",
-    "NET": "클라우드플레어",
-    "DDOG": "데이터독",
-}
-NASDAQ_WATCH_LIST = list(WATCH_NAMES.keys())
-
-INDEX_TICKERS = {
-    "^DJI":  "다우존스",
-    "^GSPC": "S&P 500",
-    "^IXIC": "나스닥",
-}
 
 
 def _last_trading_close_per_week(series):
@@ -172,22 +120,6 @@ def collect_fixed_stocks() -> dict:
 _MOVER_NEWS_MIN_PCT = 3.0  # 이 등락률 미만이면 뉴스를 붙이지 않음(보합 종목에 억지 이유 금지)
 
 
-def _mover_news(ticker: str) -> str:
-    """급등락 종목의 실제 개별 뉴스 헤드라인 조회 — 지수 전체 뉴스에서
-    티커 문자열을 억지로 매칭하지 않고, 해당 종목 전용 뉴스만 사용."""
-    try:
-        for item in (yf.Ticker(ticker).news or [])[:5]:
-            if isinstance(item.get("content"), dict):
-                title = item["content"].get("title", "")
-            else:
-                title = item.get("title", "")
-            if title:
-                return title[:120]
-    except Exception:
-        pass
-    return ""
-
-
 def collect_top_movers(top_n: int = 3) -> list[dict]:
     """워치리스트 주간 급등락 TOP N."""
     try:
@@ -218,7 +150,7 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
         result = []
         for t, p in sorted_movers[:top_n]:
             last_close = round(float(close[t].dropna().iloc[-1]), 2) if t in close.columns else None
-            news = _mover_news(t) if abs(p) >= _MOVER_NEWS_MIN_PCT else ""
+            news = mover_news(t) if abs(p) >= _MOVER_NEWS_MIN_PCT else ""
             result.append({
                 "ticker": t,
                 "name": WATCH_NAMES.get(t, t),
@@ -235,24 +167,7 @@ def collect_top_movers(top_n: int = 3) -> list[dict]:
 
 def collect_news() -> list[str]:
     """Yahoo Finance 주간 뉴스 헤드라인 (최대 5건)."""
-    for ticker in ["^IXIC", "SPY", "QQQ"]:
-        try:
-            news = yf.Ticker(ticker).news
-            if not news:
-                continue
-            titles = []
-            for item in news[:8]:
-                if isinstance(item.get("content"), dict):
-                    title = item["content"].get("title", "")
-                else:
-                    title = item.get("title", "")
-                if title:
-                    titles.append(title)
-            if titles:
-                return titles[:5]
-        except Exception:
-            continue
-    return []
+    return collect_index_news(scan=8, limit=5)
 
 
 def collect_all() -> dict:

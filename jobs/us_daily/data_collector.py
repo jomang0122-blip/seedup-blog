@@ -1,69 +1,14 @@
 # -*- coding: utf-8 -*-
-import os
-import requests
 import yfinance as yf
 import pytz
 from datetime import datetime
 
+from shared.us_market import (
+    FIXED_TICKERS, WATCH_NAMES, NASDAQ_WATCH_LIST, INDEX_TICKERS,
+    news_title, mover_news, collect_index_news,
+)
+
 KST = pytz.timezone("Asia/Seoul")
-
-# 한국인 관심 고정 풀 (항상 수집)
-FIXED_TICKERS = {
-    "NVDA": "엔비디아",
-    "TSLA": "테슬라",
-    "SPCX": "스페이스엑스",
-    "IONQ": "아이온큐",
-    "AAPL": "애플",
-    "GOOGL": "알파벳(구글)",
-    "MSFT": "마이크로소프트",
-    "META": "메타",
-    "AMZN": "아마존",
-    "PLTR": "팔란티어",
-    "MU": "마이크론",
-}
-
-# 급등락 TOP 5 탐색용 워치리스트 (고정 풀 제외) — 한글명 매핑 (AI 환각 방지)
-WATCH_NAMES = {
-    "AVGO": "브로드컴",
-    "COST": "코스트코",
-    "NFLX": "넷플릭스",
-    "AMD": "AMD",
-    "ADBE": "어도비",
-    "QCOM": "퀄컴",
-    "TXN": "텍사스인스트루먼트",
-    "ARM": "암홀딩스",
-    "SMCI": "슈퍼마이크로",
-    "MRVL": "마벨테크놀로지",
-    "PANW": "팔로알토네트웍스",
-    "AMAT": "어플라이드머티리얼즈",
-    "LRCX": "램리서치",
-    "INTC": "인텔",
-    "SNPS": "시놉시스",
-    "KLAC": "KLA",
-    "ASML": "ASML",
-    "MSTR": "스트래티지",
-    "COIN": "코인베이스",
-    "HOOD": "로빈후드",
-    "RIVN": "리비안",
-    "SOFI": "소파이",
-    "RBLX": "로블록스",
-    "SNAP": "스냅",
-    "UBER": "우버",
-    "LYFT": "리프트",
-    "ABNB": "에어비앤비",
-    "DASH": "도어대시",
-    "CRWD": "크라우드스트라이크",
-    "ZS": "지스케일러",
-    "NET": "클라우드플레어",
-    "DDOG": "데이터독",
-}
-NASDAQ_WATCH_LIST = list(WATCH_NAMES.keys())
-
-INDEX_TICKERS = {
-    "^DJI": "다우존스",
-    "^GSPC": "S&P 500",
-    "^IXIC": "나스닥",
-}
 
 
 def _pct_change(hist) -> float | None:
@@ -127,15 +72,12 @@ def collect_fixed_stocks() -> dict:
                 print(f"  [경고] {ticker} {pct:+.2f}% — 데이터 이상 의심, N/A 처리")
                 close, pct = None, None
 
-            news_title = ""
+            headline = ""
             try:
                 for item in (t.news or [])[:5]:
-                    if isinstance(item.get("content"), dict):
-                        title = item["content"].get("title", "")
-                    else:
-                        title = item.get("title", "")
+                    title = news_title(item)
                     if title:
-                        news_title = title[:120]
+                        headline = title[:120]
                         break
             except Exception:
                 pass
@@ -144,7 +86,7 @@ def collect_fixed_stocks() -> dict:
                 "name": name,
                 "close": close,
                 "change_pct": pct if pct is not None else 0.0,
-                "news": news_title,
+                "news": headline,
             }
         except Exception as e:
             print(f"  [경고] {ticker} 수집 실패: {e}")
@@ -154,22 +96,6 @@ def collect_fixed_stocks() -> dict:
 
 
 _MOVER_NEWS_MIN_PCT = 2.0  # 이 등락률 미만이면 뉴스를 붙이지 않음(보합 종목에 억지 이유 금지, kr_daily B022 ②단계와 동일 취지)
-
-
-def _mover_news(ticker: str) -> str:
-    """급등락 종목의 실제 개별 뉴스 헤드라인 조회 (collect_fixed_stocks와 동일 패턴 —
-    지수 전체 뉴스에서 티커 문자열을 억지로 매칭하지 않고, 해당 종목 전용 뉴스만 사용)."""
-    try:
-        for item in (yf.Ticker(ticker).news or [])[:5]:
-            if isinstance(item.get("content"), dict):
-                title = item["content"].get("title", "")
-            else:
-                title = item.get("title", "")
-            if title:
-                return title[:120]
-    except Exception:
-        pass
-    return ""
 
 
 def collect_top_movers(top_n: int = 5) -> list[dict]:
@@ -203,7 +129,7 @@ def collect_top_movers(top_n: int = 5) -> list[dict]:
         sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
         result = []
         for ticker, pct in sorted_movers[:top_n]:
-            news = _mover_news(ticker) if abs(pct) >= _MOVER_NEWS_MIN_PCT else ""
+            news = mover_news(ticker) if abs(pct) >= _MOVER_NEWS_MIN_PCT else ""
             result.append({
                 "ticker": ticker,
                 "name": WATCH_NAMES.get(ticker, ticker),
@@ -225,6 +151,7 @@ def collect_economic_calendar(us_date: str) -> list[dict]:
     FMP (financialmodelingprep.com) 유료 플랜 가입 후 FMP_API_KEY를 환경변수에 설정하면
     구조화된 실제값(actual/estimate)을 수집합니다.
     현재는 무료 플랜이므로 뉴스 기반 AI 추출 방식을 사용합니다.
+    (활성화 시 파일 상단에 `import os, requests` 추가 필요)
 
     유료 전환 시 아래 주석 해제:
     # token = os.getenv("FMP_API_KEY", "")
@@ -246,28 +173,8 @@ def collect_economic_calendar(us_date: str) -> list[dict]:
 
 
 def collect_news() -> list[str]:
-    """Yahoo Finance 뉴스 헤드라인 수집 (최대 5건)"""
-    tickers_to_try = ["^IXIC", "SPY", "QQQ"]
-    for t in tickers_to_try:
-        try:
-            ticker = yf.Ticker(t)
-            news = ticker.news
-            if not news:
-                continue
-            titles = []
-            for item in news[:15]:
-                # yfinance 버전별 구조 대응
-                if isinstance(item.get("content"), dict):
-                    title = item["content"].get("title", "")
-                else:
-                    title = item.get("title", "")
-                if title:
-                    titles.append(title)
-            if titles:
-                return titles[:10]
-        except Exception:
-            continue
-    return []
+    """Yahoo Finance 뉴스 헤드라인 수집 (최대 10건)"""
+    return collect_index_news(scan=15, limit=10)
 
 
 def collect_all() -> dict:

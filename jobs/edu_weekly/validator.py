@@ -4,18 +4,21 @@
 """
 import re
 
-REQUIRED_ANCHORS = [
-    "📌 핵심 요약",
-    "오늘의 핵심 3가지",
-    "🎯",
-    "💡",
-    "⚠️",
+# (표시명, 정규식) — 검증은 조립 완료된 content(배너+본문+면책)로 실행되므로,
+# 고정 조립부에도 항상 존재하는 문자열(예: 면책의 ⚠️)로 검사하면 본문 누락을
+# 못 잡는다. 소제목은 반드시 <h3> 태그 기준으로 검사한다.
+REQUIRED_SECTIONS = [
+    ("📌 핵심 요약",      r"📌\s*핵심 요약"),
+    ("오늘의 핵심 3가지", r"오늘의 핵심 3가지"),
+    ("🎯 개념 소제목",    r"<h3>[^<]*🎯"),
+    ("💡 실전 예시",      r"<h3>[^<]*💡"),
+    ("⚠️ 주의사항",       r"<h3>[^<]*⚠"),
 ]
 
 
 def validate_sections(html: str) -> list:
-    """누락된 섹션 앵커 목록 반환. 빈 리스트이면 정상."""
-    return [anchor for anchor in REQUIRED_ANCHORS if anchor not in html]
+    """누락된 섹션 이름 목록 반환. 빈 리스트이면 정상."""
+    return [name for name, pattern in REQUIRED_SECTIONS if not re.search(pattern, html)]
 
 
 def count_text_length(html: str) -> int:
@@ -23,12 +26,3 @@ def count_text_length(html: str) -> int:
     text = re.sub(r'<[^>]+>', '', html)
     text = re.sub(r'\s+', ' ', text).strip()
     return len(text)
-
-
-def validate_and_fix_title(html: str, level: str, title: str) -> str:
-    """h2 제목 형식 검증 — [레벨] 대괄호 없으면 강제 교정."""
-    correct_h2 = f'<h2>[{level}] {title}</h2>'
-    if not re.search(r'<h2>\[.+?\]', html):
-        html = re.sub(r'<h2>.*?</h2>', '', html, count=1)
-        html = correct_h2 + '\n' + html
-    return html
