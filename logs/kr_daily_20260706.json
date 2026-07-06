@@ -1,41 +1,10 @@
 {
   "date": "2026-07-06",
-  "published_at": "2026-07-06T11:14:47.735137",
-  "title": "[26년 7월 6일 국내증시] 금호타이어 상한가·자동차 강세 속 KOSPI 하락, 전자장비·에너지 섹터 급락",
-  "url": "https://www.seedup-invest.com/2026/07/26-7-6-kospi_0967066633.html",
-  "char_count": 7244,
+  "published_at": "2026-07-06T11:27:14.849867",
+  "title": "[26년 7월 6일 국내증시] 금호타이어 상한가·방산주 강세에도 KOSPI 하락, 전자장비·에너지 섹터 급락",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-6-kospi_01656439516.html",
+  "char_count": 7035,
   "kospi_close": 8051.33,
   "kospi_change_pct": -0.46,
-  "validation_issues": [
-    {
-      "type": "sector_breadth",
-      "description": "자동차 섹터 업종폭 수치 오류",
-      "found": "9종목 중 6개 상승(67%)",
-      "expected": "9종목 중 6개 동방향"
-    },
-    {
-      "type": "sector_breadth",
-      "description": "손해보험 섹터 업종폭 수치 오류",
-      "found": "10종목 중 8개 상승(80%)",
-      "expected": "10종목 중 8개 동방향"
-    },
-    {
-      "type": "sector_breadth",
-      "description": "전자장비와기기 섹터 업종폭 수치 오류",
-      "found": "99종목 중 56개 하락(57%)",
-      "expected": "99종목 중 56개 동방향"
-    },
-    {
-      "type": "sector_breadth",
-      "description": "에너지장비및서비스 섹터 업종폭 수치 오류",
-      "found": "31종목 중 23개 하락(74%)",
-      "expected": "31종목 중 23개 동방향"
-    },
-    {
-      "type": "sector_breadth",
-      "description": "전기장비 섹터 업종폭 수치 오류",
-      "found": "34종목 중 24개 하락(71%)",
-      "expected": "34종목 중 24개 동방향"
-    }
-  ]
+  "validation_issues": []
 }
