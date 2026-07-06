@@ -1,10 +1,23 @@
 {
   "date": "2026-07-06",
-  "published_at": "2026-07-06T11:54:11.597041",
-  "title": "[26년 7월 6일 국내증시] KOSPI 하락 마감, 금호타이어 상한가·방산주 강세 속 전자장비·에너지 섹터 급락",
-  "url": "https://www.seedup-invest.com/2026/07/26-7-6-kospi_0478601719.html",
-  "char_count": 6963,
+  "published_at": "2026-07-06T12:04:03.941387",
+  "title": "[26년 7월 6일 국내증시] 방산·자동차 강세로 낙폭 방어, 전자장비·에너지 약세에 KOSPI 하락 마감",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-6-kospi_01049837872.html",
+  "char_count": 7424,
   "kospi_close": 8051.33,
   "kospi_change_pct": -0.46,
-  "validation_issues": []
+  "validation_issues": [
+    {
+      "type": "sector_composition",
+      "description": "에너지장비및서비스 섹터의 업종폭 해석 오류",
+      "found": "구성종목 70% 이상이 하락 방향에 집중",
+      "expected": "31종목 중 23개 동방향 = 74.2% (상향 기술이 맞으나, '구성종목 70% 이상'은 부정확한 표현)"
+    },
+    {
+      "type": "sector_composition",
+      "description": "전기장비 섹터의 업종폭 해석 오류",
+      "found": "구성종목 70% 이상 하락 동참",
+      "expected": "34종목 중 24개 동방향 = 70.6% (상향 기술이 맞으나, '70% 이상'은 최소한의 기술로 부정확)"
+    }
+  ]
 }
