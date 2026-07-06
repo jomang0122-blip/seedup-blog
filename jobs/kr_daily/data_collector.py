@@ -89,49 +89,76 @@ def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
     return df.dropna(subset=[chg_col])
 
 
-def get_top_stocks(date_str: str) -> dict:
+def _build_stock_maps() -> dict:
+    """KOSPI+KOSDAQ 전종목 등락률·시가총액 사전과, TOP5 산출용 정제 DataFrame 생성.
+
+    뉴스기반 특징주 검증(stock_pct_map/stock_cap_map 필요)이 TOP5 산출보다
+    먼저 실행되어야 해서(뉴스기반으로 확정된 종목을 TOP5 후보에서 제외하기 위해)
+    맵 생성과 TOP5 산출을 분리했다.
+    """
+    df_kospi = fdr.StockListing("KOSPI")
+    chg_col = next(
+        (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kospi.columns),
+        None
+    )
+    if chg_col is None:
+        raise ValueError(f"등락률 컬럼 없음: {df_kospi.columns.tolist()}")
+
+    df_kospi = _clean_stock_df(df_kospi, chg_col)
+    stock_pct_map = {
+        str(r["Name"]): round(float(r[chg_col]), 2)
+        for _, r in df_kospi.iterrows()
+    }
+    stock_cap_map = {}
+    if "Marcap" in df_kospi.columns:
+        stock_cap_map = {
+            str(r["Name"]): float(r["Marcap"])
+            for _, r in df_kospi.iterrows()
+            if pd.notna(r["Marcap"])
+        }
+
     try:
-        df_kospi = fdr.StockListing("KOSPI")
-        chg_col = next(
-            (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kospi.columns),
+        df_kosdaq = fdr.StockListing("KOSDAQ")
+        kq_chg = next(
+            (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kosdaq.columns),
             None
         )
-        if chg_col is None:
-            raise ValueError(f"등락률 컬럼 없음: {df_kospi.columns.tolist()}")
+        if kq_chg:
+            df_kosdaq = _clean_stock_df(df_kosdaq, kq_chg)
+            for _, r in df_kosdaq.iterrows():
+                name = str(r["Name"])
+                if name not in stock_pct_map:
+                    stock_pct_map[name] = round(float(r[kq_chg]), 2)
+                if name not in stock_cap_map and "Marcap" in df_kosdaq.columns and pd.notna(r["Marcap"]):
+                    stock_cap_map[name] = float(r["Marcap"])
+    except Exception as e:
+        print(f"  [종목] KOSDAQ 추가 실패: {e}")
 
-        df_kospi = _clean_stock_df(df_kospi, chg_col)
-        stock_pct_map = {
-            str(r["Name"]): round(float(r[chg_col]), 2)
-            for _, r in df_kospi.iterrows()
-        }
-        stock_cap_map = {}
-        if "Marcap" in df_kospi.columns:
-            stock_cap_map = {
-                str(r["Name"]): float(r["Marcap"])
-                for _, r in df_kospi.iterrows()
-                if pd.notna(r["Marcap"])
-            }
+    return {
+        "df_kospi": df_kospi,
+        "chg_col": chg_col,
+        "stock_pct_map": stock_pct_map,
+        "stock_cap_map": stock_cap_map,
+    }
 
-        try:
-            df_kosdaq = fdr.StockListing("KOSDAQ")
-            kq_chg = next(
-                (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kosdaq.columns),
-                None
-            )
-            if kq_chg:
-                df_kosdaq = _clean_stock_df(df_kosdaq, kq_chg)
-                for _, r in df_kosdaq.iterrows():
-                    name = str(r["Name"])
-                    if name not in stock_pct_map:
-                        stock_pct_map[name] = round(float(r[kq_chg]), 2)
-                    if name not in stock_cap_map and "Marcap" in df_kosdaq.columns and pd.notna(r["Marcap"]):
-                        stock_cap_map[name] = float(r["Marcap"])
-        except Exception as e:
-            print(f"  [종목] KOSDAQ 추가 실패: {e}")
+
+def get_top_stocks(stock_maps: dict, exclude_names: set = None) -> dict:
+    """시총 1조원 이상 종목 중 등락률 TOP5 산출.
+
+    exclude_names 제공 시 해당 종목은 TOP5 후보에서 제외한다 — 뉴스기반
+    특징주로 이미 확정된 종목이 상승/하락 특징주에 중복 노출되는 대신,
+    그 다음 순위 종목이 자리를 채우도록 하기 위함.
+    """
+    exclude_names = exclude_names or set()
+    try:
+        df_kospi = stock_maps["df_kospi"]
+        chg_col = stock_maps["chg_col"]
 
         df_top5 = df_kospi.copy()
         if "Marcap" in df_top5.columns:
             df_top5 = df_top5[pd.to_numeric(df_top5["Marcap"], errors="coerce") > 1_000_000_000_000]
+        if exclude_names:
+            df_top5 = df_top5[~df_top5["Name"].astype(str).isin(exclude_names)]
 
         _UPPER_LIMIT_THRESHOLD = 29.0
         gainers = [
@@ -154,8 +181,8 @@ def get_top_stocks(date_str: str) -> dict:
         return {
             "top_gainers": gainers,
             "top_losers": losers,
-            "stock_pct_map": stock_pct_map,
-            "stock_cap_map": stock_cap_map,
+            "stock_pct_map": stock_maps["stock_pct_map"],
+            "stock_cap_map": stock_maps["stock_cap_map"],
         }
 
     except Exception as e:
@@ -519,10 +546,27 @@ def collect_all(date: str = None) -> dict:
         featured_verified = []
     else:
         index_data = get_index_data(date)
-        stock_result = get_top_stocks(date)
-        sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
         news = get_news()
         featured = get_featured_stock_news()
+
+        # 뉴스기반 특징주를 상승/하락 특징주(TOP5)보다 먼저 확정한다.
+        # TOP5 산출에 필요한 stock_pct_map/stock_cap_map만 먼저 만들고,
+        # 뉴스기반 검증 통과 종목은 TOP5 후보에서 제외해 같은 종목이
+        # "상승 특징주"와 "뉴스기반 특징주" 양쪽에 중복 노출되지 않게 한다.
+        stock_maps = _build_stock_maps()
+        print("[뉴스기반 특징주 검증]")
+        featured_verified = extract_and_verify_featured_stocks(
+            featured,
+            stock_maps["stock_pct_map"],
+            date,
+            stock_cap_map=stock_maps["stock_cap_map"],
+        )
+        print(f"  → 검증 완료: {len(featured_verified)}개")
+
+        stock_result = get_top_stocks(
+            stock_maps, exclude_names={v["name"] for v in featured_verified}
+        )
+        sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
 
         # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
         stock_names = [
@@ -530,16 +574,6 @@ def collect_all(date: str = None) -> dict:
             stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
         ]
         stock_news_map = get_stock_news_by_name(stock_names)
-
-        # 뉴스기반 특징주 3단계 검증
-        print("[뉴스기반 특징주 검증]")
-        featured_verified = extract_and_verify_featured_stocks(
-            featured,
-            stock_result.get("stock_pct_map", {}),
-            date,
-            stock_cap_map=stock_result.get("stock_cap_map", {}),
-        )
-        print(f"  → 검증 완료: {len(featured_verified)}개")
 
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",

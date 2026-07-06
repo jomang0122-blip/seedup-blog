@@ -33,7 +33,10 @@ def _build_stock_anchor(data: dict) -> str:
             parts.append(f"{s['name']} {s['change_pct']:+.2f}%")
         lines.append("하락 특징주 (종목명+등락률만 — 이유 작성 절대 금지):\n" + "\n".join(parts))
 
-    # 뉴스기반 특징주: Python 검증 완료 종목만, 상승/하락 섹션 중복 제외
+    # 뉴스기반 특징주: Python 검증 완료 종목만.
+    # data_collector.collect_all()이 뉴스기반 검증을 먼저 확정한 뒤 그 종목을
+    # 제외하고 TOP5를 뽑으므로 정상 흐름에서는 겹치지 않는다. 아래 필터는
+    # 그래도 중복이 발생하는 예외 상황에 대비한 이중 안전장치다.
     news_stocks = [
         f"{v['name']} {v['change_pct']:+.2f}% [뉴스: {v['news']}]"
         for v in featured_verified
