@@ -69,7 +69,11 @@ def _build_data_summary(data: dict) -> str:
         if sectors:
             lines.append(f"{label} 섹터 TOP3:")
             for s in sectors:
-                lines.append(f"  {s['name']} {s['change_pct']:+.2f}%")
+                line = f"  {s['name']} {s['change_pct']:+.2f}%"
+                breadth = s.get("breadth")
+                if breadth:
+                    line += f" (업종폭: {breadth['total']}종목 중 {breadth['same_dir']}개 동방향)"
+                lines.append(line)
 
     news_headlines = data.get("crawled_news_features", [])
     stock_pct_map = data.get("stock_pct_map", {})
@@ -105,6 +109,8 @@ def validate_post(data: dict, post: dict) -> dict:
 2. 본문의 지수(KOSPI·KOSDAQ 또는 나스닥·S&P500·다우) 종가 및 등락률이 정확한가?
 3. 종목 섹션(특징주·관심 종목·급등락)의 종목명·등락률이 데이터와 일치하는가?
 4. 섹터 등락률이 데이터와 일치하는가? (섹터 데이터가 있는 경우만)
+5. 본문에 "N종목 중 M개" 형태의 업종폭 수치가 있으면 해당 섹터의 (업종폭: ...) 데이터와
+   정확히 일치하는가? — 인접 섹터의 수치를 잘못 옮겨 적는 오류가 실제 발생함
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
