@@ -362,10 +362,38 @@ def get_stock_news_by_name(names: list) -> dict:
     return result
 
 
-def _parse_name_from_headline(headline: str) -> str:
-    """'[특징주] 종목명, ...' 형태 헤드라인에서 종목명만 추출."""
-    m = re.match(r"\[특징주\]\s*([^\s,·…]+)", headline)
-    return m.group(1).strip() if m else ""
+def _parse_name_from_headline(headline: str, stock_pct_map: dict = None) -> str:
+    """'[특징주] 종목명, ...' 형태 헤드라인에서 종목명만 추출.
+
+    '[특징주]' 뒤 첫 어절을 곧바로 종목명으로 쓰지 않는다. 종목명 자체에 조사와
+    같은 글자가 포함될 수 있어(예: '금호타이어'의 '이어', 'SK하이닉스'의 '하이') 문자열
+    패턴만으로는 종목명 경계를 정확히 알 수 없기 때문이다. 대신 stock_pct_map(오늘
+    실제 거래된 전체 종목명 사전)에 존재하는 후보 중 가장 긴 것을 종목명으로 채택해
+    경계를 확정하고, 그 뒤에 주어 패턴(쉼표 또는 주격조사 이/가/은/는)이 바로 오는
+    경우에만 그 종목을 '문장의 실제 행위 주체'로 인정한다.
+
+    '[특징주] 종목명과의 계약'처럼 종목명이 상대방·수식 대상으로만 언급된 경우
+    (조사 없이 다른 말이 붙거나 '~과의/~와의/~ 협력사인/~ 관련주인' 등)는 주어
+    패턴이 없으므로 보수적으로 거부한다.
+    """
+    m = re.match(r"\[특징주\]\s*(.{1,20})", headline)
+    if not m:
+        return ""
+    tail = m.group(1)
+
+    if not stock_pct_map:
+        return ""
+
+    best_name = ""
+    for candidate in stock_pct_map:
+        if not candidate or not tail.startswith(candidate):
+            continue
+        if len(candidate) <= len(best_name):
+            continue
+        rest = tail[len(candidate):]
+        if re.match(r"^\s*,", rest) or re.match(r"^(이|가|은|는)(?!\S)", rest):
+            best_name = candidate
+    return best_name
 
 
 def _is_today_news(pub_date: str, date_str: str) -> bool:
@@ -401,7 +429,7 @@ def extract_and_verify_featured_stocks(
     verified = []
 
     for headline in headlines:
-        name = _parse_name_from_headline(headline)
+        name = _parse_name_from_headline(headline, stock_pct_map)
         if not name or name in seen:
             continue
         seen.add(name)
