@@ -304,6 +304,8 @@ def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
             else:
                 s["top_stocks"] = []
 
+        _attach_sector_theme_flag(top3 + bot3)
+
         return {
             "top_sectors": top3,
             "bottom_sectors": bot3,
@@ -311,6 +313,41 @@ def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
     except Exception as e:
         print(f"  [섹터] 수집 실패: {e}")
         return {"top_sectors": [], "bottom_sectors": []}
+
+
+def _attach_sector_theme_flag(sectors: list) -> None:
+    """섹터 대표종목에 뉴스를 붙여 '업종 전반 이슈'인지 '개별 종목 테마성 이슈'인지 판별.
+
+    대표종목 각각의 특징주 뉴스를 조회해, 헤드라인에 그 업종명(또는 업종명에서
+    공통으로 쓰이는 키워드)이 포함되는지 본다. 대표종목 뉴스가 있는데도 업종명이
+    전혀 언급되지 않으면(개별 종목 고유 이슈만 있으면) '업종 전반이 아니라 특정
+    종목의 개별 이슈로 오른 것일 수 있다'는 플래그(theme_isolated)를 세운다.
+    Python이 이 사실만 판정해 AI 프롬프트에 넘기고, "동반 강세"류 인과 서술
+    여부는 그 플래그를 본 AI가 결정한다 — AI가 뉴스 내용 자체를 판단하지
+    않게 하려는 목적.
+
+    실제 사고 사례: '자동차부품' 섹터가 금호타이어 상한가로 상승했는데,
+    금호타이어 뉴스는 '호남 반도체 클러스터' 테마였고 자동차부품 업황과는
+    무관했다. 이 경우 업종명('자동차부품' 또는 '자동차')이 뉴스 헤드라인에
+    없으므로 theme_isolated=True로 표시된다.
+    """
+    all_names = [t["name"] for s in sectors for t in s.get("top_stocks", [])]
+    if not all_names:
+        return
+    news_map = get_stock_news_by_name(all_names)
+
+    for s in sectors:
+        sector_keyword = re.sub(r"(업|업종|섹터)$", "", s["name"])
+        has_news = False
+        has_sector_keyword = False
+        for t in s.get("top_stocks", []):
+            headline = news_map.get(t["name"], "")
+            t["news"] = headline
+            if headline:
+                has_news = True
+                if sector_keyword and sector_keyword in headline:
+                    has_sector_keyword = True
+        s["theme_isolated"] = has_news and not has_sector_keyword
 
 
 def _naver_news_search(query: str, display: int = 3) -> list:
@@ -379,13 +416,21 @@ def get_stock_news_by_name(names: list) -> dict:
     """특징주 종목명별 뉴스 개별 검색. {종목명: 헤드라인} 반환.
     '[특징주] 종목명' 검색만 수행 — fallback 없음.
     오래된 일반 뉴스가 오늘 이유로 둔갑하는 AI 환각 방지.
+
+    네이버 뉴스 검색 API는 형태소 단위 관련도 매칭을 하므로 검색어에
+    종목명을 넣어도 결과 헤드라인에 그 종목명이 실제로 포함된다는 보장이
+    없다(예: '금호타이어' 검색 → '금호건설'·무관 기사가 반환된 실사례 확인).
+    display를 늘려 후보 풀을 넓히고, 그중 헤드라인에 종목명 문자열이
+    실제로 포함된 것만 채택한다. 매칭 실패 시 뉴스 없음으로 처리한다
+    (틀린 기사를 붙이는 것보다 이유 없이 종목명+등락률만 표기하는 편이 안전).
     """
     result = {}
     for name in names:
-        items = _naver_news_search(f"[특징주] {name}", display=3)
-        if items:
-            result[name] = items[0]["title"]
-        print(f"  [종목뉴스] {name}: {'있음' if name in result else '없음'}")
+        items = _naver_news_search(f"[특징주] {name}", display=10)
+        matched = [i for i in items if name in i["title"]]
+        if matched:
+            result[name] = matched[0]["title"]
+        print(f"  [종목뉴스] {name}: {'있음' if name in result else '없음(후보 ' + str(len(items)) + '건 중 매칭 없음)'}")
     return result
 
 
@@ -478,19 +523,29 @@ def extract_and_verify_featured_stocks(
             print(f"  [검증③실패] {name}: 시총 {stock_cap_map.get(name, 0) / 1e8:.0f}억 < {min_cap / 1e8:.0f}억")
             continue
 
-        # ④ 네이버 뉴스 오늘 날짜 기사 확인
-        items = _naver_news_search(f"[특징주] {name}", display=5)
-        today_items = [i for i in items if _is_today_news(i.get("pub_date", ""), date_str)]
+        # ④ 네이버 뉴스 오늘 날짜 기사 확인 — 오늘 날짜 + 종목명이 실제 헤드라인에
+        # 포함된 기사만 채택(검색어에 종목명을 넣어도 관련도 매칭으로 무관한 기사가
+        # 섞여 들어올 수 있음 — get_stock_news_by_name과 동일한 이유의 방어).
+        # 여러 건 중에서는 이미 파싱해 검증①~③을 통과한 원본 headline과 가장 가까운
+        # (원본 헤드라인과 동일하거나, 없으면 최신) 기사를 우선한다.
+        items = _naver_news_search(f"[특징주] {name}", display=10)
+        today_items = [
+            i for i in items
+            if _is_today_news(i.get("pub_date", ""), date_str) and name in i["title"]
+        ]
         if not today_items:
-            print(f"  [검증④실패] {name}: 오늘({date_str}) [특징주] 뉴스 없음")
+            print(f"  [검증④실패] {name}: 오늘({date_str}) 종목명 포함 [특징주] 뉴스 없음")
             continue
+
+        exact_match = [i for i in today_items if i["title"] == headline]
+        chosen = exact_match[0] if exact_match else today_items[0]
 
         verified.append({
             "name": name,
             "change_pct": change_pct,
-            "news": today_items[0]["title"],
+            "news": chosen["title"],
         })
-        print(f"  [검증완료] {name}: {change_pct:+.2f}% / {today_items[0]['title'][:50]}")
+        print(f"  [검증완료] {name}: {change_pct:+.2f}% / {chosen['title'][:50]}")
 
     return verified
 
