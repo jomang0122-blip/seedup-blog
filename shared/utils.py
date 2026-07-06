@@ -188,8 +188,10 @@ def md_to_html(text: str) -> str:
         from bs4 import BeautifulSoup
         # ### 헤딩을 Python markdown 라이브러리에 의존하지 않고 직접 HTML로 변환
         # (라이브러리는 앞에 빈 줄이 없으면 ### 를 그대로 출력하는 버그 있음)
+        # SEO: 프롬프트의 ###/####를 h2/h3로 한 단계 승격 — 글 최상위 소제목이
+        # h3부터 시작하면 문서 구조상 h2가 비어 검색엔진 구조 파악에 불리 (2026-07-06)
         def _heading(m):
-            level = len(m.group(1))
+            level = max(2, min(6, len(m.group(1)) - 1))
             content = m.group(2).strip()
             content = re.sub(r'\*\*(.+?)\*\*', r'\1', content)
             content = re.sub(r'\*(.+?)\*', r'\1', content)
