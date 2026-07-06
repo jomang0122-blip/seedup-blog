@@ -203,14 +203,26 @@ def md_to_html(text: str) -> str:
             table["border"] = "1"
             table["style"] = "border-collapse:collapse;width:100%;font-size:14px;"
         # 각 행의 첫 칸(섹터명·지수명 등 라벨 컬럼)은 줄바꿈 금지 — 긴 한글 라벨이
-        # 다른 칸(설명 텍스트) 길이에 밀려 2줄로 쪼개지는 가독성 저하 방지
-        for row in soup.find_all("tr"):
-            for i, cell in enumerate(row.find_all(["th", "td"])):
-                is_header = cell.name == "th"
-                style = "padding:8px;background:#f2f4f6;text-align:left;" if is_header else "padding:8px;vertical-align:top;"
-                if i == 0:
-                    style += "white-space:nowrap;"
-                cell["style"] = style
+        # 다른 칸(설명 텍스트) 길이에 밀려 2줄로 쪼개지는 가독성 저하 방지.
+        # 등락률 컬럼도 같은 이유로 줄바꿈 금지 — kr_daily 라이브 발행글에서
+        # "-0.46%"가 두 줄로 쪼개지는 문제가 실측 확인됨(2026-07-06). 단, 이
+        # 함수는 5개 파이프라인이 공유하고 표마다 컬럼 순서가 달라(예: kr_weekly
+        # "주간 주도 섹터" 표는 2번째 컬럼이 섹터명이라 고정 인덱스로 판단하면
+        # 위험) 컬럼 위치가 아니라 헤더 텍스트("등락률" 포함)로 그 열 전체를
+        # 찾아 nowrap을 적용한다.
+        for table in soup.find_all("table"):
+            header_cells = table.find("tr").find_all(["th", "td"]) if table.find("tr") else []
+            nowrap_cols = {
+                i for i, h in enumerate(header_cells)
+                if "등락률" in h.get_text()
+            }
+            for row in table.find_all("tr"):
+                for i, cell in enumerate(row.find_all(["th", "td"])):
+                    is_header = cell.name == "th"
+                    style = "padding:8px;background:#f2f4f6;text-align:left;" if is_header else "padding:8px;vertical-align:top;"
+                    if i == 0 or i in nowrap_cols:
+                        style += "white-space:nowrap;"
+                    cell["style"] = style
         return str(soup)
     except ImportError:
         return text
