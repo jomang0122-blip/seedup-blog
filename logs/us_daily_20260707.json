@@ -1,0 +1,18 @@
+{
+  "kst_date": "2026-07-07",
+  "us_date": "2026-07-06",
+  "published_at": "2026-07-06T23:02:29.453563",
+  "title": "[26년 7월 6일 미증시 마감] 나스닥 1.1% 상승, 테슬라 +6.7%",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-6-11-67.html",
+  "char_count": 11029,
+  "nasdaq_close": 26121.16,
+  "nasdaq_change_pct": 1.12,
+  "validation_issues": [
+    {
+      "type": "body_date",
+      "description": "본문의 거래일 연도가 잘못됨",
+      "found": "2025년 7월 6일",
+      "expected": "2026년 7월 6일"
+    }
+  ]
+}
