@@ -236,7 +236,10 @@ def run(dry_run: bool = False, force: bool = False):
     log(f"  수집 종목: {len(data['fixed_stocks'])}개  급등락: {len(data['top_movers'])}개  뉴스: {len(data['news'])}건")
 
     # 휴장 감지: 마지막 거래일 리포트가 이미 발행됐으면 신규 마감 데이터 없음
-    if _already_published_us_date(data["us_date"]):
+    # --force 지정 시 이 체크 자체를 건너뛴다 — 로그 파일(logs/us_daily_*.json)은
+    # Blogger에서 글을 수동 삭제해도 남아있어, force 없이는 "삭제 후 재발행"이
+    # 영원히 막히는 문제가 실제 발생했다(2026-07-07).
+    if not force and _already_published_us_date(data["us_date"]):
         missed = _missed_us_weekdays(data["us_date"])
         if not missed:
             log(f"  {data['us_date']} 마감 리포트 이미 발행 — 신규 데이터 없음, 종료")
