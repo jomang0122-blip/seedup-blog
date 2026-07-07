@@ -5,7 +5,7 @@ from datetime import datetime
 
 from shared.us_market import (
     FIXED_TICKERS, WATCH_NAMES, NASDAQ_WATCH_LIST, INDEX_TICKERS,
-    news_title, mover_news, collect_index_news,
+    news_title, mover_news, collect_index_news, collect_macro_news,
 )
 
 KST = pytz.timezone("Asia/Seoul")
@@ -173,8 +173,18 @@ def collect_economic_calendar(us_date: str) -> list[dict]:
 
 
 def collect_news() -> list[str]:
-    """Yahoo Finance 뉴스 헤드라인 수집 (최대 10건)"""
+    """Yahoo Finance 시장 뉴스 헤드라인 수집 (최대 10건)"""
     return collect_index_news(scan=15, limit=10)
+
+
+def collect_macro_news_headlines() -> list[str]:
+    """경제지표·연준 동향 전용 뉴스(^TNX 국채금리 기반, 최근 3일, 최대 8건).
+
+    일반 시장 뉴스(collect_news)는 개별 종목 이슈 위주라 "경제 지표 & 연준
+    동향" 섹션이 채울 소재를 못 찾는 문제가 실제 발생해(2026-07-07) 별도
+    소스로 분리했다 — collect_news의 10건 상한에 밀려 잘리지 않도록 독립
+    필드로 유지."""
+    return collect_macro_news(days=3, limit=8)
 
 
 def collect_all() -> dict:
@@ -197,6 +207,8 @@ def collect_all() -> dict:
 
     print("  경제 지표 수집 중...")
     economic_calendar = collect_economic_calendar(us_date)
+    macro_news = collect_macro_news_headlines()
+    print(f"  [경제지표 전용 뉴스] {len(macro_news)}건")
 
     kst_date = datetime.now(KST).strftime("%Y-%m-%d")
 
@@ -209,6 +221,7 @@ def collect_all() -> dict:
         "top_movers": top_movers,
         "news": news,
         "economic_calendar": economic_calendar,
+        "macro_news": macro_news,
     }
 
 

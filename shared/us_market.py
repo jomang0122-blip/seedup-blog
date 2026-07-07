@@ -74,6 +74,26 @@ def news_title(item: dict) -> str:
     return item.get("title", "")
 
 
+def news_pub_date(item: dict) -> str:
+    """yfinance 뉴스 항목에서 게시 시각(ISO8601 UTC 문자열) 추출."""
+    if isinstance(item.get("content"), dict):
+        return item["content"].get("pubDate", "")
+    return ""
+
+
+def _is_recent_news(pub_date: str, days: int) -> bool:
+    """pub_date(ISO8601 UTC)가 현재 기준 최근 days일 이내인지 판정.
+    시각 파싱 실패 시 배제(오래된 뉴스로 잘못 채택하는 것보다 안전)."""
+    if not pub_date:
+        return False
+    from datetime import datetime, timedelta, timezone
+    try:
+        pub = datetime.fromisoformat(pub_date.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return pub >= datetime.now(timezone.utc) - timedelta(days=days)
+
+
 def mover_news(ticker: str) -> str:
     """급등락 종목의 실제 개별 뉴스 헤드라인 조회 — 지수 전체 뉴스에서
     티커 문자열을 억지로 매칭하지 않고, 해당 종목 전용 뉴스만 사용."""
@@ -100,3 +120,25 @@ def collect_index_news(scan: int = 15, limit: int = 10) -> list:
         except Exception:
             continue
     return []
+
+
+def collect_macro_news(days: int = 3, scan: int = 20, limit: int = 8) -> list:
+    """경제지표·연준 동향 전용 뉴스 수집 — ^TNX(10년물 국채금리) 뉴스 사용.
+
+    ^IXIC 등 일반 지수 뉴스는 개별 종목 이슈 위주라 "Fed Minutes",
+    "Jobs Report" 같은 거시경제 헤드라인이 거의 안 잡히는 반면, 국채금리는
+    연준·고용·물가 발표에 민감하게 반응해 관련 뉴스가 실제로 압도적으로
+    많음(2026-07-07 직접 조회로 확인). 미국 동부 발표 → 한국 수집 시차 및
+    주말 공백을 고려해 "당일"이 아닌 최근 days일 범위로 필터링한다.
+    """
+    try:
+        news = yf.Ticker("^TNX").news or []
+    except Exception:
+        return []
+    result = []
+    for item in news[:scan]:
+        title = news_title(item)
+        if not title or not _is_recent_news(news_pub_date(item), days):
+            continue
+        result.append(title)
+    return result[:limit]
