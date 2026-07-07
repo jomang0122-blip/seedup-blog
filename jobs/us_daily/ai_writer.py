@@ -118,7 +118,10 @@ def build_prompt(data: dict) -> str:
     us_date_kor  = _date_kor(us_date)
 
     news_list     = data.get("news", [])
-    macro_news    = data.get("macro_news", [])
+    # news_list와 겹치는 헤드라인은 macro_news에서 제외 — 겹친 채로 두면 AI가
+    # [뉴스 헤드라인]과 [경제지표·연준 관련 뉴스] 두 블록에서 같은 소식을
+    # 서로 다른 표현으로 두 번 언급하는 부자연스러운 글이 될 위험이 있다.
+    macro_news    = [h for h in data.get("macro_news", []) if h not in news_list]
     indices_block = _build_indices_block(data.get("indices", {}))
     stocks_block  = _build_stocks_block(data.get("fixed_stocks", {}))
     movers_block  = _build_movers_block(data.get("top_movers", []))
