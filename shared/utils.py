@@ -163,8 +163,10 @@ def apply_color_spans(html: str) -> str:
 
     # 이미 색상 span으로 감싸진 수치 — 색상 무시하고 부호 기준 재작성 후 보호
     # (보호하지 않으면 아래 2차 정규식이 방금 고친 span을 또 감싸는 이중 중첩 버그 발생)
+    # <b> 유무 모두 매칭 — AI가 마크다운 **볼드** 안에 span을 직접 써서 md_to_html이
+    # <strong><span>+X%</span></strong>로 변환하는 경우(<b> 없음)도 실제 발견됨(2026-07-07)
     html = re.sub(
-        r'<span style="color:#(?:e74c3c|3182f6)"><b>([+-]\d+\.\d+%)</b></span>',
+        r'<span style="color:#(?:e74c3c|3182f6)">(?:<b>)?([+-]\d+\.\d+%)(?:</b>)?</span>',
         _recolor_and_protect, html
     )
     # 미처리 수치(색상 태그 없는 +/-X.XX%)에도 부호 기준 색상 적용 — 숫자·따옴표 뒤는 제외
