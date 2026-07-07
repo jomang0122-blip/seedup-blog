@@ -1,0 +1,39 @@
+{
+  "date": "2026-07-07",
+  "published_at": "2026-07-07T07:02:46.979297",
+  "title": "[26년 7월 7일 국내증시] 한화오션 캐나다 잠수함 수주 불발·삼성전자 급락에 KOSPI 4.91% 폭락, 조선·반도체 섹터 전반 약세",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-7-kospi-491.html",
+  "char_count": 7404,
+  "kospi_close": 7656.31,
+  "kospi_change_pct": -4.91,
+  "validation_issues": [
+    {
+      "type": "sector_number",
+      "section": "섹터 테이블 - 방송과엔터테인먼트",
+      "description": "하이브 등락률이 데이터와 불일치",
+      "found": "+7.91%",
+      "expected": "+8.60%"
+    },
+    {
+      "type": "sector_number",
+      "section": "섹터 테이블 - 화장품",
+      "description": "에이피알 등락률이 데이터와 불일치",
+      "found": "+8.32%",
+      "expected": "+7.40%"
+    },
+    {
+      "type": "sector_number",
+      "section": "섹터 테이블 - 전자장비와기기",
+      "description": "삼성전기 등락률이 데이터와 불일치",
+      "found": "-9.85%",
+      "expected": "-10.01%"
+    },
+    {
+      "type": "sector_number",
+      "section": "섹터 테이블 - 조선",
+      "description": "한화오션 등락률이 데이터와 불일치",
+      "found": "-22.65%",
+      "expected": "-23.08%"
+    }
+  ]
+}
