@@ -265,6 +265,11 @@ def _crawl_sector_top_stocks(
             s for s in all_stocks
             if stock_cap_map is None or stock_cap_map.get(s["name"], 0) >= min_cap
         ]
+        # 섹터 내 시총 1조원 이상 종목이 하나도 없으면(예: 문구류처럼 소형주 위주 섹터)
+        # 필터를 완화해 전체 종목 중 상위 top_n을 대표종목으로 채택 — 완전 공란 방지
+        if not candidates and all_stocks:
+            print(f"  [섹터상세-{no}] 시총 {min_cap/1e12:.0f}조 이상 종목 없음 → 필터 완화 적용")
+            candidates = list(all_stocks)
         # 상승 섹터: 상승률 높은 순 / 하락 섹터: 하락률 큰 순
         candidates.sort(key=lambda x: x["change_pct"], reverse=is_rising)
         return candidates[:top_n], breadth
@@ -314,22 +319,28 @@ def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
             return {"top_sectors": [], "bottom_sectors": []}
 
         sectors.sort(key=lambda x: x["change_pct"], reverse=True)
-        top3 = sectors[:3]
-        bot3 = sectors[-3:][::-1]
 
-        # 상위 섹터: 상승률 높은 순 / 하위 섹터: 하락률 큰 순
-        for s in top3:
-            if s.get("no"):
-                s["top_stocks"], s["breadth"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=True, stock_cap_map=stock_cap_map)
-            else:
-                s["top_stocks"], s["breadth"] = [], None
-            _set_breadth_verdict(s)
-        for s in bot3:
-            if s.get("no"):
-                s["top_stocks"], s["breadth"] = _crawl_sector_top_stocks(s["no"], top_n=2, is_rising=False, stock_cap_map=stock_cap_map)
-            else:
-                s["top_stocks"], s["breadth"] = [], None
-            _set_breadth_verdict(s)
+        # 등락률 순으로 순회하며 대표종목이 있는 섹터만 3개가 채워질 때까지 채택
+        # (대표종목 없는 섹터는 건너뛰고 다음 순위 섹터로 대체)
+        def _fill_sectors(candidates: list, is_rising: bool) -> list:
+            picked = []
+            for s in candidates:
+                if not s.get("no"):
+                    continue
+                s["top_stocks"], s["breadth"] = _crawl_sector_top_stocks(
+                    s["no"], top_n=2, is_rising=is_rising, stock_cap_map=stock_cap_map
+                )
+                if not s["top_stocks"]:
+                    print(f"  [섹터] {s['name']} 대표종목 없음 — 제외, 다음 순위로 대체")
+                    continue
+                _set_breadth_verdict(s)
+                picked.append(s)
+                if len(picked) == 3:
+                    break
+            return picked
+
+        top3 = _fill_sectors(sectors, is_rising=True)
+        bot3 = _fill_sectors(list(reversed(sectors)), is_rising=False)
 
         _attach_sector_stock_news(top3 + bot3, date_str=date_str)
 
