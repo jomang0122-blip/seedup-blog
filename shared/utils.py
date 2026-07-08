@@ -204,6 +204,11 @@ def md_to_html(text: str) -> str:
         for table in soup.find_all("table"):
             table["border"] = "1"
             table["style"] = "border-collapse:collapse;width:100%;font-size:14px;"
+        # 모바일 좁은 화면에서 표가 찌그러지거나 페이지 전체가 가로 스크롤되는 것을
+        # 막기 위해 표만 감싸는 스크롤 컨테이너 추가 (2026-07-09)
+        for table in soup.find_all("table"):
+            wrapper = soup.new_tag("div", style="overflow-x:auto;")
+            table.wrap(wrapper)
         # 각 행의 첫 칸(섹터명·지수명 등 라벨 컬럼)은 줄바꿈 금지 — 긴 한글 라벨이
         # 다른 칸(설명 텍스트) 길이에 밀려 2줄로 쪼개지는 가독성 저하 방지.
         # 등락률 컬럼도 같은 이유로 줄바꿈 금지 — kr_daily 라이브 발행글에서
