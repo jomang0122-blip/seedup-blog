@@ -22,6 +22,21 @@ def validate_sections(html: str) -> list:
     return [name for name, pattern in REQUIRED_SECTIONS if not re.search(pattern, html)]
 
 
+# "오늘의 핵심 3가지" 박스 항목에 대괄호 플레이스홀더가 그대로 남았는지 검사.
+# banner.py의 li 구조(<span>1.</span>본문)를 기준으로 하므로 오탐 가능성이 낮다.
+# 번호 span 바로 뒤부터 다음 태그(</li>) 앞까지의 구간 어디든 대괄호가 있으면 검출한다
+# — "1. [본문]"처럼 AI가 span과 별개로 자체 번호를 앞에 붙인 변형도 놓치지 않기 위함.
+# ai_writer.py의 _clean_key3_item()이 1차로 모든 대괄호를 무조건 제거하므로 정상 경로에서는
+# 걸릴 일이 없다. 이 검사는 향후 파싱 로직이 바뀌어도 회귀를 잡아내기 위한 2차 방어선이다
+# — 여기서 걸리면 main.py가 재생성한다.
+_KEY3_BRACKET_LEAK = re.compile(r">\d\.</span>[^<]*\[")
+
+
+def find_key3_bracket_leak(html: str) -> list:
+    """핵심 3가지 박스에 남은 대괄호 플레이스홀더 목록 반환. 빈 리스트이면 정상."""
+    return _KEY3_BRACKET_LEAK.findall(html)
+
+
 def count_text_length(html: str) -> int:
     """HTML 태그 제거 후 순수 텍스트 글자수 반환."""
     text = re.sub(r'<[^>]+>', '', html)

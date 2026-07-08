@@ -162,10 +162,31 @@ KEY3:
 CONTENT:
 [HTML 본문 — a)~e) 순서대로]
 
+⚠️ 위 KEY3/CONTENT 예시의 대괄호 [ ]는 "이 자리에 내용을 채워라"라는 형식 설명 기호일 뿐이다.
+실제 출력에는 대괄호 문자 자체를 절대 포함하지 마라 — 순수 문장만 그대로 적어라.
+예) 올바른 KEY3 항목: PER = 주가 ÷ EPS
+    잘못된 KEY3 항목: [PER = 주가 ÷ EPS]  ← 대괄호를 그대로 남기면 안 됨
+
 ⚠️ CONTENT 이후에 체크리스트, 작성 완료 표시, 메모, 주석, 요약 등 어떤 추가 텍스트도 절대 출력하지 말 것."""
 
 
 # ── 파싱 ─────────────────────────────────────────────────────────────────────
+
+def _clean_key3_item(item: str) -> str:
+    r"""KEY3 한 줄에서 AI가 프롬프트 예시의 대괄호 표기를 그대로 따라 출력한 경우를 제거한다.
+
+    과거 버그(2026-07-04~07-06, 발행 12편 중 8편에서 대괄호 노출):
+    이전 로직 re.sub(r"^\[(.+)\]$", r"\1", item)은 줄 전체가 정확히 "[...]"
+    형태일 때만 동작 — 끝에 마침표가 붙거나("[...]." ) AI가 자체 번호매김을
+    앞에 붙이면("1. [...]") 매칭에 실패해 대괄호가 그대로 남았다.
+    대괄호는 이 항목(20자 이내 핵심 한 문장)에 정상적으로 등장할 이유가 없으므로,
+    위치에 상관없이 무조건 제거하는 방식으로 교체한다.
+    """
+    item = re.sub(r"^\d+[.)]\s*", "", item)   # AI가 자체적으로 붙인 "1. " 번호 제거
+    item = re.sub(r"^[-•]\s*", "", item)       # 불릿 기호 제거
+    item = item.replace("[", "").replace("]", "")
+    return item.strip()
+
 
 def _parse_response(raw: str, topic: dict) -> dict:
     level    = topic["level"]
@@ -194,7 +215,7 @@ def _parse_response(raw: str, topic: dict) -> dict:
         elif mode == "key3" and key3_count < 3:
             item = line.strip()
             if item:
-                item = re.sub(r"^\[(.+)\]$", r"\1", item)
+                item = _clean_key3_item(item)
                 key3_items.append(item)
                 key3_count += 1
         elif mode == "content":

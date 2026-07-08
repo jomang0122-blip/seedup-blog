@@ -21,7 +21,7 @@ load_dotenv()
 
 from topic_manager import get_next_topic, mark_published, get_status
 from ai_writer import generate_post
-from validator import validate_sections, count_text_length
+from validator import validate_sections, count_text_length, find_key3_bracket_leak
 from shared.utils import find_kanji
 from shared.blog_publisher import publish_post, get_recent_posts_by_label
 
@@ -109,6 +109,11 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
         if missing:
             fail_reason = f"누락 섹션: {missing}"
             log(f"  [재시도 {attempt + 1}/3] {fail_reason}")
+            continue
+        bracket_leak = find_key3_bracket_leak(candidate["content"])
+        if bracket_leak:
+            fail_reason = f"핵심 3가지 대괄호 플레이스홀더 잔존: {bracket_leak}"
+            log(f"  [재시도 {attempt + 1}/3] {fail_reason} — 재생성")
             continue
         kanji = find_kanji(candidate["title"] + candidate["content"])
         if kanji:
