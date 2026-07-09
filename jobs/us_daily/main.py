@@ -278,35 +278,52 @@ def run(dry_run: bool = False, force: bool = False):
     title = build_title(data)
     log(f"  제목: {title}")
 
-    log("▶ Step 3: AI 블로그 콘텐츠 생성")
-    try:
-        post = generate_post(data)
-        post["title"] = title              # Python 조립 제목으로 덮어쓰기
-        post["labels"] = _build_labels(data)  # Python 고정 라벨로 덮어쓰기
-        if not post["content"]:
-            raise ValueError("콘텐츠가 비어 있습니다.")
-        log(f"  글자수: {post['char_count']}자")
-    except Exception as e:
-        log(f"  [오류] 콘텐츠 생성 실패: {e}")
-        sys.exit(1)
-
-    log("▶ Step 3-1: 수치 검증")
+    log("▶ Step 3: AI 블로그 콘텐츠 생성 + 검증 (반복서술·근거없는 창작 시 재생성, 최대 3회)")
+    post = None
     validation_issues = []
-    try:
-        validation = validate_post(data, post)
+    for attempt in range(3):
+        try:
+            candidate = generate_post(data)
+            candidate["title"] = title              # Python 조립 제목으로 덮어쓰기
+            candidate["labels"] = _build_labels(data)  # Python 고정 라벨로 덮어쓰기
+            if not candidate["content"]:
+                raise ValueError("콘텐츠가 비어 있습니다.")
+            log(f"  글자수: {candidate['char_count']}자")
+        except Exception as e:
+            log(f"  [오류] 콘텐츠 생성 실패: {e}")
+            sys.exit(1)
+
+        try:
+            validation = validate_post(data, candidate)
+        except Exception as e:
+            log(f"  [경고] 검증 실패 (발행은 계속): {e}")
+            post = candidate
+            break
+
         if validation["approved"]:
             log("  검증 통과 — 수치 이상 없음")
-        else:
-            validation_issues = validation["issues"]
-            log(f"  오류 {len(validation['issues'])}개 발견 — 자동 수정 적용")
-            for issue in validation["issues"]:
-                log(f"     [{issue['type']}] {issue['description']}")
-            post = apply_corrections(post, validation)
-            corr_log = post.pop("_correction_log", {"applied": [], "skipped": []})
-            log(f"  수정 후 제목: {post['title']}")
-            log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
-    except Exception as e:
-        log(f"  [경고] 검증 실패 (발행은 계속): {e}")
+            post = candidate
+            break
+
+        validation_issues = validation["issues"]
+        log(f"  오류 {len(validation['issues'])}개 발견")
+        for issue in validation["issues"]:
+            log(f"     [{issue['type']}] {issue['description']}")
+
+        if validation.get("needs_regenerate") and attempt < 2:
+            log(f"  [재시도 {attempt + 1}/3] 반복서술·근거없는 뉴스창작 감지 — 글 재생성")
+            continue
+
+        candidate = apply_corrections(candidate, validation)
+        corr_log = candidate.pop("_correction_log", {"applied": [], "skipped": []})
+        log(f"  수정 후 제목: {candidate['title']}")
+        log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
+        post = candidate
+        break
+
+    if post is None:
+        log("  [오류] 3회 모두 검증 실패 — 발행 중단")
+        sys.exit(1)
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

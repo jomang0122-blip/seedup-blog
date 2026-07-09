@@ -111,17 +111,26 @@ def validate_post(data: dict, post: dict) -> dict:
 4. 섹터 등락률이 데이터와 일치하는가? (섹터 데이터가 있는 경우만)
 5. 본문에 "N종목 중 M개" 형태의 업종폭 수치가 있으면 해당 섹터의 (업종폭: ...) 데이터와
    정확히 일치하는가? — 인접 섹터의 수치를 잘못 옮겨 적는 오류가 실제 발생함
+6. 본문에 서술된 구체적 사건(예: "OO ETF 편입", "OO와 계약 체결", "OO 발표")이
+   위 실제 수집 데이터(뉴스 헤드라인 포함)에 실제로 근거가 있는가? 데이터에 없는
+   구체적 사건을 지어내 서술한 경우 "news_fabrication" 타입으로 보고할 것.
+   (일반적인 시황 해설·추세 서술은 대상 아님 — 뉴스 헤드라인에 없는데 마치
+   실제 발표·계약처럼 구체적으로 서술한 경우만 해당)
+7. 동일 종목 + 동일 재료(예: "브로드컴-애플 계약")가 서로 다른 섹션(핵심요약,
+   표 아래 단락, 급등락 종목, 핵심 뉴스 등)에서 3회 이상 반복 서술되는가?
+   반복되면 "content_repetition" 타입으로 보고할 것.
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
-- 상승/하락 이유 텍스트는 검증 제외 — 수치만 검증
+- 상승/하락 이유 텍스트의 표현 방식 자체는 검증 제외 — 사실 근거 유무(6번)와 반복 여부(7번)만 검증
 
 반드시 아래 JSON 형식으로만 응답 (코드 블록, 설명 없이 순수 JSON만):
 {{
   "approved": true,
   "issues": [],
   "corrected_title": null,
-  "corrections": []
+  "corrections": [],
+  "needs_regenerate": false
 }}
 
 오류가 있으면:
@@ -141,8 +150,13 @@ def validate_post(data: dict, post: dict) -> dict:
       "original": "틀린 원본 문자열",
       "corrected": "수정된 문자열"
     }}
-  ]
-}}"""
+  ],
+  "needs_regenerate": false
+}}
+
+"issues"에 type이 "news_fabrication" 또는 "content_repetition"인 항목이 하나라도 있으면
+"needs_regenerate"를 반드시 true로 설정할 것 (문자열 치환으로 고칠 수 없는 구조적 문제이므로
+글 자체를 재생성해야 함). 그 외 수치 오류만 있으면 needs_regenerate는 false로 유지."""
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
@@ -164,16 +178,20 @@ def validate_post(data: dict, post: dict) -> dict:
             "issues": [{"type": "parse_warning", "description": "검증 응답 파싱 불완전 — 검증 생략", "found": "", "expected": ""}],
             "corrected_title": None,
             "corrections": [],
+            "needs_regenerate": False,
         }
 
     try:
-        return json.loads(raw)
+        result = json.loads(raw)
+        result.setdefault("needs_regenerate", False)
+        return result
     except json.JSONDecodeError as e:
         return {
             "approved": True,
             "issues": [{"type": "parse_warning", "description": f"검증 응답 파싱 실패: {e}", "found": "", "expected": ""}],
             "corrected_title": None,
             "corrections": [],
+            "needs_regenerate": False,
         }
 
 
