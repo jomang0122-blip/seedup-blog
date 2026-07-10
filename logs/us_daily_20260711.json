@@ -1,0 +1,18 @@
+{
+  "kst_date": "2026-07-11",
+  "us_date": "2026-07-10",
+  "published_at": "2026-07-10T23:03:42.481542",
+  "title": "[26년 7월 10일 미증시 마감] 나스닥 0.3% 상승, 메타 +6.0%",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-10-03-60.html",
+  "char_count": 9591,
+  "nasdaq_close": 26281.61,
+  "nasdaq_change_pct": 0.29,
+  "validation_issues": [
+    {
+      "type": "date_mismatch",
+      "description": "포스팅 본문 첫 문장에서 '2025년 7월 10일'로 기재되어 있으나, 제목과 테이블 헤더에는 '2026년 7월 10일'로 기재되어 있습니다. 실제 데이터는 2026-07-10입니다.",
+      "found": "2025년 7월 10일(금요일)",
+      "expected": "2026년 7월 10일(금요일)"
+    }
+  ]
+}
