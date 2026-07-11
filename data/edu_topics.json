@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 15,
+    "published_count": 16,
     "last_updated": "2026-07-11"
   },
   "topics": [
@@ -341,9 +341,9 @@
         "주가가 이동평균선 위에 있으면 상승 추세, 아래에 있으면 하락 추세로 해석하는 것이 기본 원칙이다",
         "단기선이 장기선에 근접하거나 교차하는 구간에서 변동성이 커지는 경향이 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-11",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_54.html"
     },
     {
       "id": 17,
