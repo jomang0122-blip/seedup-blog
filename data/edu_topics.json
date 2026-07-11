@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 14,
+    "published_count": 15,
     "last_updated": "2026-07-11"
   },
   "topics": [
@@ -320,9 +320,9 @@
         "캔들 패턴 하나만으로 매매 결정을 내리기보다, 이후 1~2개 캔들의 확인(컨펌)을 거치는 것이 안전하다",
         "실전에서는 같은 패턴이라도 추세·거래량·지지저항 위치에 따라 신뢰도가 크게 달라진다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-11",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_805.html"
     },
     {
       "id": 16,
