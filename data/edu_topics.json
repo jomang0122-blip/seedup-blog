@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 13,
-    "last_updated": "2026-07-09"
+    "published_count": 14,
+    "last_updated": "2026-07-11"
   },
   "topics": [
     {
@@ -298,9 +298,9 @@
         "도지(Doji)는 시가와 종가가 거의 같아 몸통이 거의 없는 캔들로, 매수·매도 세력이 균형을 이룬 상태를 의미한다",
         "캔들 하나만으로 방향을 예측하기 어려우며, 여러 캔들의 패턴과 거래량을 함께 분석해야 한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-11",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_11.html"
     },
     {
       "id": 15,
