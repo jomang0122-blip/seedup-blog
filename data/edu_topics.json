@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 16,
+    "published_count": 17,
     "last_updated": "2026-07-11"
   },
   "topics": [
@@ -362,9 +362,9 @@
         "거래량 급증 후 주가가 원래 수준으로 돌아오면 세력의 물량 소화(분산) 구간일 수 있다",
         "거래량은 절대값보다 평균 대비 몇 배인지(상대적 거래량)로 판단하는 것이 더 유용하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-11",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_68.html"
     },
     {
       "id": 18,
