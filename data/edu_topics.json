@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 18,
+    "published_count": 19,
     "last_updated": "2026-07-12"
   },
   "topics": [
@@ -404,9 +404,9 @@
         "손실 회피 편향(손실의 고통이 이익의 기쁨보다 2배 크게 느껴지는 심리)이 손절을 어렵게 만드는 주요 원인이다",
         "1:2 이상의 손익비(손절폭 대비 익절폭)를 유지하는 것이 장기적으로 유리하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-12",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_12.html"
     },
     {
       "id": 20,
