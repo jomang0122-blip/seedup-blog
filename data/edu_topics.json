@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 17,
-    "last_updated": "2026-07-11"
+    "published_count": 18,
+    "last_updated": "2026-07-12"
   },
   "topics": [
     {
@@ -383,9 +383,9 @@
         "52주 신저가 근처의 종목은 하락 추세가 지속되는 경우가 많으며, '저가에 사자'는 접근은 추가 하락 리스크를 수반한다",
         "신고가 매매 전략은 모멘텀 투자의 핵심 중 하나로, 추세 추종 전략에 속한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-12",
+      "post_url": "https://www.seedup-invest.com/2026/07/52.html"
     },
     {
       "id": 19,
