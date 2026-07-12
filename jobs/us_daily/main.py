@@ -21,7 +21,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords
 from shared.blog_publisher import publish_post, check_today_post
 
 KST = pytz.timezone("Asia/Seoul")
@@ -294,6 +294,16 @@ def run(dry_run: bool = False, force: bool = False):
             sys.exit(1)
 
         try:
+            assert_market_keywords(candidate["content"], ["나스닥", "NASDAQ"], "미국증시(나스닥)")
+        except ValueError as e:
+            log(f"  [경고] {e}")
+            if attempt < 2:
+                log(f"  [재시도 {attempt + 1}/3] 다른 시장 콘텐츠 의심 — 글 재생성")
+                continue
+            log("  [오류] 3회 모두 시장 키워드 검증 실패 — 발행 중단")
+            sys.exit(1)
+
+        try:
             validation = validate_post(data, candidate)
         except Exception as e:
             log(f"  [경고] 검증 실패 (발행은 계속): {e}")
@@ -324,6 +334,16 @@ def run(dry_run: bool = False, force: bool = False):
     if post is None:
         log("  [오류] 3회 모두 검증 실패 — 발행 중단")
         sys.exit(1)
+
+    log("▶ Step 3-1: 구조 검증 (색상 태그 중첩·면책조항 누락)")
+    post["content"], structural_issues = apply_structural_fixes(post["content"])
+    post["char_count"] = len(post["content"])
+    if structural_issues:
+        validation_issues.extend(structural_issues)
+        for si in structural_issues:
+            log(f"     [{si['type']}] {si['description']}")
+    else:
+        log("  구조 이상 없음")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

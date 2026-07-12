@@ -2,8 +2,65 @@
 import json
 import re
 from anthropic import Anthropic
+from shared.utils import DISCLAIMER
 
 client = Anthropic()
+
+_NESTED_SPAN_RE = re.compile(r'<span[^>]*>(<span[^>]*>.*?</span>)</span>')
+
+
+def apply_structural_fixes(content: str) -> tuple:
+    """AI 검증(validate_post)과 별개로 Python만으로 확인 가능한 결정적 구조 결함을
+    감지·자동교정한다 — AI 호출 없이 regex로 바로 판정 가능해 빠르고 확실하다.
+
+    - 색상 span 이중중첩: apply_color_spans()가 이미 색상 span으로 감싸진 수치의
+      "안쪽"만 재작성하고 바깥쪽 중복 span은 그대로 남기는 경우가 실제 발생했다
+      (예: AI가 표 셀 등에서 스스로 span을 두 겹 씌운 경우). 바깥쪽을 벗겨 단일
+      span만 남긴다.
+    - 면책조항 누락: DISCLAIMER는 각 job의 _parse_response에서 항상 문자열로
+      덧붙이지만, 과거 실제로 누락된 사례가 있어(원인 미상) 최종 방어선으로 재확인·
+      재삽입한다.
+
+    반환: (교정된 content, issues 목록) — issues는 validate_post()의 issue 형식과
+    동일해 main.py의 validation_issues 로그에 그대로 합칠 수 있다.
+    """
+    issues = []
+    fixed = content
+
+    while True:
+        new_fixed = _NESTED_SPAN_RE.sub(r'\1', fixed)
+        if new_fixed == fixed:
+            break
+        fixed = new_fixed
+    if fixed != content:
+        issues.append({
+            "type": "nested_color_span",
+            "description": "색상 span 태그 이중중첩 발견 — 바깥쪽 중복 span 제거로 자동 교정",
+            "found": "<span...><span...>...</span></span>",
+            "expected": "<span...>...</span>",
+        })
+
+    if DISCLAIMER not in fixed:
+        fixed = fixed + "\n" + DISCLAIMER
+        issues.append({
+            "type": "disclaimer_missing",
+            "description": "면책조항이 본문에 없어 자동 재삽입",
+            "found": "",
+            "expected": "DISCLAIMER 블록 포함",
+        })
+
+    return fixed, issues
+
+
+def assert_market_keywords(content: str, keywords: list, label: str) -> None:
+    """본문에 해당 시장 고유 키워드가 하나도 없으면 예외를 발생시킨다 —
+    다른 시장(예: 미국증시) 콘텐츠가 엉뚱한 job의 제목으로 잘못 발행되는 사고의
+    재발 방지용 최종 방어선이다(2026-07-02 국내데일리에 코스피 언급 0회인 글이
+    발행된 사고 확인 후 추가. 코드상 재현 경로는 특정하지 못해 원인 규명 대신
+    결과 기반 회로차단기로 대응한다).
+    """
+    if not any(kw in content for kw in keywords):
+        raise ValueError(f"본문에 {label} 관련 키워드가 전혀 없음 — 다른 시장 콘텐츠 오발행 의심")
 
 
 def _build_data_summary(data: dict) -> str:

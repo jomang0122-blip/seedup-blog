@@ -19,7 +19,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords
 from shared.blog_publisher import publish_post, check_today_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -234,6 +234,12 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
         log(f"  [오류] 글 생성 실패: {e}")
         sys.exit(1)
 
+    try:
+        assert_market_keywords(post["content"], ["코스피", "KOSPI"], "국내증시(코스피)")
+    except ValueError as e:
+        log(f"  [오류] {e} — 발행 중단")
+        sys.exit(1)
+
     log("▶ Step 3: 수치 검증 에이전트")
     validation_issues = []
     try:
@@ -251,6 +257,16 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
             log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
     except Exception as e:
         log(f"  [경고] 검증 실패 (발행은 계속): {e}")
+
+    log("▶ Step 3-1: 구조 검증 (색상 태그 중첩·면책조항 누락)")
+    post["content"], structural_issues = apply_structural_fixes(post["content"])
+    post["char_count"] = len(post["content"])
+    if structural_issues:
+        validation_issues.extend(structural_issues)
+        for si in structural_issues:
+            log(f"     [{si['type']}] {si['description']}")
+    else:
+        log("  구조 이상 없음")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")
