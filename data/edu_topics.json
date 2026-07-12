@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 19,
+    "published_count": 20,
     "last_updated": "2026-07-12"
   },
   "topics": [
@@ -425,9 +425,9 @@
         "같은 업종에 여러 종목을 담으면 진정한 분산이 아니다 (업종 리스크는 여전히 존재)",
         "분산 투자는 변동성을 줄이지만 기대수익도 평균화되므로, 집중 투자 대비 대박 가능성은 낮아진다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-12",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_373.html"
     },
     {
       "id": 21,
