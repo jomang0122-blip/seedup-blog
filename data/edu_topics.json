@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 20,
+    "published_count": 21,
     "last_updated": "2026-07-12"
   },
   "topics": [
@@ -446,9 +446,9 @@
         "ETF 투자 비용은 총보수(운용보수)로 연 0.05~0.5% 수준이며, 일반 펀드보다 훨씬 저렴하다",
         "국내 ETF 매매차익은 배당소득세(15.4%) 과세 대상이며, 해외 지수 추종 ETF는 매매차익도 배당소득으로 과세된다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null
+      "published": true,
+      "published_at": "2026-07-12",
+      "post_url": "https://www.seedup-invest.com/2026/07/etf-etf.html"
     },
     {
       "id": 22,
