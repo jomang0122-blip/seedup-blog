@@ -23,6 +23,7 @@ from topic_manager import get_next_topic, mark_published, get_status
 from ai_writer import generate_post
 from validator import validate_sections, count_text_length, find_key3_bracket_leak
 from shared.utils import find_kanji
+from shared.validator import apply_structural_fixes
 from shared.blog_publisher import publish_post, get_recent_posts_by_label
 
 KST       = pytz.timezone("Asia/Seoul")
@@ -132,6 +133,15 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
     log("  섹션 검증 통과")
     text_len = count_text_length(post["content"])
     log(f"  텍스트 길이: {text_len}자 (목표 1400~1700자)")
+
+    log("▶ Step 3-1: 구조 검증 (AI 편집메타문구·색상 태그 중첩)")
+    post["content"], structural_issues = apply_structural_fixes(post["content"], check_disclaimer=False)
+    post["char_count"] = len(post["content"])
+    if structural_issues:
+        for si in structural_issues:
+            log(f"     [{si['type']}] {si['description']}")
+    else:
+        log("  구조 이상 없음")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

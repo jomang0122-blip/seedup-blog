@@ -17,7 +17,7 @@ _NESTED_SPAN_RE = re.compile(r'<span[^>]*>(<span[^>]*>.*?</span>)</span>')
 _LEAKED_META_RE = re.compile(r"(관련\s*)?(구체적\s*)?종목명?\s*(제거|생략)\s*\([^)]*(근거|데이터)[^)]*\)")
 
 
-def apply_structural_fixes(content: str) -> tuple:
+def apply_structural_fixes(content: str, check_disclaimer: bool = True) -> tuple:
     """AI 검증(validate_post)과 별개로 Python만으로 확인 가능한 결정적 구조 결함을
     감지·자동교정한다 — AI 호출 없이 regex로 바로 판정 가능해 빠르고 확실하다.
 
@@ -27,7 +27,9 @@ def apply_structural_fixes(content: str) -> tuple:
       span만 남긴다.
     - 면책조항 누락: DISCLAIMER는 각 job의 _parse_response에서 항상 문자열로
       덧붙이지만, 과거 실제로 누락된 사례가 있어(원인 미상) 최종 방어선으로 재확인·
-      재삽입한다.
+      재삽입한다. check_disclaimer=False면 이 검사를 건너뛴다 — edu_weekly는
+      이 DISCLAIMER와 다른 자체 면책 문구(ai_writer._DISCLAIMER)를 쓰므로 그대로
+      적용하면 서로 다른 두 면책조항이 중복 삽입된다.
 
     반환: (교정된 content, issues 목록) — issues는 validate_post()의 issue 형식과
     동일해 main.py의 validation_issues 로그에 그대로 합칠 수 있다.
@@ -48,7 +50,7 @@ def apply_structural_fixes(content: str) -> tuple:
             "expected": "<span...>...</span>",
         })
 
-    if DISCLAIMER not in fixed:
+    if check_disclaimer and DISCLAIMER not in fixed:
         fixed = fixed + "\n" + DISCLAIMER
         issues.append({
             "type": "disclaimer_missing",
