@@ -8,6 +8,14 @@ client = Anthropic()
 
 _NESTED_SPAN_RE = re.compile(r'<span[^>]*>(<span[^>]*>.*?</span>)</span>')
 
+# AI가 "왜 이 칸을 비웠는지/못 채웠는지"를 독자용 문장에 그대로 남기는 사고 패턴
+# (2026-07-13 kr_daily "관련 구체적 종목명 제거 (실제 데이터 근거 부족)" 노출 실사고 확인 후 추가).
+# validate_post()의 leaked_instruction 판정(AI 기반)이 놓친 경우를 잡는 결정적 2차 방어선 —
+# 정규식이라 AI 호출 없이 빠르고 확실하게 걸린다. "~제거/생략 (이유)"처럼 AI 자신의
+# 편집 판단을 괄호로 설명하는 특정 패턴만 좁게 잡아 정상 문장(예: "확인이 필요합니다")까지
+# 오탐하지 않도록 한다. 해당 문구가 있는 표 셀은 통째로 빈 값("—")으로 교체.
+_LEAKED_META_RE = re.compile(r"(관련\s*)?(구체적\s*)?종목명?\s*(제거|생략)\s*\([^)]*(근거|데이터)[^)]*\)")
+
 
 def apply_structural_fixes(content: str) -> tuple:
     """AI 검증(validate_post)과 별개로 Python만으로 확인 가능한 결정적 구조 결함을
@@ -48,6 +56,17 @@ def apply_structural_fixes(content: str) -> tuple:
             "found": "",
             "expected": "DISCLAIMER 블록 포함",
         })
+
+    leaked_matches = _LEAKED_META_RE.findall(fixed)
+    if leaked_matches:
+        new_fixed = _LEAKED_META_RE.sub("—", fixed)
+        issues.append({
+            "type": "leaked_instruction_pattern",
+            "description": f"AI 편집 판단 메타 문구 노출 {len(leaked_matches)}건 — 빈 값(—)으로 자동 교체",
+            "found": "종목명 제거/생략 (...)",
+            "expected": "—",
+        })
+        fixed = new_fixed
 
     return fixed, issues
 
@@ -183,6 +202,13 @@ def validate_post(data: dict, post: dict) -> dict:
    AI 자신에게 내리는 작성 지시로 읽히는 문구만 해당.)
    있으면 "leaked_instruction" 타입으로 보고하고, 해당 문구를 제거한 문장을
    "corrections"에 담을 것(needs_regenerate는 별도 처리 불필요).
+9. 섹터·종목 표에서 특정 칸(예: 대표종목)이 비어있거나 "—"/데이터없음 처리되어
+   있는데, 같은 행 또는 근처의 다른 서술 문장(예: "핵심 흐름 한 줄")에는 구체적인
+   종목명이 언급되는 모순이 있는가? (예: 대표종목 칸은 비어있는데 설명 문장에는
+   "코웨이 등 소수 종목이" 처럼 종목명이 등장) — 대표종목 칸을 비운 이유가 데이터
+   부재라면 그 종목명이 다른 곳에도 나타나서는 안 된다. 있으면 "field_narrative_mismatch"
+   타입으로 보고하고, 해당 종목명을 "소수 종목", "일부 종목" 등 일반화된 표현으로
+   바꾼 문장을 "corrections"에 담을 것.
 
 중요:
 - 작은 반올림 차이(±0.1%)는 무시
