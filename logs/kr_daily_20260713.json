@@ -1,0 +1,53 @@
+{
+  "date": "2026-07-13",
+  "published_at": "2026-07-13T07:03:04.798408",
+  "title": "[26년 7월 13일 국내증시] 반도체·전자장비 급락에 KOSPI 8.95% 폭락, 에너지주 강세로 낙폭 방어",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-13-kospi-895.html",
+  "char_count": 7523,
+  "kospi_close": 6806.93,
+  "kospi_change_pct": -8.95,
+  "validation_issues": [
+    {
+      "type": "sector_number",
+      "description": "전자장비와기기 섹터의 대표 종목 삼성전기 등락률 오류",
+      "found": "-18.62%",
+      "expected": "-11.81%"
+    },
+    {
+      "type": "sector_number",
+      "description": "반도체와반도체장비 섹터의 대표 종목 SK스퀨어 등락률 오류",
+      "found": "-17.60%",
+      "expected": "-10.36%"
+    },
+    {
+      "type": "sector_number",
+      "description": "반도체와반도체장비 섹터의 대표 종목 SK하이닉스 등락률 오류",
+      "found": "-15.37%",
+      "expected": "-8.17%"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "LG전자의 '베라 루빈' 대응 AI 서버 랙 개발 소식은 실제 수집 데이터에 근거가 없음",
+      "found": "LG전자가 '베라 루빈' 대응 AI 서버 랙 개발 소식을 바탕으로 섹터 상승을 이끔",
+      "expected": "뉴스 헤드라인 또는 실제 수집 데이터에 없는 내용이므로 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "삼성전기 대표 종목으로 언급되면서 구체적 낙폭률이 추가로 제시되었으나, 실제 데이터는 -11.81%에 불과함",
+      "found": "표에서 삼성전기 -18.62%, 심텍 -11.90%로 기재",
+      "expected": "삼성전기는 -11.81%만 데이터 근거 있음. 심텍 -11.90%는 수집 데이터에 없음"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "실리콘투의 +1.99% 수치는 실제 수집 데이터에 근거가 없음",
+      "found": "인터넷과카탈로그소매 섹터 대표 종목으로 실리콘투(+1.99%) 기재",
+      "expected": "수집 데이터에 실리콘투 종목이 없음"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "코웨이의 +2.00% 수치는 실제 수집 데이터에 근거가 없음",
+      "found": "가정용기기와용품 섹터 대표 종목으로 코웨이(+2.00%) 기재",
+      "expected": "수집 데이터에 코웨이 종목이 없음"
+    }
+  ]
+}
