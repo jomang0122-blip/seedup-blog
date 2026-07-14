@@ -1,0 +1,29 @@
+{
+  "date": "2026-07-14",
+  "published_at": "2026-07-14T07:04:51.814020",
+  "title": "[26년 7월 14일 국내증시] 문구류·반도체 강세로 KOSPI 상승, 생물공학·우주항공 약세로 KOSDAQ 하락",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-14-kospi-kosdaq.html",
+  "char_count": 7442,
+  "kospi_close": 6856.83,
+  "kospi_change_pct": 0.73,
+  "validation_issues": [
+    {
+      "type": "detail_number",
+      "description": "항공사 섹터 표의 한진칼 등락률 오류",
+      "found": "-15.35%",
+      "expected": "-13.30%"
+    },
+    {
+      "type": "detail_number",
+      "description": "금호타이어 설명 문장에서 불필요한 추가 설명 포함",
+      "found": "금호타이어 ... -11.17% — 외국인·기관 삼성전자 집중 매수 속 매도 출회",
+      "expected": "금호타이어 -11.17% (실제 데이터에는 이유 설명 없음)"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "에스티팜 관련 뉴스 사건 완전 날조 - 실제 수집 데이터의 뉴스 기반 주요 종목 목록에 에스티팜이 없음. 'STP0404' 신약, '미국 임상 2a상 탑라인 데이터' 등 구체적 사건 전부 데이터 근거 없음",
+      "found": "에스티팜 -4.13% — 에이즈 신약 'STP0404' 미국 임상 2a상 탑라인 데이터 확보 공시 후 차익 매물 출회",
+      "expected": "제거 필요 (데이터에 없는 종목·사건)"
+    }
+  ]
+}
