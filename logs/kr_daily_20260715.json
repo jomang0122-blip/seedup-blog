@@ -1,0 +1,28 @@
+{
+  "date": "2026-07-15",
+  "published_at": "2026-07-15T07:04:40.052083",
+  "title": "[26년 7월 15일 국내증시] 한미반도체·HLB 상한가, KOSPI 6.24% 급등 — 전자장비·통신장비·문구류 전방위 강세",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-15-hlb-kospi-624.html",
+  "char_count": 7363,
+  "kospi_close": 7284.41,
+  "kospi_change_pct": 6.24,
+  "validation_issues": [
+    {
+      "type": "content_repetition",
+      "description": "뉴스 기반 특징주 섹션에서 동일 종목이 과도하게 반복됨",
+      "details": "HLB (+29.96%)가 4회, 한미반도체 (+29.88%)가 4회, 프로티나 (+16.70%)가 2회 반복 나열됨. 실제 수집 데이터에서도 중복이 있지만, 포스팅에서 명확히 제거하지 않아 독자 혼동 우려"
+    },
+    {
+      "type": "title_sector_mismatch",
+      "description": "제목에서 '전자장비·통신장비·바이오'라고 명시했으나, 실제 데이터의 상승 섹터 TOP3는 '문구류·전자장비·통신장비'임",
+      "found": "전자장비·통신장비·바이오",
+      "expected": "전자장비·통신장비·문구류"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "통신장비 섹터 대표종목에서 'RFHIC(+14.41%)'이 언급되었으나, 실제 수집 데이터에는 없는 종목",
+      "found": "RFHIC(+14.41%)",
+      "expected": "데이터에 없음 — 제거 필요"
+    }
+  ]
+}
