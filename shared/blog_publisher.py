@@ -52,7 +52,7 @@ def update_post(post_id: str, title: str, content: str, labels: list = None) -> 
     service = build('blogger', 'v3', credentials=creds)
 
     body = {
-        'title': title,
+        'title': _strip_code_fences(title),
         'content': _strip_code_fences(content),
         'labels': labels or [],
     }
@@ -101,7 +101,7 @@ def publish_post(title: str, content: str, labels: list = None, status: str = 'L
     service = build('blogger', 'v3', credentials=creds)
 
     body = {
-        'title': title,
+        'title': _strip_code_fences(title),
         'content': _strip_code_fences(content),
         'labels': labels or [],
     }

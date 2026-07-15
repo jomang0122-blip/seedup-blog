@@ -226,9 +226,10 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
     log("▶ Step 2: AI 블로그 포스팅 생성 + 검증 (반복서술·근거없는 창작 시 재생성, 최대 3회)")
     post = None
     validation_issues = []
+    prev_issues = None
     for attempt in range(3):
         try:
-            candidate = generate_post(data)
+            candidate = generate_post(data, prev_issues=prev_issues)
             if not candidate["title"] or not candidate["content"]:
                 raise ValueError("제목 또는 본문이 비어 있습니다.")
             log(f"  제목: {candidate['title']}")
@@ -267,6 +268,7 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
 
         if validation.get("needs_regenerate") and attempt < 2:
             log(f"  [재시도 {attempt + 1}/3] 반복서술·근거없는 뉴스창작 감지 — 글 재생성")
+            prev_issues = validation["issues"]
             continue
 
         candidate = apply_corrections(candidate, validation)

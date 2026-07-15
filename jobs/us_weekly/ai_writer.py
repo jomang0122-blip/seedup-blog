@@ -108,7 +108,21 @@ def _build_labels(data: dict) -> list:
     return base_labels + mover_labels
 
 
-def build_prompt(data: dict) -> str:
+def _build_retry_feedback(prev_issues: list = None) -> str:
+    """직전 시도의 검증 실패 사유를 다음 생성 프롬프트에 피드백 — 동일 프롬프트로
+    재시도해 같은 유형의 창작이 반복되는 문제 방지(2026-07-13 kr_daily에서 확인된
+    패턴, us_weekly에도 동일 적용)."""
+    if not prev_issues:
+        return ""
+    lines = [f"- [{i.get('type', '')}] {i.get('description', '')}" for i in prev_issues]
+    return (
+        "\n\n⚠️ 직전 시도에서 아래 문제로 반려됨 — 동일 실수 반복 금지, "
+        "특히 데이터에 없는 구체적 사건·수치를 창작하지 말 것:\n"
+        + "\n".join(lines)
+    )
+
+
+def build_prompt(data: dict, prev_issues: list = None) -> str:
     week_start = data.get("week_start", "")
     week_end   = data.get("week_end", "")
     date_range = _date_range_kor(week_start, week_end)
@@ -207,7 +221,7 @@ d) ### 🔮 다음 주 전망 ({next_week})
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
 LABELS: {all_labels}
 CONTENT:
-[마크다운 본문]"""
+[마크다운 본문]""" + _build_retry_feedback(prev_issues)
 
 
 def _parse_response(raw: str, ref_date: str = "") -> dict:
@@ -242,8 +256,8 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     return {"labels": labels, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
-    prompt = build_prompt(data)
+def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: list = None) -> dict:
+    prompt = build_prompt(data, prev_issues=prev_issues)
     message = client.messages.create(
         model=model,
         max_tokens=4096,
