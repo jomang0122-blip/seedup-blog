@@ -1,0 +1,97 @@
+name: SeedUP — 국내증시 월간 결산
+
+on:
+  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 매월 1일 08:00 권장)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '미리보기만 (발행 안 함)'
+        required: false
+        type: boolean
+        default: false
+      force:
+        description: '날짜 체크·중복 체크 무시하고 강제 재발행'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: 인증 파일 복원
+        env:
+          TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
+          CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        run: |
+          echo "$TOKEN_JSON" > token.json
+          echo "$CREDENTIALS_JSON" > credentials.json
+
+      - name: .env 파일 생성
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+        run: |
+          echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}" > .env
+          echo "NAVER_CLIENT_ID=${NAVER_CLIENT_ID}" >> .env
+          echo "NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}" >> .env
+
+      - name: config.yaml 복원
+        env:
+          CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
+        run: echo "$CONFIG_YAML" > config.yaml
+
+      - name: 국내증시 월간 결산 발행
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_FORCE: ${{ github.event.inputs.force }}
+        run: |
+          ARGS=""
+          if [ "$INPUT_DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "$INPUT_FORCE" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          python jobs/kr_monthly/main.py $ARGS
+
+      - name: 갱신된 token.json을 Secret에 업데이트
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          TOKEN_CONTENT=$(cat token.json)
+          gh secret set GOOGLE_TOKEN_JSON --body "$TOKEN_CONTENT"
+
+      - name: 발행 로그 커밋 & 푸시
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
+          git add logs/*.json || true
+          if git diff --staged --quiet; then
+            echo "로그 변경 없음 — 커밋 생략"
+          else
+            git commit -m "chore: 발행 로그 업데이트 $(date +'%Y%m%d')"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
