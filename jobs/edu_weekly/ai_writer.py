@@ -40,6 +40,25 @@ _LEVEL_GUIDE = {
     ),
 }
 
+_FORMAT_GUIDE = {
+    "개념정의형": (
+        "이 주제는 개념 자체를 소개하는 글입니다. 🎯 소제목에서 '~란?' 고정 패턴은 여전히 금지하되,\n"
+        "'정확히 무슨 뜻일까?', '어떤 원리로 움직일까?' 등 정의를 향해 자연스럽게 파고드는 구조로 쓸 것."
+    ),
+    "전략활용형": (
+        "이 주제는 실전에서 '어떻게 활용하는가'가 핵심입니다. 🎯 소제목부터 활용 관점으로 시작하고,\n"
+        "💡 실전 활용 예시 섹션에는 반드시 판단 기준(언제 쓰고 언제 조심해야 하는지)을 구체적으로 담을 것."
+    ),
+    "실전가이드형": (
+        "이 주제는 절차·체크리스트 성격이 강합니다. 💡 실전 활용 예시 섹션을 단계별 안내(1단계→2단계) 또는\n"
+        "체크리스트 형태로 구성해 다른 주제와 톤을 구분할 것 — 단, 지정된 HTML 구조(a~e)는 그대로 유지."
+    ),
+    "사례분석형": (
+        "이 주제는 실제 사례로 개념을 확인하는 글입니다. 🎯 소제목에서 개념을 짧게 되짚고,\n"
+        "💡 실전 활용 예시 섹션은 '만약 이런 상황이라면' 식의 가정형 사례 중심으로 쓸 것(실존 기업 구체 수치 창작 금지 원칙은 동일 적용)."
+    ),
+}
+
 _CLASS_LINK = (
     '<div style="margin:28px 0 0 0;padding:18px 22px;background:#f0f4ff;'
     'border-radius:10px;border:1px solid #c7d7f5;font-family:-apple-system,\'Malgun Gothic\',sans-serif;">'
@@ -76,6 +95,7 @@ def _build_prompt(topic: dict, news_headlines: list = None) -> str:
     tags         = topic["tags"]
     key_facts    = topic.get("key_facts", [])
     guide        = _LEVEL_GUIDE[level]
+    format_guide = _FORMAT_GUIDE.get(topic.get("format", ""), "")
     labels       = ",".join(_build_labels(topic))
     forced_title = f"[{level}] {title}"
     short_title  = title.split("—")[0].strip()
@@ -115,6 +135,7 @@ SeedUP INVEST 블로그의 '시드업 클래스' 시리즈 포스팅을 HTML 형
 {chart_note}
 ━━━ 작성 지침 ━━━
 {guide}
+{format_guide}
 
 공통 규칙:
 1. HTML 형식 (Blogger에 바로 붙여넣는 포맷)
