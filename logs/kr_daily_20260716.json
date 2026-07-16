@@ -1,0 +1,35 @@
+{
+  "date": "2026-07-16",
+  "published_at": "2026-07-16T07:04:54.130071",
+  "title": "[26년 7월 16일 국내증시] 반도체·전자장비 급락으로 KOSPI 6.37% 폭락, SK하이닉스·SK스퀘어 주도 하락",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-16-kospi-637-sksk.html",
+  "char_count": 7382,
+  "kospi_close": 6820.6,
+  "kospi_change_pct": -6.37,
+  "validation_issues": [
+    {
+      "type": "content_repetition",
+      "description": "현대약품이 뉴스 기반 특징주 섹션에서 5회 반복 서술됨 (동일 종목 +16.24%)",
+      "found": "현대약품: +16.24% (5회 반복)",
+      "expected": "현대약품: +16.24% (1회만 서술)"
+    },
+    {
+      "type": "content_repetition",
+      "description": "웰크론이 뉴스 기반 특징주 섹션에서 2회 반복 서술됨 (동일 종목 +21.02%)",
+      "found": "웰크론: +21.02% (2회 반복)",
+      "expected": "웰크론: +21.02% (1회만 서술)"
+    },
+    {
+      "type": "table_number_mismatch",
+      "description": "반도체와반도체장비 섹터의 SK스퀘어 등락률이 데이터와 불일치",
+      "found": "SK스퀘어 -12.30%",
+      "expected": "SK스퀘어 -11.22% (급등·급락 종목 데이터 기준)"
+    },
+    {
+      "type": "missing_data_in_article",
+      "description": "뉴스 기반 특징주 섹션에서 현대약품, 씨피시스템, 웰크론, 모나미, 모나리자, LS 등이 언급되지 않음. 실제 데이터에는 이들 종목의 등락률이 있으나 포스팅의 뉴스 기반 특징주 섹션에는 SK하이닉스와 효성중공업만 기재됨",
+      "found": "SK하이닉스, 효성중공업 2종목만 기재",
+      "expected": "씨피시스템(+20.07%), 웰크론(+21.02%), 모나미(+24.24%), 모나리자(+29.94%) 등도 포함 필요"
+    }
+  ]
+}
