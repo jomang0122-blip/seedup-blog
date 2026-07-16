@@ -4,8 +4,13 @@ token.json
 gsc_token.json
 credentials.json
 config.yaml
+token_expired_backup*.json
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
+
+# 내부 기획 문서·임시 검토 파일 — 커밋 대상 아님
+docs/
+_review_tmp/
