@@ -95,3 +95,16 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
+
+      - name: 실패 시 카카오톡 알림
+        if: failure()
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+        run: |
+          python -c "
+          from shared.kakao_notify import notify_failure
+          notify_failure('미증시 데일리 (us_daily)', '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          "
