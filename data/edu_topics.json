@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 22,
+    "published_count": 23,
     "last_updated": "2026-07-18"
   },
   "topics": [
@@ -489,9 +489,9 @@
         "지지·저항선은 정확한 하나의 가격이 아니라 일정 범위의 '가격대'로 이해하는 것이 더 현실적이다",
         "거래량이 많이 발생한 가격대일수록 지지·저항의 강도가 강하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-18",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_252.html",
       "format": "개념정의형"
     },
     {
