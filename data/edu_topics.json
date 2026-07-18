@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 21,
-    "last_updated": "2026-07-12"
+    "published_count": 22,
+    "last_updated": "2026-07-18"
   },
   "topics": [
     {
@@ -467,9 +467,9 @@
         "대주주(지분율 1% 이상 또는 시가총액 50억 원 이상 보유 등 기준)에 해당하면 장내 매도에도 양도소득세(20~25%)가 부과될 수 있다",
         "해외주식은 국내주식과 과세 방식이 달라 매매차익에 양도소득세(기본공제 250만 원, 세율 22%)가 적용된다 — 국내주식과 혼동하지 않아야 한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-18",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_18.html",
       "format": "실전가이드형"
     },
     {
