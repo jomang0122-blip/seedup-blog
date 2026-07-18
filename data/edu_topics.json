@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 24,
+    "published_count": 25,
     "last_updated": "2026-07-18"
   },
   "topics": [
@@ -533,9 +533,9 @@
         "영업이익률(영업이익/매출액)이 높고 지속적으로 개선되는 기업이 경쟁력 있는 기업이다",
         "매출은 늘어도 영업이익이 감소한다면 비용 구조가 악화되고 있는 것으로 주의 신호이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-18",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_216.html",
       "format": "전략활용형"
     },
     {
