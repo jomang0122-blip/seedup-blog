@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 23,
+    "published_count": 24,
     "last_updated": "2026-07-18"
   },
   "topics": [
@@ -511,9 +511,9 @@
         "국내 상장주식·국내주식형 펀드의 매매차익은 원래 비과세이므로, ISA의 절세 효과는 주로 배당·이자·해외자산 매매차익에서 발생한다",
         "만기 후 연금계좌(연금저축·IRP)로 이전하면 이전 금액의 일부에 대해 추가 세액공제를 받을 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-18",
+      "post_url": "https://www.seedup-invest.com/2026/07/isa.html",
       "format": "실전가이드형"
     },
     {
