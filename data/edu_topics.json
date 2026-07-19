@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 27,
+    "published_count": 28,
     "last_updated": "2026-07-19"
   },
   "topics": [
@@ -600,9 +600,9 @@
         "지지선 이탈 후 반등 없이 추가 하락하는 경우, 이전 지지선이 저항선으로 전환되는 역할 전환 현상이 자주 관찰된다",
         "실전에서는 지지·저항 돌파를 판단할 때 종가 기준으로 확인하는 것이 장중 일시적 이탈보다 신뢰도가 높다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-19",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_314.html",
       "format": "사례분석형"
     },
     {
