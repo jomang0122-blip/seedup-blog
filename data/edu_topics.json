@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 28,
+    "published_count": 29,
     "last_updated": "2026-07-19"
   },
   "topics": [
@@ -622,9 +622,9 @@
         "연금으로 수령 시에는 연금소득세(연령에 따라 3.3~5.5%)만 부과되어 일반 소득세보다 세부담이 낮다",
         "연금저축은 펀드·ETF 위주로, IRP는 예금·보험 등 안전자산 편입 의무 비율이 있다는 점에서 두 계좌의 운용 자유도가 다르다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-19",
+      "post_url": "https://www.seedup-invest.com/2026/07/irp-200.html",
       "format": "전략활용형"
     },
     {
