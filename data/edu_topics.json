@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 25,
-    "last_updated": "2026-07-18"
+    "published_count": 26,
+    "last_updated": "2026-07-19"
   },
   "topics": [
     {
@@ -555,9 +555,9 @@
         "실적 발표 직전에 진입하는 것은 결과에 따른 양방향 변동성 리스크가 크므로 주의가 필요하다",
         "실적 가이던스(다음 분기 전망)가 하향 조정되면 당기 실적이 좋아도 주가가 하락할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-19",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_19.html",
       "format": "전략활용형"
     },
     {
