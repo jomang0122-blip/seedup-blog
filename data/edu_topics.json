@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 66,
-    "published_count": 26,
+    "published_count": 27,
     "last_updated": "2026-07-19"
   },
   "topics": [
@@ -577,9 +577,9 @@
         "섹터 ETF를 활용하면 개별 종목 리스크 없이 특정 업종에 투자할 수 있다",
         "한 업종의 급등이 오래 지속되면 이익 실현 매물이 나오면서 다른 업종으로 자금이 이동한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-19",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_208.html",
       "format": "전략활용형"
     },
     {
