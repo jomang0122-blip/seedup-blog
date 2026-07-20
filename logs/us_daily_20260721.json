@@ -1,0 +1,30 @@
+{
+  "kst_date": "2026-07-21",
+  "us_date": "2026-07-20",
+  "published_at": "2026-07-20T23:04:17.512592",
+  "title": "[26년 7월 20일 미증시 마감] 나스닥 0.1% 하락, 스페이스엑스 -3.3%",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-20-01-33.html",
+  "char_count": 9415,
+  "nasdaq_close": 25508.07,
+  "nasdaq_change_pct": -0.05,
+  "validation_issues": [
+    {
+      "type": "title_number",
+      "description": "제목에서 나스닥 등락률이 잘못됨",
+      "found": "나스닥 0.1% 하락",
+      "expected": "나스닥 0.05% 하락"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "본문 핵심 뉴스 섹션 3번 항목에서 '허트8 +10% 급등·아처 에비에이션 +20% 폭등' 관련 내용이 실제 수집 데이터에 없음. 제공된 데이터는 NVDA, TSLA, SPCX 등 특정 종목들만 포함하며, 허트8(HUUT)이나 아처 에비에이션(ACHR) 같은 종목의 데이터가 없음.",
+      "found": "허트8 +10% 급등·아처 에비에이션 +20% 폭등",
+      "expected": "실제 수집 데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "본문 핵심 뉴스 섹션 5번 항목에서 '스포티파이(SPOT) 시장 약세 속에서도 강세' 내용이 실제 수집 데이터에 없음. 스포티파이는 제공된 관심 종목이나 급등락 종목 목록에 포함되지 않음.",
+      "found": "스포티파이(SPOT) 시장 약세 속에서도 강세",
+      "expected": "실제 수집 데이터에 근거 없음 — 제거 필요"
+    }
+  ]
+}
