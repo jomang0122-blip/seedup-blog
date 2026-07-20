@@ -21,7 +21,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_no_english_holiday_name
 from shared.blog_publisher import publish_post, check_today_post
 
 KST = pytz.timezone("Asia/Seoul")
@@ -246,6 +246,7 @@ def run(dry_run: bool = False, force: bool = False):
             sys.exit(0)
         log(f"  휴장 감지: {[d.isoformat() for d in missed]} — 휴장 안내 발행 모드")
         post = build_holiday_post(data, missed)
+        assert_no_english_holiday_name(post["title"] + post["content"])
         log(f"  제목: {post['title']}")
 
         if dry_run:

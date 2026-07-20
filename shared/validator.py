@@ -16,6 +16,14 @@ _NESTED_SPAN_RE = re.compile(r'<span[^>]*>(<span[^>]*>.*?</span>)</span>')
 # 오탐하지 않도록 한다. 해당 문구가 있는 표 셀은 통째로 빈 값("—")으로 교체.
 _LEAKED_META_RE = re.compile(r"(관련\s*)?(구체적\s*)?종목명?\s*(제거|생략)\s*\([^)]*(근거|데이터)[^)]*\)")
 
+# AI에게 주는 "구글 검색 설명으로 노출됨" 같은 작성 지침 괄호가 본문에 그대로
+# 남는 사고 방지용 (2026-07-20 kr_daily 발행 글에 "(구글 검색 설명으로 노출됨 —
+# ...압축):" 문구가 그대로 노출된 실사고 확인 후 추가). 프롬프트 자체도 지침과
+# 출력 형식을 분리하도록 고쳤지만, 이 정규식을 발행 전 최종 방어선으로 유지한다.
+_LEAKED_PROMPT_INSTRUCTION_RE = re.compile(
+    r"\s*\((?:구글\s*검색\s*설명|검색\s*결과\s*설명|SEO\s*스니펫)[^)]*(?:노출|압축|포함)[^)]*\)\s*:?"
+)
+
 
 def apply_structural_fixes(content: str, check_disclaimer: bool = True) -> tuple:
     """AI 검증(validate_post)과 별개로 Python만으로 확인 가능한 결정적 구조 결함을
@@ -70,7 +78,38 @@ def apply_structural_fixes(content: str, check_disclaimer: bool = True) -> tuple
         })
         fixed = new_fixed
 
+    leaked_prompt_matches = _LEAKED_PROMPT_INSTRUCTION_RE.findall(fixed)
+    if leaked_prompt_matches:
+        new_fixed = _LEAKED_PROMPT_INSTRUCTION_RE.sub("", fixed)
+        issues.append({
+            "type": "leaked_prompt_instruction",
+            "description": f"프롬프트 작성 지침(구글 검색 설명 등) 노출 {len(leaked_prompt_matches)}건 — 자동 제거",
+            "found": "(구글 검색 설명으로 노출됨...)",
+            "expected": "(제거됨)",
+        })
+        fixed = new_fixed
+
     return fixed, issues
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_ENGLISH_WORD_RE = re.compile(r"[A-Za-z]{3,}")
+# 지수 티커(KOSPI, KOSDAQ 등)는 영문 표기가 정상이므로 검사 대상에서 제외
+_ALLOWED_ENGLISH = {"KOSPI", "KOSDAQ", "ETF", "TOP", "SeedUP"}
+
+
+def assert_no_english_holiday_name(text: str, label: str = "휴장 안내") -> None:
+    """휴장 사유·공휴일명에 영문이 섞여 발행되는 사고 재발 방지용 회로차단기
+    (2026-07-17 제헌절 안내 글에 영문 휴일명이 섞여 발행돼 사용자가 직접
+    한글로 수정한 사고 확인 후 추가). holidays 라이브러리가 버전에 따라
+    한글/영문 어느 쪽을 반환할지 보장되지 않으므로, 원인 규명 대신 발행 직전
+    결과값 자체를 검사해 영문 잔존 시 예외로 발행을 막는다.
+    HTML 태그·속성(div, style 등)은 검사 대상에서 제외 — 순수 텍스트만 검사.
+    """
+    visible_text = _HTML_TAG_RE.sub(" ", text or "")
+    hits = [w for w in _ENGLISH_WORD_RE.findall(visible_text) if w.upper() not in {a.upper() for a in _ALLOWED_ENGLISH}]
+    if hits:
+        raise ValueError(f"{label}에 영문 단어 잔존 — 한글 표기 필요: {hits}")
 
 
 def assert_market_keywords(content: str, keywords: list, label: str) -> None:

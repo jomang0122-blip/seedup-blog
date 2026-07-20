@@ -19,7 +19,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_no_english_holiday_name
 from shared.blog_publisher import publish_post, check_today_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -172,6 +172,7 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
 
             log(f"  오늘({today})은 휴장일 — 휴장 안내 발행 모드")
             post = build_kr_holiday_post(today_d)
+            assert_no_english_holiday_name(post["title"] + post["content"])
             log(f"  제목: {post['title']}")
 
             if dry_run:
