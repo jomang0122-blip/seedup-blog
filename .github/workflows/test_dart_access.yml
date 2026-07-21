@@ -1,0 +1,32 @@
+name: TEST — DART API 접근성 확인 (일회성, 완료 후 삭제 예정)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: DART Open API 접근성 테스트
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: |
+          TODAY=$(date +%Y%m%d)
+          echo "테스트 날짜: $TODAY"
+          HTTP_CODE=$(curl -s -o response.json -w "%{http_code}" \
+            "https://opendart.fss.or.kr/api/list.json?crtfc_key=${DART_API_KEY}&bgn_de=${TODAY}&end_de=${TODAY}&page_count=5")
+          echo "HTTP 상태 코드: $HTTP_CODE"
+          echo "--- 응답 내용 (앞부분) ---"
+          head -c 1000 response.json
+          echo ""
+          echo "--- status 필드 확인 ---"
+          python3 -c "
+          import json
+          with open('response.json', encoding='utf-8') as f:
+              data = json.load(f)
+          print('status:', data.get('status'))
+          print('message:', data.get('message'))
+          print('결과 건수:', len(data.get('list', [])) if data.get('list') else 0)
+          "
