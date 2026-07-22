@@ -1,0 +1,47 @@
+{
+  "date": "2026-07-22",
+  "published_at": "2026-07-22T07:04:37.895280",
+  "title": "[26년 7월 22일 국내증시] 로봇·통신·전자 섹터 강세로 KOSPI 상승 마감, 레인보우로보틱스·LG전자 급등 주도",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-22-kospi-lg.html",
+  "char_count": 7562,
+  "kospi_close": 6797.7,
+  "kospi_change_pct": 0.74,
+  "validation_issues": [
+    {
+      "type": "table_number_mismatch",
+      "description": "기계 섹터 대표 종목 레인보우로보틱스의 등락률이 실제 데이터와 불일치",
+      "found": "+16.28%",
+      "expected": "+20.78%"
+    },
+    {
+      "type": "table_number_mismatch",
+      "description": "전자제품 섹터 대표 종목 LG전자의 등락률이 실제 데이터와 불일치",
+      "found": "+5.48%",
+      "expected": "+8.55%"
+    },
+    {
+      "type": "content_repetition",
+      "description": "삼성전자의 동일 등락률(+4.34%)이 뉴스 기반 특징주 섹션에서 5회 반복 나열되어 있음. 실제 데이터에서도 중복 제시되어 있으나, 포스팅에서 이를 그대로 옮겨 부자연스러운 반복을 초래함.",
+      "found": "삼성전자 +4.34% (5회 반복 나열)",
+      "expected": "뉴스 기반 특징주는 실제 뉴스 영향을 받은 종목만 선별하여 제시"
+    },
+    {
+      "type": "narrative_unsupported",
+      "description": "본문에서 'SK텔레콤(+10.58%), LG유플러스(+1.67%)'가 무선통신서비스 섹터의 대표 종목으로 제시되었으나, 실제 수집 데이터에는 해당 종목의 구체적 등락률이 없음. 섹터 등락률(+8.45%)만 제시되어 있음.",
+      "found": "SK텔레콤(+10.58%), LG유플러스(+1.67%)",
+      "expected": "실제 데이터에 근거가 없으므로 제거하거나 '일부 구성 종목'으로 일반화"
+    },
+    {
+      "type": "narrative_unsupported",
+      "description": "본문에서 'SK하이닉스(+5.07%)'가 뉴스 기반 특징주로 제시되었으나, 실제 수집 데이터의 급등/급락 종목, 뉴스 기반 종목 어디에도 해당 종목이 없음.",
+      "found": "SK하이닉스 +5.07%",
+      "expected": "해당 데이터 없음 — 제거 필요"
+    },
+    {
+      "type": "narrative_unsupported",
+      "description": "본문에서 '롯데케미칼(+5.65%)'이 뉴스 기반 특징주로 제시되었으나, 실제 수집 데이터의 급등/급락 종목, 뉴스 기반 종목 어디에도 해당 종목이 없음.",
+      "found": "롯데케미칼 +5.65%",
+      "expected": "해당 데이터 없음 — 제거 필요"
+    }
+  ]
+}
