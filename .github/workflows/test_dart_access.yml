@@ -29,8 +29,15 @@ jobs:
           print('총', len(items), '건 중 실적관련', len(seen), '종류')
 
           print()
-          print('=== OCI홀딩스 검색 ===')
-          for x in items:
-              if x.get('corp_name') == 'OCI홀딩스':
-                  print(f\"{x.get('rcept_dt')} | {x.get('report_nm')}\")
+          print('=== 오늘 특징주 종목 전체 DART 공시 확인 ===')
+          targets = ['SK이터닉스','SK오션플랜트','HD현대에너지솔루션','삼성E&A','GS건설',
+                     '삼성전기','OCI홀딩스','파마리서치','롯데쇼핑','케이씨텍',
+                     'JB금융지주','KB발해인프라','한미반도체']
+          for name in targets:
+              matched = [x for x in items if x.get('corp_name') == name]
+              if matched:
+                  for x in matched:
+                      print(f\"{name} | {x.get('report_nm')}\")
+              else:
+                  print(f\"{name} | (공시 없음)\")
           "
