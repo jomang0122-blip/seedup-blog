@@ -1,0 +1,60 @@
+{
+  "date": "2026-07-23",
+  "published_at": "2026-07-23T07:03:04.663272",
+  "title": "[26년 7월 23일 국내증시] 에너지·전기장비·건설 급등에 KOSPI 4.40% 강세 마감, SK이터닉스 상한가",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-23-kospi-440-sk.html",
+  "char_count": 7439,
+  "kospi_close": 7096.89,
+  "kospi_change_pct": 4.4,
+  "validation_issues": [
+    {
+      "type": "number_error",
+      "description": "HD현대에너지솔루션 등락률 오류",
+      "location": "섹터 표의 '에너지장비및서비스' 행, 대표 종목 칸",
+      "found": "+29.73%",
+      "expected": "+17.25%"
+    },
+    {
+      "type": "number_error",
+      "description": "GS건설 등락률 오류",
+      "location": "섹터 표의 '건설' 행, 대표 종목 칸",
+      "found": "+18.21%",
+      "expected": "+16.67%"
+    },
+    {
+      "type": "number_error",
+      "description": "롯데쇼핑 등락률 오류",
+      "location": "섹터 표의 '백화점과일반상점' 행, 대표 종목 칸",
+      "found": "-4.61%",
+      "expected": "-7.07%"
+    },
+    {
+      "type": "number_error",
+      "description": "JB금융지주 등락률 오류",
+      "location": "섹터 표의 '은행' 행, 대표 종목 칸",
+      "found": "-3.95%",
+      "expected": "-2.63%"
+    },
+    {
+      "type": "content_repetition",
+      "description": "LS 종목이 뉴스 기반 특징주 섹션에서 중복 표기",
+      "location": "섹션 '📰 뉴스 기반 특징주' - LS가 실제 데이터에서 중복 등재됨",
+      "found": "LS: +11.95%가 2회 중복",
+      "expected": "1회만 표기 또는 중복 항목 제거"
+    },
+    {
+      "type": "number_error",
+      "description": "금호건설 종목이 뉴스 기반 특징주 섹션에서 중복 표기",
+      "location": "섹션 '📰 뉴스 기반 특징주'",
+      "found": "금호건설: +6.14%가 2회 중복",
+      "expected": "1회만 표기"
+    },
+    {
+      "type": "number_error",
+      "description": "삼성전기 종목이 뉴스 기반 특징주 섹션에서 중복 표기",
+      "location": "섹션 '📰 뉴스 기반 특징주'",
+      "found": "삼성전기: +5.95%가 2회 중복",
+      "expected": "1회만 표기"
+    }
+  ]
+}
