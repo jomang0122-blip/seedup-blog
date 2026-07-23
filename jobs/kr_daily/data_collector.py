@@ -142,6 +142,43 @@ def _build_stock_maps() -> dict:
     }
 
 
+_STOCK_VERIFY_DIFF_THRESHOLD = 3.0  # FDR-네이버 등락률 차이가 이 이상이면 반영지연 의심, 네이버 값으로 교정
+
+
+def _verify_and_fix_change_pct(stocks: list, code_map: dict) -> list:
+    """FDR StockListing 등락률을 네이버 모바일 API(개별 종목)로 재조회해 대조·교정.
+
+    fdr.StockListing()은 호출 시점의 실시간 값이라 장마감 직후(발행 시각) 아직
+    최종 확정치가 반영 안 된 경우가 있다 — kr_weekly가 지수(KOSPI/KOSDAQ)에서
+    이미 실측 확인한 문제(2026-07-03, "장마감 직후 최신값 반영 지연")와 같은
+    소스의 문제이나, kr_daily의 개별 종목 등락률에는 이 보정이 없었다. 실사고:
+    2026-07-23 OCI홀딩스가 실제 상한가(+30.00%)였는데 FDR 값 +12.37%가 그대로
+    발행됨 — AI 검증(validate_post)은 "수집값과 글이 일치하는지"만 보므로 수집
+    단계부터 틀린 값은 원천적으로 못 잡는다. 결정적 2차 소스 재조회·대조만이
+    이 유형의 오류를 막을 수 있어 이 함수를 신설했다.
+
+    실패해도 원본 FDR 값을 그대로 유지(안전 폴백) — 네이버 API 장애가 전체
+    발행을 막지 않도록 한다.
+    """
+    for s in stocks:
+        code = code_map.get(s["name"])
+        if not code:
+            continue
+        try:
+            resp = fetch_with_retry(
+                f"https://m.stock.naver.com/api/stock/{code}/basic",
+                headers=_NAVER_HEADERS, timeout=5,
+            )
+            live_pct = float(resp.json().get("fluctuationsRatio", "0"))
+            if abs(live_pct - s["change_pct"]) >= _STOCK_VERIFY_DIFF_THRESHOLD:
+                print(f"  [종목검증] {s['name']}: FDR {s['change_pct']:+.2f}% → 네이버 {live_pct:+.2f}%로 교정")
+                s["change_pct"] = round(live_pct, 2)
+                s["is_upper_limit"] = live_pct >= 29.0
+        except Exception as e:
+            print(f"  [종목검증] {s['name']} 재조회 실패(FDR 값 유지): {e}")
+    return stocks
+
+
 def get_top_stocks(stock_maps: dict, exclude_names: set = None) -> dict:
     """시총 1조원 이상 종목 중 등락률 TOP5 산출.
 
@@ -160,6 +197,12 @@ def get_top_stocks(stock_maps: dict, exclude_names: set = None) -> dict:
         if exclude_names:
             df_top5 = df_top5[~df_top5["Name"].astype(str).isin(exclude_names)]
 
+        code_col = "Code" if "Code" in df_top5.columns else None
+        code_map = {
+            str(r["Name"]): str(r[code_col]).zfill(6)
+            for _, r in df_top5.iterrows()
+        } if code_col else {}
+
         _UPPER_LIMIT_THRESHOLD = 29.0
         gainers = [
             {
@@ -177,6 +220,10 @@ def get_top_stocks(stock_maps: dict, exclude_names: set = None) -> dict:
             }
             for _, r in df_top5.nsmallest(5, chg_col).iterrows()
         ]
+
+        if code_map:
+            gainers = _verify_and_fix_change_pct(gainers, code_map)
+            losers = _verify_and_fix_change_pct(losers, code_map)
 
         return {
             "top_gainers": gainers,
