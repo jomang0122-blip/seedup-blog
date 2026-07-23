@@ -255,6 +255,15 @@ def _build_data_summary(data: dict) -> str:
                     lines.append(f"  {name}: {pct:+.2f}%")
                     break
 
+    dart_disclosures = data.get("dart_disclosures", {})
+    if dart_disclosures:
+        lines.append("DART 공시 및 관련뉴스:")
+        for name, info in dart_disclosures.items():
+            line = f"  {name}: {info.get('report_nm', '')} (접수 {info.get('rcept_dt', '')})"
+            if info.get("news"):
+                line += f" [관련뉴스: {info['news']}]"
+            lines.append(line)
+
     return "\n".join(lines)
 
 

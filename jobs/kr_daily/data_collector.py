@@ -683,6 +683,7 @@ _DART_IMPACT_KEYWORDS = (
     "주요사항보고서", "불성실공시법인지정",
     "타법인주식및출자증권취득", "타법인주식및출자증권처분",
     "합병결정", "분할결정",
+    "잠정실적", "공정공시",
 )
 
 # report_nm에 위 키워드가 걸려도 절차성·소극적 신고 성격이라 임팩트가
@@ -758,10 +759,36 @@ def get_dart_disclosures(names: list, date_str: str) -> dict:
                 }
                 break
         print(f"  [DART] 대상 {len(names)}종목 중 공시 매칭 {len(result)}건")
+
+        if result:
+            _attach_dart_news(result, date_str)
+
         return result
     except Exception as e:
         print(f"  [DART] 수집 실패: {e}")
         return {}
+
+
+def _attach_dart_news(disclosures: dict, date_str: str) -> None:
+    """공시 매칭된 종목에 대해 일반 뉴스 검색으로 관련 기사를 찾아 붙인다
+    (제목만 있는 DART 공시에 실제 내용을 보강 — DART list.json은 목록
+    API라 본문을 안 주므로, 유형별 상세 API를 각각 대응하는 대신 이미
+    검증된 뉴스 검색 인프라를 재사용하는 절충안).
+
+    get_stock_news_by_name과 달리 "[특징주]" 태그 없이 종목명만으로
+    검색한다 — 실적발표·유상증자 뉴스는 특징주 헤드라인 형식이 아닌
+    일반 기사(예: "OO홀딩스, 2분기 흑자전환")로 나오는 경우가 많다.
+    같은 이유로 3중 필터 중 종목명 포함·오늘 날짜만 적용하고 방향
+    일치 검사는 생략한다(실적·증자 공시는 등락 방향과 무관한 사실).
+    """
+    for name, info in disclosures.items():
+        items = _naver_news_search(name, display=5)
+        matched = [i for i in items if name in i["title"] and _is_today_news(i.get("pub_date", ""), date_str)]
+        if matched:
+            info["news"] = matched[0]["title"]
+            print(f"  [DART뉴스] {name}: {matched[0]['title'][:40]}")
+        else:
+            print(f"  [DART뉴스] {name}: 관련 뉴스 없음(공시 사실만 표기)")
 
 
 def get_index_data_historical(date_str: str) -> dict:
