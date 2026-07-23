@@ -19,7 +19,7 @@ load_dotenv()
 from data_collector import collect_all
 from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_no_english_holiday_name
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_no_english_holiday_name, strip_ungrounded_dart_section
 from shared.blog_publisher import publish_post, check_today_post
 
 REPO_ROOT = Path(__file__).parent.parent.parent
@@ -292,6 +292,13 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
             log(f"     [{si['type']}] {si['description']}")
     else:
         log("  구조 이상 없음")
+
+    post["content"], dart_issues = strip_ungrounded_dart_section(post["content"], data.get("dart_disclosures", {}))
+    post["char_count"] = len(post["content"])
+    if dart_issues:
+        validation_issues.extend(dart_issues)
+        for di in dart_issues:
+            log(f"     [{di['type']}] {di['description']}")
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

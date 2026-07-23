@@ -631,6 +631,92 @@ def extract_and_verify_featured_stocks(
     return verified
 
 
+_DART_IMPACT_KEYWORDS = (
+    "유상증자", "무상증자", "자기주식취득", "자기주식처분",
+    "주요사항보고서", "불성실공시법인지정",
+    "타법인주식및출자증권취득", "타법인주식및출자증권처분",
+    "합병결정", "분할결정",
+)
+
+# report_nm에 위 키워드가 걸려도 절차성·소극적 신고 성격이라 임팩트가
+# 낮은 유형은 제외 — "합병"이 "회사합병 반대의사통지서접수" 같은 절차
+# 안내문에도 매칭되는 과매칭 문제 확인 후 추가.
+_DART_EXCLUDE_KEYWORDS = ("반대의사", "철회", "정정")
+
+
+def get_dart_disclosures(names: list, date_str: str) -> dict:
+    """오늘 특징주 종목명 중 임팩트 큰 DART 공시가 있는 종목만 반환.
+    {종목명: {"report_nm": str, "rcept_dt": str, "url": str}}
+
+    DART list.json은 corp_code(8자리) 지정 없이 날짜 범위로 조회하면
+    전체 상장사 공시가 corp_name(회사명)과 함께 반환된다(실측 확인,
+    2026-07-21) — 별도 corp_code 매핑(corpCode.xml) 없이 corp_name을
+    오늘 특징주 종목명과 문자열로 직접 대조한다. 하루 최대 10종목
+    규모라 매핑 인프라를 갖추는 비용 대비 이 방식이 더 가볍다.
+
+    정기공시(사업보고서 등)는 노이즈가 커서 제외하고, 유상증자·자기주식
+    취득 등 임팩트 큰 유형만 report_nm 키워드로 필터링한다(실측 확인,
+    삼성전자 최근 공시 대부분이 "임원·주요주주특정증권등소유상황보고서"
+    같은 일상적 신고 — 필터 없이는 노이즈만 쌓임).
+    """
+    api_key = os.getenv("DART_API_KEY", "")
+    if not api_key or not names:
+        return {}
+    try:
+        resp = fetch_with_retry(
+            "https://opendart.fss.or.kr/api/list.json",
+            params={
+                "crtfc_key": api_key,
+                "bgn_de": date_str,
+                "end_de": date_str,
+                "page_no": 1,
+                "page_count": 100,
+            },
+            timeout=10,
+        )
+        payload = resp.json()
+        status = payload.get("status")
+        if status != "000":
+            # DART 공식 에러 코드 체계(실측+문서 확인): 013=조회 데이터 없음(정상적인
+            # "오늘 대상 공시 없음" 케이스), 010/011/012/901=키 문제, 020/021=요청
+            # 한도 초과, 800/900=DART 서버 장애. 013만 "데이터 없음"이고 나머지는
+            # 전부 "설정·서버 문제"라 로그에서 구분해야 운영 중 원인 파악이 빠르다.
+            if status == "013":
+                print(f"  [DART] 오늘 대상 종목 공시 없음 (status=013)")
+            elif status in ("010", "011", "012", "901"):
+                print(f"  [DART] API 키 문제 — status={status} message={payload.get('message')}")
+            elif status in ("020", "021"):
+                print(f"  [DART] 요청 한도 초과 — status={status} message={payload.get('message')}")
+            else:
+                print(f"  [DART] 조회 실패 — status={status} message={payload.get('message')}")
+            return {}
+
+        items = payload.get("list", []) or []
+        result = {}
+        for name in names:
+            for item in items:
+                corp_name = item.get("corp_name", "")
+                report_nm = item.get("report_nm", "")
+                if name != corp_name:
+                    continue
+                if not any(kw in report_nm for kw in _DART_IMPACT_KEYWORDS):
+                    continue
+                if any(kw in report_nm for kw in _DART_EXCLUDE_KEYWORDS):
+                    continue
+                rcept_no = item.get("rcept_no", "")
+                result[name] = {
+                    "report_nm": report_nm,
+                    "rcept_dt": item.get("rcept_dt", ""),
+                    "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={rcept_no}" if rcept_no else "",
+                }
+                break
+        print(f"  [DART] 대상 {len(names)}종목 중 공시 매칭 {len(result)}건")
+        return result
+    except Exception as e:
+        print(f"  [DART] 수집 실패: {e}")
+        return {}
+
+
 def get_index_data_historical(date_str: str) -> dict:
     """과거 날짜 지수 데이터 — FDR 과거 종가 조회.
 
@@ -680,6 +766,7 @@ def collect_all(date: str = None) -> dict:
         featured = []
         stock_news_map = {}
         featured_verified = []
+        dart_disclosures = {}
     else:
         index_data = get_index_data(date)
         news = get_news()
@@ -712,6 +799,7 @@ def collect_all(date: str = None) -> dict:
         stock_news_map = get_stock_news_by_name(
             stock_names, date_str=date, pct_map=stock_maps["stock_pct_map"]
         )
+        dart_disclosures = get_dart_disclosures(stock_names, date)
 
     return {
         "date": f"{date[:4]}-{date[4:6]}-{date[6:]}",
@@ -722,4 +810,5 @@ def collect_all(date: str = None) -> dict:
         "crawled_news_features": featured,
         "stock_news_map": stock_news_map,
         "featured_verified": featured_verified,
+        "dart_disclosures": dart_disclosures,
     }

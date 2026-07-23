@@ -112,6 +112,59 @@ def assert_no_english_holiday_name(text: str, label: str = "휴장 안내") -> N
         raise ValueError(f"{label}에 영문 단어 잔존 — 한글 표기 필요: {hits}")
 
 
+_DART_SECTION_MARK = "📋 관련 공시"
+
+
+def strip_ungrounded_dart_section(content: str, dart_disclosures: dict) -> tuple:
+    """본문의 '📋 관련 공시' 섹션이 실제 DART 데이터와 어긋나면 그 섹션만 제거한다.
+
+    AI가 보고서명 표기를 미세하게 바꿔 쓸 가능성(공백·괄호 차이 등)이 있는데,
+    assert_no_english_holiday_name처럼 예외를 던져 발행 전체를 막으면 공시
+    섹션 하나의 표기 차이 때문에 그날 KOSPI·특징주 등 나머지 정상 내용까지
+    통째로 발행이 안 되는 과함이 있다(다른 검증들은 재시도·부분교정 기회를
+    주는데 이것만 즉시 차단이면 일관성도 없음). 대신 apply_structural_fixes와
+    동일하게 "문제 있는 부분만 제거하고 issue로 기록, 발행은 계속" 방식으로
+    완화한다 — 안전 방향(섹션 생략)은 정상 케이스와 동일한 결과이므로 이 쪽이
+    더 안전하다.
+
+    반환: (교정된 content, issues 목록) — apply_structural_fixes와 동일한 형식.
+    """
+    if _DART_SECTION_MARK not in content:
+        return content, []
+
+    before, _, rest = content.partition(_DART_SECTION_MARK)
+    # 마크다운 헤딩 기호(#### 등)까지 함께 잘라내야 "#### ---"처럼 헤딩만
+    # 남는 잔여물이 생기지 않는다 — before의 마지막 줄이 헤딩 prefix면 제거.
+    before_lines = before.splitlines(keepends=True)
+    if before_lines and re.match(r"^\s*#{1,6}\s*$", before_lines[-1].rstrip("\n")):
+        before = "".join(before_lines[:-1])
+
+    if "---" in rest:
+        section, _, after = rest.partition("---")
+        after = "---" + after
+    else:
+        section, after = rest, ""
+
+    if not dart_disclosures:
+        return before + after, [{
+            "type": "dart_disclosure_fabricated",
+            "description": "DART 데이터가 없는데 본문에 '📋 관련 공시' 섹션이 존재함 — 공시 창작 의심, 섹션 제거",
+            "found": _DART_SECTION_MARK + section,
+            "expected": "(섹션 제거)",
+        }]
+
+    for name, info in dart_disclosures.items():
+        if name in section and info["report_nm"] not in section:
+            return before + after, [{
+                "type": "dart_disclosure_mismatch",
+                "description": f"공시 섹션에 '{name}' 언급은 있으나 실제 보고서명('{info['report_nm']}')과 불일치 — 섹션 전체 제거",
+                "found": _DART_SECTION_MARK + section,
+                "expected": "(섹션 제거)",
+            }]
+
+    return content, []
+
+
 def assert_market_keywords(content: str, keywords: list, label: str) -> None:
     """본문에 해당 시장 고유 키워드가 하나도 없으면 예외를 발생시킨다 —
     다른 시장(예: 미국증시) 콘텐츠가 엉뚱한 job의 제목으로 잘못 발행되는 사고의
