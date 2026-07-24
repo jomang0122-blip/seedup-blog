@@ -1,0 +1,29 @@
+{
+  "date": "2026-07-24",
+  "published_at": "2026-07-24T07:04:44.046126",
+  "title": "[26년 7월 24일 국내증시] 자동차·전자 급락에 KOSPI 5.72% 하락, 삼성바이오로직스 강세",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-24-kospi-572.html",
+  "char_count": 7358,
+  "kospi_close": 6690.62,
+  "kospi_change_pct": -5.72,
+  "validation_issues": [
+    {
+      "type": "body_number",
+      "description": "제약 섹터 대표 종목 삼성바이오로직스의 등락률이 실제 데이터와 불일치",
+      "found": "+10.08%",
+      "expected": "+10.80%"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "SK오션플랜트 종목이 실제 수집 데이터(뉴스 기반 종목 리스트)에 없음. 실제 데이터에는 삼성바이오로직스, OCI홀딩스, 에이치엘지노믹스, 위닉스, 조아제약, SK, 비비안만 존재. SK오션플랜트는 뉴스 근거가 없는 종목임.",
+      "found": "SK오션플랜트 +11.01%",
+      "expected": "데이터에 없음 - 제거 또는 근거 확인 필요"
+    },
+    {
+      "type": "content_repetition",
+      "description": "삼성바이오로직스가 제목, 본문 첫 단락, 섹터표(제약 섹터), 뉴스 기반 특징주 섹션에서 반복 언급되며, 특히 같은 실적 이유(반기 영업익 1조 돌파)로 3회 이상 등장",
+      "found": "삼성바이오로직스 관련 서술 4회 반복",
+      "expected": "핵심 정보는 한 곳에서만 상세히 서술"
+    }
+  ]
+}
