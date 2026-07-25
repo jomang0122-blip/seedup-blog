@@ -1,0 +1,18 @@
+{
+  "kst_date": "2026-07-26",
+  "week_start": "2026-07-17",
+  "week_end": "2026-07-24",
+  "published_at": "2026-07-25T23:02:32.481834",
+  "title": "[7월 17일~24일 미증시 주간] 나스닥 2.1% 하락 주간 리뷰",
+  "url": "https://www.seedup-invest.com/2026/07/7-1724-21.html",
+  "char_count": 10168,
+  "nasdaq_weekly_pct": -2.13,
+  "validation_issues": [
+    {
+      "type": "field_narrative_mismatch",
+      "description": "PLTR(팔란티어) 종목 표에서 주간 종가가 '확인 불가'로 표기되어 있으나, 본문 '한줄 동향' 칸에 '방산·AI 차익 실현'이라는 구체적 서술이 있어 모순. 데이터상 PLTR 종가도 $nan(데이터 없음)이므로 이유 설명도 제거되어야 함.",
+      "found": "PLTR 표: 주간 종가 '확인 불가' / 한줄 동향: '방산·AI 차익 실현'",
+      "expected": "주간 종가가 확인 불가능하면 한줄 동향도 일반화 표현으로 수정 필요"
+    }
+  ]
+}
