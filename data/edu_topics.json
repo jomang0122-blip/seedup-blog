@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 32,
+    "published_count": 33,
     "last_updated": "2026-07-25"
   },
   "topics": [
@@ -710,9 +710,9 @@
         "추세 채널은 추세선과 평행하게 반대편에 선을 그어 만든 것으로, 목표가와 과열 구간 파악에 활용된다",
         "추세선 기울기가 너무 가파르면 지속 가능성이 낮으며, 조정 후 완만한 추세선을 다시 그어야 한다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-25",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_365.html",
       "format": "개념정의형"
     },
     {
