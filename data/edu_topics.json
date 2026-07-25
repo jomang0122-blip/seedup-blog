@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 31,
+    "published_count": 32,
     "last_updated": "2026-07-25"
   },
   "topics": [
@@ -688,9 +688,9 @@
         "10년물 국채 수익률은 주식 밸류에이션의 기준금리 역할을 하며, 급등 시 주식 매도 압력이 커진다",
         "금리와 주가의 관계는 절대적이지 않으며, 경제 성장 기대가 강하면 금리가 올라도 주가가 상승할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-25",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_832.html",
       "format": "전략활용형"
     },
     {
