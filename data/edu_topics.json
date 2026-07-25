@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 30,
+    "published_count": 31,
     "last_updated": "2026-07-25"
   },
   "topics": [
@@ -666,9 +666,9 @@
         "박스권 상단 돌파(거래량 수반)는 강력한 매수 신호로, 박스권 폭만큼 추가 상승하는 경향이 있다",
         "박스권 구간이 길수록(에너지 축적) 이탈 후 방향성이 강하고 지속적인 경향이 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-25",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_25.html",
       "format": "전략활용형"
     },
     {
