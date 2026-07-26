@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 34,
+    "published_count": 35,
     "last_updated": "2026-07-26"
   },
   "topics": [
@@ -754,9 +754,9 @@
         "눌림목이 이전 지지선을 이탈하면 추세 전환 가능성이 높으므로 손절해야 한다",
         "눌림목 매매는 추세가 명확한 종목에서만 유효하며, 횡보 또는 하락 추세 종목에 적용하면 위험하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-26",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_26.html",
       "format": "전략활용형"
     },
     {
