@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 36,
+    "published_count": 37,
     "last_updated": "2026-07-26"
   },
   "topics": [
@@ -798,9 +798,9 @@
         "RSI 다이버전스: 주가는 신고가를 갱신하는데 RSI는 하락(약세 다이버전스)이면 추세 전환 가능성을 시사한다",
         "RSI는 추세 추종보다 횡보 구간에서 더 신뢰도가 높으며, 다른 지표(MACD, 볼린저밴드)와 함께 사용하면 정확도가 올라간다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-26",
+      "post_url": "https://www.seedup-invest.com/2026/07/rsi.html",
       "format": "전략활용형"
     },
     {
