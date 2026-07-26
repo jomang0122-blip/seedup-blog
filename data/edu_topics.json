@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 35,
+    "published_count": 36,
     "last_updated": "2026-07-26"
   },
   "topics": [
@@ -776,9 +776,9 @@
         "달러 강세(DXY 지수 상승) 시기에 신흥국 증시에서 자금이 이탈하는 경향이 있으며, 코스피도 영향을 받는다",
         "환헤지가 없는 해외 ETF는 환율 변동에 따라 실제 수익률이 환율 방향으로 영향을 받는다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-07-26",
+      "post_url": "https://www.seedup-invest.com/2026/07/blog-post_446.html",
       "format": "전략활용형"
     },
     {
