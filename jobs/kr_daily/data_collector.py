@@ -116,6 +116,12 @@ def _build_stock_maps() -> dict:
             for _, r in df_kospi.iterrows()
             if pd.notna(r["Marcap"])
         }
+    code_map = {}
+    if "Code" in df_kospi.columns:
+        code_map = {
+            str(r["Name"]): str(r["Code"]).zfill(6)
+            for _, r in df_kospi.iterrows()
+        }
 
     try:
         df_kosdaq = fdr.StockListing("KOSDAQ")
@@ -131,6 +137,8 @@ def _build_stock_maps() -> dict:
                     stock_pct_map[name] = round(float(r[kq_chg]), 2)
                 if name not in stock_cap_map and "Marcap" in df_kosdaq.columns and pd.notna(r["Marcap"]):
                     stock_cap_map[name] = float(r["Marcap"])
+                if name not in code_map and "Code" in df_kosdaq.columns:
+                    code_map[name] = str(r["Code"]).zfill(6)
     except Exception as e:
         print(f"  [종목] KOSDAQ 추가 실패: {e}")
 
@@ -139,6 +147,7 @@ def _build_stock_maps() -> dict:
         "chg_col": chg_col,
         "stock_pct_map": stock_pct_map,
         "stock_cap_map": stock_cap_map,
+        "code_map": code_map,
     }
 
 
@@ -615,6 +624,7 @@ def extract_and_verify_featured_stocks(
     min_change_pct: float = 2.0,
     stock_cap_map: dict = None,
     min_cap: float = _MIN_SECTOR_STOCK_CAP,
+    code_map: dict = None,
 ) -> list:
     """crawled_news_features 헤드라인 기반 뉴스기반 특징주 4단계 검증.
 
@@ -668,11 +678,23 @@ def extract_and_verify_featured_stocks(
         exact_match = [i for i in today_items if i["title"] == headline]
         chosen = exact_match[0] if exact_match else today_items[0]
 
-        verified.append({
+        entry = {
             "name": name,
             "change_pct": change_pct,
             "news": chosen["title"],
-        })
+        }
+        # ⑤ 뉴스기반 특징주도 get_top_stocks()와 동일한 FDR-네이버 재검증 적용.
+        # 실사고(2026-07-22): SK하이닉스가 실제 하락(-0.33%)인데 stock_pct_map의
+        # FDR 반영지연 값(+5.07%)이 그대로 "강세" 서술로 발행됨 — 이 경로는
+        # get_top_stocks()의 _verify_and_fix_change_pct 적용 대상이 아니었다.
+        if code_map:
+            _verify_and_fix_change_pct([entry], code_map)
+            # 재검증 후 임계값 미달로 떨어지면(보합권으로 정정) 특징주 자격 상실
+            if abs(entry["change_pct"]) < min_change_pct:
+                print(f"  [검증⑤실패] {name}: 재검증 후 {entry['change_pct']:+.2f}%로 보합권 — 특징주 제외")
+                continue
+
+        verified.append(entry)
         print(f"  [검증완료] {name}: {change_pct:+.2f}% / {chosen['title'][:50]}")
 
     return verified
@@ -857,6 +879,7 @@ def collect_all(date: str = None) -> dict:
             stock_maps["stock_pct_map"],
             date,
             stock_cap_map=stock_maps["stock_cap_map"],
+            code_map=stock_maps.get("code_map"),
         )
         print(f"  → 검증 완료: {len(featured_verified)}개")
 
