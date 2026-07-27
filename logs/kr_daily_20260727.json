@@ -1,0 +1,47 @@
+{
+  "date": "2026-07-27",
+  "published_at": "2026-07-27T07:04:01.974119",
+  "title": "[26년 7월 27일 국내증시] AI·인터넷 섹터 강세로 KOSPI·KOSDAQ 동반 상승, 에너지·방산주 하락 탄력 제한",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-27-ai-kospikosdaq.html",
+  "char_count": 7496,
+  "kospi_close": 6755.75,
+  "kospi_change_pct": 0.97,
+  "validation_issues": [
+    {
+      "type": "number_mismatch",
+      "description": "NAVER 등락률 불일치",
+      "found": "+8.43%",
+      "expected": "+7.95%"
+    },
+    {
+      "type": "number_mismatch",
+      "description": "하이브 등락률 불일치",
+      "found": "+6.13%",
+      "expected": "+6.84%"
+    },
+    {
+      "type": "number_mismatch",
+      "description": "현대로템 등락률 불일치",
+      "found": "-16.35%",
+      "expected": "-17.93%"
+    },
+    {
+      "type": "number_mismatch",
+      "description": "두산퓨얼셀 등락률 불일치 (데이터에 없는 종목)",
+      "found": "-29.91%",
+      "expected": "실제 수집 데이터에 두산퓨얼셀 데이터 없음"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "두산퓨얼셀 관련 구체적 사건 서술 ('2분기 실적 부진 충격')이 실제 수집 데이터에 근거 없음. 뉴스 기반 특징주 섹션과 본문 여러 곳에서 두산퓨얼셀을 SK이터닉스처럼 실적 부진 종목으로 명시하나, 실제 데이터에는 두산퓨얼셀이 급등락 종목이나 뉴스 기반 종목 목록에 없음",
+      "found": "두산퓨얼셀 2분기 실적 부진 충격",
+      "expected": "데이터 없음"
+    },
+    {
+      "type": "content_repetition",
+      "description": "SK이터닉스 -29.42% 수치가 본문 내 여러 위치(섹터 표 '대표 종목' 칸, 하락 특징주 리스트, 다음 거래일 전망)에서 3회 이상 반복 서술됨",
+      "found": "SK이터닉스 (-29.42%) 반복",
+      "expected": "일회성 언급"
+    }
+  ]
+}
