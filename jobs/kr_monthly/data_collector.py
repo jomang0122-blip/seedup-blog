@@ -49,22 +49,40 @@ def get_month_range() -> tuple[str, str, str, str]:
 
 
 def get_index_data_monthly(month_start_str: str, month_end_str: str) -> dict:
-    """KOSPI/KOSDAQ 월간 등락률 — 전월 첫 거래일 종가 대비 마지막 거래일 종가."""
+    """KOSPI/KOSDAQ 월간 등락률 — 전월 마지막 거래일 종가 대비 당월 마지막 거래일 종가.
+
+    실사고(2026-07-27): 기존 코드는 df.index >= start_dt로 필터링해 "전월 말
+    종가를 가져올 여유(fetch_start)"를 만들어놓고도 그 필터에서 다시 잘라내,
+    실제로는 "당월 첫 거래일 대비 당월 마지막 거래일"(즉 당월 내 등락)을
+    계산하고 있었다 — docstring이 말하는 "전월 말 대비"와 다른 값. kr_monthly
+    최초 실행(테스트 목적 dry-run 미적용 실수로 라이브 발행됨) 때 KOSPI가
+    실제로는 거의 보합(전월 말 대비 +0.00%)인데 -3.55%로, KOSDAQ은 실제
+    -14.76%인데 -12.75%로 발행되는 사고로 이어짐. kr_weekly의
+    get_index_data_weekly()와 동일하게 "기준일 이전 구간을 별도 조회해
+    마지막 값을 쓰는" 패턴으로 수정.
+    """
     result = {}
     start_dt = datetime.strptime(month_start_str, "%Y%m%d")
     end_dt = datetime.strptime(month_end_str, "%Y%m%d")
+    prev_month_last_dt = start_dt - timedelta(days=1)
     for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
         try:
-            # 월초 이전 여유(직전월 말)를 살짝 포함해 첫 거래일을 놓치지 않게 조회
-            fetch_start = (start_dt - timedelta(days=5)).strftime("%Y-%m-%d")
-            fetch_end = end_dt.strftime("%Y-%m-%d")
-            df = fdr.DataReader(ticker, fetch_start, fetch_end)
-            df = df[df.index >= pd.Timestamp(start_dt)]
-            if df.empty:
+            # 전월 마지막 거래일 종가 — 전월 말일 이전 여유(공휴일·주말 대비 10일)
+            prev_start = (prev_month_last_dt - timedelta(days=10)).strftime("%Y-%m-%d")
+            prev_end = prev_month_last_dt.strftime("%Y-%m-%d")
+            df_prev = fdr.DataReader(ticker, prev_start, prev_end)
+            if df_prev.empty:
                 result[key] = {}
                 continue
-            first_close = float(df["Close"].dropna().iloc[0])
-            last_close = float(df["Close"].dropna().iloc[-1])
+            first_close = float(df_prev["Close"].dropna().iloc[-1])
+
+            # 당월 마지막 거래일 종가
+            df_cur = fdr.DataReader(ticker, start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
+            if df_cur.empty:
+                result[key] = {}
+                continue
+            last_close = float(df_cur["Close"].dropna().iloc[-1])
+
             pct = (last_close - first_close) / first_close * 100
             result[key] = {
                 "close": round(last_close, 2),
