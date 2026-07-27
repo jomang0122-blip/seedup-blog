@@ -123,6 +123,38 @@ def get_best_worst_days(daily_pct: list) -> dict:
     return {"best_day": best, "worst_day": worst}
 
 
+def get_monthly_volatility(daily_pct: list) -> dict:
+    """이번 달 KOSPI 일별 등락률의 변동성(표준편차) — 월간만이 보여줄 수 있는
+    관점(blog-planning 회의 2026-07-27 1순위 채택). daily_pct는 이미
+    get_kospi_daily_pct_monthly()가 만드는 값을 그대로 재사용 — 신규 데이터
+    수집 불필요.
+    """
+    if not daily_pct or len(daily_pct) < 2:
+        return {"volatility": None, "trading_days": len(daily_pct)}
+    values = [d["pct"] for d in daily_pct]
+    mean = sum(values) / len(values)
+    variance = sum((v - mean) ** 2 for v in values) / len(values)
+    std = variance ** 0.5
+    return {"volatility": round(std, 2), "trading_days": len(values)}
+
+
+def get_prev_month_volatility(month_start_str: str) -> dict:
+    """전월 KOSPI 일별 등락률 변동성 — 이번 달과 비교하기 위한 값.
+    전월 범위를 별도로 계산해 get_kospi_daily_pct_monthly를 재사용한다.
+    """
+    start_dt = datetime.strptime(month_start_str, "%Y%m%d")
+    prev_month_last = start_dt - timedelta(days=1)
+    prev_month_start = prev_month_last.replace(day=1)
+    prev_start_str = prev_month_start.strftime("%Y%m%d")
+    prev_end_str = prev_month_last.strftime("%Y%m%d")
+    try:
+        prev_daily_pct = get_kospi_daily_pct_monthly(prev_start_str, prev_end_str)
+        return get_monthly_volatility(prev_daily_pct)
+    except Exception as e:
+        print(f"  [전월 변동성] 수집 실패: {e}")
+        return {"volatility": None, "trading_days": 0}
+
+
 def get_investor_trend_monthly(month_end_str: str) -> dict:
     """월간 투자자별 순매수 합계 (kr_weekly의 일별 수급 함수를 재사용해 월초~월말 합산).
 
@@ -229,6 +261,8 @@ def collect_all() -> dict:
     index_data = get_index_data_monthly(month_start, month_end)
     daily_pct = get_kospi_daily_pct_monthly(month_start, month_end)
     best_worst = get_best_worst_days(daily_pct)
+    volatility = get_monthly_volatility(daily_pct)
+    prev_volatility = get_prev_month_volatility(month_start)
     stock_data = get_top_stocks_weekly(month_end, month_start)  # 기간만 월 단위로 재사용
     investor_trend = get_investor_trend_monthly(month_end)
     news = get_news_monthly(month_label)
@@ -241,6 +275,8 @@ def collect_all() -> dict:
         **index_data,
         "daily_pct_count": len(daily_pct),
         **best_worst,
+        "volatility": volatility,
+        "prev_volatility": prev_volatility,
         **stock_data,
         "investor_trend_monthly": investor_trend,
         "news": news,

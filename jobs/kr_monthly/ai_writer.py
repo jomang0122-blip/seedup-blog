@@ -27,6 +27,17 @@ def _build_best_worst_block(data: dict) -> str:
         lines.append(f"이번 달 최고 상승일: {best['date']} ({best['pct']:+.2f}%)")
     if worst:
         lines.append(f"이번 달 최고 하락일: {worst['date']} ({worst['pct']:+.2f}%)")
+
+    vol = data.get("volatility") or {}
+    prev_vol = data.get("prev_volatility") or {}
+    if vol.get("volatility") is not None:
+        line = f"이번 달 변동성(일별 등락률 표준편차): {vol['volatility']:.2f}%p"
+        if prev_vol.get("volatility") is not None:
+            diff = vol["volatility"] - prev_vol["volatility"]
+            trend = "확대" if diff > 0 else ("축소" if diff < 0 else "유지")
+            line += f" (전월 {prev_vol['volatility']:.2f}%p 대비 {trend})"
+        lines.append(line)
+
     return "\n".join(lines) if lines else "(일별 등락 데이터 없음)"
 
 
@@ -135,7 +146,7 @@ SeedUP INVEST 블로그에 올릴 국내 증시 월간 결산 포스팅을 한�
 구조 (반드시 이 순서로, 제시된 섹션만 작성):
 0) 📌 **이번 달 핵심 요약** — 아래 4가지를 3~4문장(이모티콘 제외 200~280자)으로 작성:
    - 문장 1: KOSPI·KOSDAQ 월간 등락률 수치 + 한 줄 평가
-   - 문장 2: 월중 최고 상승일·최고 하락일이 있었던 배경 (데이터에서 도출되는 범위만)
+   - 문장 2: 월중 최고 상승일·최고 하락일 + (변동성 데이터가 있으면) 전월 대비 변동성 확대·축소 여부 (데이터에서 도출되는 범위만)
    - 문장 3: 월간 수급 흐름 핵심 (개인·외국인·기관 중 어느 주체가 순매수/순매도를 주도했는지)
    - 문장 4: 다음 달 관전 포인트 한 줄 예고 — 이번 달 데이터에서 도출되는 추세만.
      데이터에 없는 구체적 일정(FOMC 등) 날짜를 추측해 넣지 말 것.
@@ -148,6 +159,8 @@ a) ### 📊 이번 달 지수 성적 ({month_label})
 b) ### 📅 월중 최고 상승일·최고 하락일
    - [월중 최고 상승일·최고 하락일] 데이터를 근거로 2~3문장 서술
    - 데이터에 없는 구체적 사건을 지어내 원인으로 서술하지 말 것 — 등락 사실과 날짜만 명시
+   - 변동성(표준편차) 수치가 데이터에 있으면 마지막 문장에 전월 대비 확대/축소 여부를 포함해 서술.
+     수치가 없으면 변동성 언급 생략(추정·창작 금지)
 {stocks_prompt_sec}
 d) ### 💰 이번 달 투자자별 매매동향
    - [월간 투자자별 순매수 합계] 데이터를 근거로 2~3문장 서술
