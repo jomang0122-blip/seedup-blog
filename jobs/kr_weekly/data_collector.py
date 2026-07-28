@@ -263,7 +263,14 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 
 
 def get_sector_data() -> dict:
-    """네이버 금융 업종 등락률 (상위 3개, 하위 3개)."""
+    """네이버 금융 업종 등락률 (상위 3개, 하위 3개).
+
+    주의: 이 함수는 호출 시점(발행 당일) 스냅샷만 반환한다 — 주간 누적 등락률이
+    아님. KRX 업종지수 히스토리 데이터 소스(FDR/pykrx/네이버/KRX 오픈API)를
+    확보하지 못해 주간 누적 계산은 보류 중(2026-07-27). 반환값을 소비하는
+    ai_writer.py 쪽에서도 "당일" 라벨을 유지할 것 — "주간"으로 표기하면 사실과
+    다른 정보가 됨.
+    """
     try:
         resp = fetch_with_retry(
             "https://finance.naver.com/sise/sise_group.nhn",

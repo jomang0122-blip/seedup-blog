@@ -59,11 +59,11 @@ def _build_stocks_block(gainers: list, losers: list) -> str:
 def _build_sector_block(top_sectors: list, bottom_sectors: list) -> str:
     lines = []
     if top_sectors:
-        lines.append("[주간 강세 섹터] " + ", ".join(
+        lines.append("[당일 강세 섹터] " + ", ".join(
             f"{s['name']}({s['change_pct']:+.2f}%)" for s in top_sectors
         ))
     if bottom_sectors:
-        lines.append("[주간 약세 섹터] " + ", ".join(
+        lines.append("[당일 약세 섹터] " + ", ".join(
             f"{s['name']}({s['change_pct']:+.2f}%)" for s in bottom_sectors
         ))
     return "\n".join(lines) if lines else "(섹터 데이터 없음)"
@@ -184,7 +184,7 @@ SeedUP INVEST 블로그에 올릴 국내 증시 주간 시황 포스팅을 한�
 [시가총액 TOP10 주간 등락]{stocks_skip_note}
 {stocks_block}
 
-[주간 섹터 등락률]
+[당일(발행일 기준) 섹터 등락률 — 주간 누적 아님]
 {sector_block}
 
 [주간 뉴스 헤드라인]
@@ -227,9 +227,9 @@ a) ### 📊 주간 시장 지표 ({date_range})
    - 표 아래 단락 1~2개: KOSPI/KOSDAQ 흐름 차이 및 원인 서술
 {investor_prompt_sec}
 {stocks_prompt_sec}
-d) ### 🏭 주간 주도·약세 섹터
+d) ### 🏭 당일 주도·약세 섹터
    - 마크다운 테이블: 구분 | 섹터명 | 등락률 | 대표 이슈
-   - 표 아래 단락 1개: 섹터 흐름 해석
+   - 표 아래 단락 1개: 섹터 흐름 해석 (※ 아래 섹터 데이터는 발행일 당일 등락률입니다. "이번 주"·"주간" 등 주간 누적을 의미하는 표현 사용 금지)
 
 e) ### 📰 이번 주 핵심 뉴스 & 이슈
    - 제공된 뉴스 헤드라인 번호 목록(1. 2. 3.) 3~5개 요약

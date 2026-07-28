@@ -62,9 +62,13 @@ jobs:
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_FORCE: ${{ github.event.inputs.force }}
         run: |
+          echo "수신된 입력값 — dry_run=[$INPUT_DRY_RUN] force=[$INPUT_FORCE] (외부 트리거가 inputs를 누락하면 여기서 바로 드러남)"
           ARGS=""
           if [ "$INPUT_DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
+            echo "  → --dry-run 적용됨 (실제 발행 안 함)"
+          else
+            echo "  → [LIVE] 실제 발행 모드로 진행합니다"
           fi
           if [ "$INPUT_FORCE" = "true" ]; then
             ARGS="$ARGS --force"
