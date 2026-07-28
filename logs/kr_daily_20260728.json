@@ -1,0 +1,29 @@
+{
+  "date": "2026-07-28",
+  "published_at": "2026-07-28T07:04:42.740940",
+  "title": "제목 자체는 수치 오류가 없으나, 본문 내용의 구조적 오류로 인해 전체 재검토 필요",
+  "url": "https://www.seedup-invest.com/2026/07/blog-post_28.html",
+  "char_count": 7404,
+  "kospi_close": 6023.66,
+  "kospi_change_pct": -10.84,
+  "validation_issues": [
+    {
+      "type": "table_data_error",
+      "description": "전자장비와기기 섹터 대표 종목에서 대덕전자의 등락률이 오류",
+      "found": "대덕전자(-16.54%)",
+      "expected": "대덕전자(-16.91%)"
+    },
+    {
+      "type": "table_data_error",
+      "description": "무선통신서비스 섹터 대표 종목에서 SK텔레콤의 등락률이 오류",
+      "found": "SK텔레콤(-16.04%)",
+      "expected": "SK텔레콤(-16.14%)"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "제목과 본문에서 '두산퓨얼셀 -21.50% 급락'이 언급되나, 실제 수집 데이터의 뉴스 기반 종목 목록에는 '두산: -13.37%'만 있고 '두산퓨얼셀'이라는 별도의 종목은 없음. 또한 실제 데이터에 두산퓨얼셀의 -21.50% 수치가 존재하지 않음.",
+      "found": "두산퓨얼셀 -21.50%",
+      "expected": "실제 데이터에 근거한 수치 필요"
+    }
+  ]
+}
