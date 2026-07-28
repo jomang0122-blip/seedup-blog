@@ -60,6 +60,17 @@ def _build_stock_anchor(data: dict) -> str:
     return result
 
 
+def _build_marketcap_anchor(data: dict) -> str:
+    """시가총액 상위 10종목 당일 등락 — 상승/하락 특징주(등락률 기준 TOP5)와
+    별개로 항상 노출한다. 등락률이 작아도 삼성전자·SK하이닉스 같은 대형주는
+    시장 전체에 미치는 영향이 크므로 등락률 순위와 무관하게 보여줘야 한다."""
+    top = data.get("marketcap_top", [])
+    if not top:
+        return "(시가총액 상위 종목 데이터 없음 — 섹션 생략)"
+    parts = [f"{s['name']} {s['change_pct']:+.2f}%" for s in top]
+    return "시가총액 순서 그대로(이유 문장 작성 금지 — 등락률만 표기):\n" + "\n".join(parts)
+
+
 def _build_sector_anchor(data: dict) -> str:
     top = data.get("top_sectors", [])
     bot = data.get("bottom_sectors", [])
@@ -177,6 +188,7 @@ def _build_prompt(data: dict, prev_issues: list = None) -> str:
     )
 
     stock_anchor = _build_stock_anchor(data)
+    marketcap_anchor = _build_marketcap_anchor(data)
     sector_anchor = _build_sector_anchor(data)
     news_anchor = _build_news_anchor(
         data.get("crawled_news_features", []), data.get("stock_pct_map", {})
@@ -213,6 +225,9 @@ SeedUP INVEST 블로그에 올릴 {date} 마감 국내 증시 시황 포스팅�
 
 [당일 특징주 등락률 — 수치를 한 글자도 바꾸지 말 것]{stocks_skip_note}
 {stock_anchor}
+
+[시가총액 상위 10종목 당일 등락 — 등락률 크기와 무관하게 항상 표기, 수치를 한 글자도 바꾸지 말 것]
+{marketcap_anchor}
 
 [당일 섹터 등락률 + 관련 종목 — 수치 그대로 사용, 관련종목은 테이블 대표종목 컬럼에만 사용]
 {sector_anchor}
@@ -312,6 +327,9 @@ SeedUP INVEST 블로그에 올릴 {date} 마감 국내 증시 시황 포스팅�
     - 허용: 오늘 수급·섹터 흐름을 근거로 한 추세 서술
 12. 레이아웃 구조 고정: 반드시 ### 섹션 3개만(📊 1. / 💥 2. / 🔮 3.) 유지. 섹션 추가·삭제·번호 변경·재배치 절대 금지.
     - [당일 주도 섹터 및 테마]는 반드시 '### 📊 1. 시장 지표 및 수급 종합' 내 #### 하위 섹션으로만 위치.
+    - #### 하위 섹션(상승/하락/뉴스기반 특징주·관련 공시·시가총액 상위 종목)은 아래
+      [출력 레이아웃]에 제시된 순서를 그대로 지킬 것 — 임의로 순서를 바꾸거나 새 하위
+      섹션을 추가하지 말 것.
     - 데이터 없어도 섹션 구조는 유지.
 13. TITLE 방향 표현: KOSPI 기준으로만 결정. "혼조" 단어 절대 금지.
     - KOSPI 상승일 → "상승 마감", "강세", "반등" 등 상승 표현만 사용.
@@ -393,6 +411,14 @@ SeedUP INVEST 블로그에 올릴 {date} 마감 국내 증시 시황 포스팅�
 #### 📋 관련 공시
 (데이터 블록 'DART' 목록에 있는 종목만 작성. 없으면 이 하위 섹션 전체 생략 — 소제목 포함 텍스트 한 줄도 출력 금지.)
 - **[종목명]** [보고서명] (접수 [YYYY-MM-DD]) [[원문보기]]([URL]) — [관련뉴스 있으면 명사형 구 요약, 없으면 대시 포함 생략]
+
+#### 🏆 시가총액 상위 종목 당일 등락
+(데이터 블록 '시가총액 상위 10종목' 목록 그대로 순서·수치 유지. 이유 문장 작성 금지 — 종목명과 등락률만.
+데이터 없으면 이 하위 섹션 전체 생략 — 소제목 포함 텍스트 한 줄도 출력 금지.)
+| 종목명 | 등락률 |
+| :--- | :--- |
+| **[종목A]** | [색상태그 포함 등락률] |
+| **[종목B]** | [색상태그 포함 등락률] |
 
 ---
 

@@ -246,6 +246,51 @@ def get_top_stocks(stock_maps: dict, exclude_names: set = None) -> dict:
         return {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
 
 
+_MARKETCAP_TOP_N = 10  # 시가총액 상위 몇 종목을 보여줄지 (kr_weekly의 시총TOP10과 동일 기준)
+
+
+def get_marketcap_top_stocks(stock_maps: dict) -> dict:
+    """시가총액 상위 10종목의 당일 등락률 (등락률 크기와 무관하게 항상 노출).
+
+    2026-07-28 KOSPI -10.84% 폭락 실사고 재발 방지용 — 기존 get_top_stocks()는
+    등락률 절대값 기준 TOP5라, 그날 삼성전자(-13.39%)·SK하이닉스(-14.65%)처럼
+    지수를 실질적으로 주도한 시총 최상위 종목이 상대적으로 등락률이 작아 후보에서
+    빠지고, 대신 대덕전자·LG이노텍 등 중소형 종목만 노출되는 사고가 실제 발생했다.
+    _build_stock_maps()가 이미 만들어둔 시총·등락률 맵을 그대로 재사용하므로
+    추가 API 호출이 없다(kr_weekly의 get_top_stocks_weekly()와 달리 종목별
+    개별 fdr.DataReader 재조회가 불필요 — 당일 등락률은 이미 stock_pct_map에 있음).
+    """
+    try:
+        df_kospi = stock_maps["df_kospi"]
+        if "Marcap" not in df_kospi.columns:
+            return {"marketcap_top": []}
+
+        top = df_kospi.nlargest(_MARKETCAP_TOP_N, "Marcap")
+        code_map = stock_maps.get("code_map", {})
+        stock_pct_map = stock_maps["stock_pct_map"]
+
+        results = []
+        for _, r in top.iterrows():
+            name = str(r["Name"])
+            pct = stock_pct_map.get(name)
+            if pct is None:
+                continue
+            results.append({
+                "name": name,
+                "change_pct": round(float(pct), 2),
+                "is_upper_limit": round(float(pct), 2) >= 29.0,
+            })
+
+        if code_map:
+            results = _verify_and_fix_change_pct(results, code_map)
+
+        return {"marketcap_top": results}
+
+    except Exception as e:
+        print(f"  [시총TOP10] 실패: {e}")
+        return {"marketcap_top": []}
+
+
 _MIN_SECTOR_STOCK_CAP = 1_000_000_000_000  # 1조원 — 섹터 대표종목·뉴스 특징주 잡주 차단 기준 (급등락 TOP과 동일 기준)
 
 
@@ -857,6 +902,7 @@ def collect_all(date: str = None) -> dict:
         print("  [백필 모드] 지수는 과거 종가로 정확히 채움 / 종목·섹터·뉴스는 실시간 전용 소스라 생략")
         index_data = get_index_data_historical(date)
         stock_result = {"top_gainers": [], "top_losers": [], "stock_pct_map": {}, "stock_cap_map": {}}
+        marketcap_data = {"marketcap_top": []}
         sector_data = {"top_sectors": [], "bottom_sectors": []}
         news = []
         featured = []
@@ -886,6 +932,7 @@ def collect_all(date: str = None) -> dict:
         stock_result = get_top_stocks(
             stock_maps, exclude_names={v["name"] for v in featured_verified}
         )
+        marketcap_data = get_marketcap_top_stocks(stock_maps)
         sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
 
         # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
@@ -903,6 +950,7 @@ def collect_all(date: str = None) -> dict:
         **index_data,
         **sector_data,
         **stock_result,
+        **marketcap_data,
         "news": news,
         "crawled_news_features": featured,
         "stock_news_map": stock_news_map,

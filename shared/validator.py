@@ -16,6 +16,13 @@ _NESTED_SPAN_RE = re.compile(r'<span[^>]*>(<span[^>]*>.*?</span>)</span>')
 # 오탐하지 않도록 한다. 해당 문구가 있는 표 셀은 통째로 빈 값("—")으로 교체.
 _LEAKED_META_RE = re.compile(r"(관련\s*)?(구체적\s*)?종목명?\s*(제거|생략)\s*\([^)]*(근거|데이터)[^)]*\)")
 
+# 검증 AI(validate_post)가 corrected_title에 실제 제목 대신 "제목 자체는
+# 문제 없으나 본문에 오류가 있어 재검토 필요" 같은 코멘트 문장을 넣는 사고 방지용
+# (2026-07-28 kr_daily 발행 글 제목이 이 코멘트로 통째로 교체된 채 발행됨 실사고
+# 확인 후 추가). apply_corrections()가 corrected_title을 null 여부만 보고
+# 무조건 실제 제목으로 대입해서 벌어짐 — 설명체 어미가 하나라도 있으면 의심 처리.
+_TITLE_COMMENT_RE = re.compile(r"(재검토|검토\s*필요|으나|때문에|오류로\s*인해|구조적\s*오류)")
+
 # AI에게 주는 "구글 검색 설명으로 노출됨" 같은 작성 지침 괄호가 본문에 그대로
 # 남는 사고 방지용 (2026-07-20 kr_daily 발행 글에 "(구글 검색 설명으로 노출됨 —
 # ...압축):" 문구가 그대로 노출된 실사고 확인 후 추가). 프롬프트 자체도 지침과
@@ -397,8 +404,12 @@ def apply_corrections(post: dict, validation: dict) -> dict:
     문자열을 가진 경우까지 전역 치환되어 엉뚱한 곳이 바뀌는 사고 방지) —
     발행을 막는 대신 본문을 고쳐서 그대로 발행."""
     corrected = dict(post)
-    if validation.get("corrected_title"):
-        corrected["title"] = validation["corrected_title"]
+    new_title = validation.get("corrected_title")
+    if new_title:
+        if len(new_title) > 80 or _TITLE_COMMENT_RE.search(new_title):
+            print(f"  [경고] corrected_title이 설명 문구로 의심되어 제목 교체 건너뜀: {new_title!r}")
+        else:
+            corrected["title"] = new_title
 
     content = corrected.get("content", "")
     applied, skipped = [], []
