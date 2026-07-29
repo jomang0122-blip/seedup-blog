@@ -933,6 +933,20 @@ def collect_all(date: str = None) -> dict:
             stock_maps, exclude_names={v["name"] for v in featured_verified}
         )
         marketcap_data = get_marketcap_top_stocks(stock_maps)
+
+        # stock_pct_map(FDR 원본)은 장마감 직후 반영지연으로 부정확할 수 있는데
+        # (2026-07-29 SK하이닉스 실사고: 원본 -2.26% vs 실제 -9.61%), 이 맵이
+        # 뉴스기반 종목 매칭(get_stock_news_by_name)과 검증 프롬프트 모두에
+        # 그대로 흘러들어가 이미 재검증된 정답을 오히려 "오류"로 오판하게 만들었다.
+        # get_top_stocks()/get_marketcap_top_stocks()가 각자 네이버로 재검증을
+        # 마친 종목은 그 최종값으로 stock_pct_map을 갱신해, 이후 모든 소비처가
+        # 자동으로 정확한 값을 쓰도록 한다.
+        verified_pct_map = dict(stock_maps["stock_pct_map"])
+        for s in (stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
+                  + marketcap_data.get("marketcap_top", [])):
+            verified_pct_map[s["name"]] = s["change_pct"]
+        stock_result["stock_pct_map"] = verified_pct_map
+
         sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
 
         # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
@@ -941,7 +955,7 @@ def collect_all(date: str = None) -> dict:
             stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
         ]
         stock_news_map = get_stock_news_by_name(
-            stock_names, date_str=date, pct_map=stock_maps["stock_pct_map"]
+            stock_names, date_str=date, pct_map=verified_pct_map
         )
         dart_disclosures = get_dart_disclosures(stock_names, date)
 

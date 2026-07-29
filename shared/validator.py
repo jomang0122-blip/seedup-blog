@@ -244,6 +244,18 @@ def _build_data_summary(data: dict) -> str:
             pct = m.get("change_pct") if m.get("change_pct") is not None else m.get("weekly_pct")
             lines.append(f"  {m['ticker']}({m.get('name', '')}): {pct:+.2f}%")
 
+    # marketcap_top은 get_marketcap_top_stocks()에서 네이버 재검증까지 거친
+    # 최종값이다 — 아래 stock_pct_map(FDR 원본, 장마감 직후 반영지연 가능)과
+    # 별개로 반드시 노출해야, 검증 AI가 이미 정확히 교정된 본문 수치를 구버전
+    # 원본과 대조해 "오류"로 오판하는 사고를 막을 수 있다(2026-07-29 실사고:
+    # SK하이닉스 marketcap_top -9.61%(교정된 정답)를 stock_pct_map -2.26%
+    # (지연된 FDR 원본)와 비교해 되레 정답을 오답으로 자동교정할 뻔함).
+    marketcap_top = data.get("marketcap_top", [])
+    if marketcap_top:
+        lines.append("시가총액 상위 종목 (네이버 재검증 완료 — 이 수치가 최종 정답):")
+        for s in marketcap_top:
+            lines.append(f"  {s['name']}: {s['change_pct']:+.2f}%")
+
     for label, key in [("상승", "top_sectors"), ("하락", "bottom_sectors")]:
         sectors = data.get(key, [])
         if sectors:
