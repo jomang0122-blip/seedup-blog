@@ -65,6 +65,7 @@ def save_log(data: dict, post: dict, result: dict, kst_date: str, validation_iss
         "week_end": data.get("week_end"),
         "published_at": datetime.now().isoformat(),
         "title": post.get("title", ""),
+        "search_description": post.get("search_description", ""),
         "url": result.get("url", ""),
         "char_count": post.get("char_count", 0),
         "nasdaq_weekly_pct": data["indices"].get("^IXIC", {}).get("weekly_pct"),
@@ -213,6 +214,8 @@ def run(dry_run: bool = False, force: bool = False):
         )
         log(f"  발행 완료!")
         log(f"  URL: {result['url']}")
+        if post.get("search_description"):
+            log(f"  [검색설명 — Blogger 편집화면에 수동 입력 필요] {post['search_description']}")
         save_log(data, post, result, kst_date, validation_issues)
     except Exception as e:
         log(f"  [오류] 발행 실패: {e}")

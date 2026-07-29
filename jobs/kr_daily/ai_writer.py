@@ -445,10 +445,13 @@ SeedUP INVEST 블로그에 올릴 {date} 마감 국내 증시 시황 포스팅�
 
 ---
 
-출력 형식 — 아래 3줄 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
+출력 형식 — 아래 4줄 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
 TITLE: 핵심내용만 (날짜 prefix 없이 핵심내용만 출력 — 예: "반도체 강세로 KOSPI 상승, 전자장비·바이오주 주도")
   - 핵심내용은 오늘 지수 등락률·상위 섹터명·대장 종목명만 사용. 임의 조어·축약어·한자 조합 절대 금지.
   - HTML 태그 없는 순수 텍스트. 대괄호 [] 사용 금지.
+SEARCH_DESC: 구글 검색결과 설명(meta description)으로 그대로 쓰일 문장 — 본문의 "📌 오늘 시장 핵심"과
+  같은 소재를 다루되, 반드시 이모티콘 제외 130자 이내로 더 짧게 압축한 별도 문장. 날짜·KOSPI·KOSDAQ
+  등락률·가장 눈에 띄는 종목/섹터 키워드 포함. HTML 태그·이모티콘·따옴표 없는 순수 텍스트 한 문단.
 CONTENT:
 [마크다운 본문]"""
 
@@ -483,8 +486,12 @@ def _make_date_prefix(date: str) -> str:
         return f"[{date} 국내증시]" if date else ""
 
 
+_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시와 동일 — AI가 넘겨도 여기서 최종 강제 컷
+
+
 def _parse_response(raw: str, date: str = "") -> dict:
     title = ""
+    search_description = ""
     content_lines = []
     in_content = False
     date_prefix = _make_date_prefix(date)
@@ -500,6 +507,10 @@ def _parse_response(raw: str, date: str = "") -> dict:
             raw_title = re.sub(r"^\[[^\]]*\]\s*", "", raw_title)
             title = f"{date_prefix} {raw_title}".strip() if date_prefix else raw_title
             title_line_idx = i
+        elif line.startswith("SEARCH_DESC:"):
+            search_description = _strip_html(_strip_code_fences(line.removeprefix("SEARCH_DESC:").strip()))
+            if len(search_description) > _SEARCH_DESC_MAX_LEN:
+                search_description = search_description[:_SEARCH_DESC_MAX_LEN].rstrip()
         elif line.startswith("CONTENT:"):
             in_content = True
             found_content_marker = True
@@ -509,7 +520,7 @@ def _parse_response(raw: str, date: str = "") -> dict:
     if not found_content_marker:
         # AI가 CONTENT: 마커를 누락한 경우 — TITLE: 다음 줄부터 전체를 본문으로 처리
         start = title_line_idx + 1 if title_line_idx is not None else 0
-        content_lines = lines[start:]
+        content_lines = [l for l in lines[start:] if not l.startswith("SEARCH_DESC:")]
         print("  [파싱 경고] CONTENT: 마커 누락 — TITLE: 다음 줄부터 전체를 본문으로 대체 처리")
 
     # 본문 첫 헤딩이 제목과 중복되면 제거 (AI가 지침 무시하고 #~###### 헤딩으로 제목 반복하는 케이스)
@@ -523,7 +534,7 @@ def _parse_response(raw: str, date: str = "") -> dict:
         md_body = fix_weekday_labels(md_body, date)
 
     content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
-    return {"title": title, "content": content, "char_count": len(content)}
+    return {"title": title, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
 def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: list = None) -> dict:

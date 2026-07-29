@@ -237,12 +237,19 @@ e) ### 🔮 다음 주 전망 ({next_week})
 
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
 LABELS: {all_labels}
+SEARCH_DESC: 구글 검색결과 설명(meta description)으로 그대로 쓰일 문장 — 본문의 "📌 이번 주 미국증시 핵심"과
+  같은 소재를 다루되, 반드시 이모티콘 제외 130자 이내로 더 짧게 압축한 별도 문장. 주간 나스닥·S&P500·다우
+  등락률·핵심 이슈 키워드 포함. HTML 태그·이모티콘·따옴표 없는 순수 텍스트 한 문단.
 CONTENT:
 [마크다운 본문]""" + _build_retry_feedback(prev_issues)
 
 
+_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시와 동일 — AI가 넘겨도 여기서 최종 강제 컷
+
+
 def _parse_response(raw: str, ref_date: str = "") -> dict:
     labels = []
+    search_description = ""
     content_lines = []
     in_content = False
     found_content_marker = False
@@ -253,6 +260,10 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
         if line.startswith("LABELS:"):
             labels = [l.strip() for l in line.removeprefix("LABELS:").strip().split(",") if l.strip()]
             labels_line_idx = i
+        elif line.startswith("SEARCH_DESC:"):
+            search_description = line.removeprefix("SEARCH_DESC:").strip()
+            if len(search_description) > _SEARCH_DESC_MAX_LEN:
+                search_description = search_description[:_SEARCH_DESC_MAX_LEN].rstrip()
         elif line.startswith("CONTENT:"):
             in_content = True
             found_content_marker = True
@@ -262,7 +273,7 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
     if not found_content_marker:
         # AI가 CONTENT: 마커를 누락한 경우 — LABELS: 다음 줄부터 전체를 본문으로 처리
         start = labels_line_idx + 1 if labels_line_idx is not None else 0
-        content_lines = lines[start:]
+        content_lines = [l for l in lines[start:] if not l.startswith("SEARCH_DESC:")]
         print("  [파싱 경고] CONTENT: 마커 누락 — LABELS: 다음 줄부터 전체를 본문으로 대체 처리")
 
     md_body = "\n".join(content_lines).strip()
@@ -270,7 +281,7 @@ def _parse_response(raw: str, ref_date: str = "") -> dict:
         md_body = fix_weekday_labels(md_body, ref_date)
 
     content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
-    return {"labels": labels, "content": content, "char_count": len(content)}
+    return {"labels": labels, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
 def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: list = None) -> dict:
