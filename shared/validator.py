@@ -140,15 +140,18 @@ def strip_ungrounded_dart_section(content: str, dart_disclosures: dict) -> tuple
         return content, []
 
     before, _, rest = content.partition(_DART_SECTION_MARK)
-    # 마크다운 헤딩 기호(#### 등)까지 함께 잘라내야 "#### ---"처럼 헤딩만
-    # 남는 잔여물이 생기지 않는다 — before의 마지막 줄이 헤딩 prefix면 제거.
-    before_lines = before.splitlines(keepends=True)
-    if before_lines and re.match(r"^\s*#{1,6}\s*$", before_lines[-1].rstrip("\n")):
-        before = "".join(before_lines[:-1])
+    # 이 함수는 main.py에서 apply_structural_fixes() 이후(= 마크다운이 이미
+    # md_to_html()로 변환된 뒤) 호출된다. 즉 구분선은 마크다운 "---"가 아니라
+    # HTML "<hr/>"로 이미 바뀌어 있다 — 2026-07-29 실사고: 이 사실을 놓치고
+    # "---"만 찾다 보니 매번 못 찾아 else 분기(after="")로 빠져, 공시 섹션
+    # 뒤의 본문 전체(시가총액 섹션·다음 거래일 전망·면책조항)가 통째로
+    # 삭제된 채 발행됨. before 쪽도 h3 태그(<h3>#### 관련 공시</h3> 변환 결과)
+    # 를 함께 제거해야 헤딩 잔여물이 안 남는다.
+    before = re.sub(r"<h[1-6]>\s*$", "", before)
 
-    if "---" in rest:
-        section, _, after = rest.partition("---")
-        after = "---" + after
+    if "<hr/>" in rest:
+        section, _, after = rest.partition("<hr/>")
+        after = "<hr/>" + after
     else:
         section, after = rest, ""
 
