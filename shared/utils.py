@@ -105,17 +105,24 @@ def next_kr_trading_day_label(date_str: str) -> str:
     return f"{nd.month}월 {nd.day}일({_WEEKDAYS_KR[nd.weekday()]})"
 
 
+# 문장 종결부호 뒤에 숫자가 바로 이어지면(예: "-14.02%") 소수점이지 문장 끝이
+# 아니다 — truncate_at_sentence()가 "-14."을 문장 끝으로 오판해 자르는 사고
+# 방지용(2026-07-29 kr_daily 재발 실사고: 등락률 소수점에서 잘림).
+_SENTENCE_END_RE = re.compile(r"[.!?](?!\d)")
+
+
 def truncate_at_sentence(text: str, max_len: int) -> str:
-    """max_len을 넘으면 그 안에서 마지막 문장부호(. ! ?) 뒤까지만 남기고 자른다.
-    적당한 문장부호가 없으면(문장이 통째로 너무 길면) 원래대로 글자 수 컷 폴백.
+    """max_len을 넘으면 그 안에서 마지막 '문장 종결' 부호 뒤까지만 남기고 자른다.
+    숫자 뒤 소수점(-14.02%)은 문장 끝으로 오인하지 않는다. 적당한 문장부호가
+    없으면(문장이 통째로 너무 길면) 원래대로 글자 수 컷 폴백.
     검색설명(SEARCH_DESC)이 130자 제한에 걸려 문장 중간에서 뚝 끊기는 사고
     방지용(2026-07-29 kr_daily 실사고: "...실적 부진으로 두"에서 잘림)."""
     if len(text) <= max_len:
         return text
     truncated = text[:max_len]
-    cut = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
-    if cut >= max_len // 2:  # 문장부호가 너무 앞쪽이면(전체가 지나치게 짧아짐) 폴백
-        return truncated[:cut + 1]
+    matches = list(_SENTENCE_END_RE.finditer(truncated))
+    if matches and matches[-1].end() >= max_len // 2:
+        return truncated[:matches[-1].end()]
     return truncated.rstrip()
 
 
