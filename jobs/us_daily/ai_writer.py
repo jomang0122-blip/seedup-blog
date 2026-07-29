@@ -347,7 +347,11 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
     if us_date:
         md_body = fix_weekday_labels(md_body, us_date)
 
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
+    summary_block = ""
+    if search_description:
+        summary_block = f'\n<h3>🔍 오늘 시장 요약</h3>\n<p>{search_description}</p>\n'
+
+    content = apply_color_spans(md_to_html(md_body)) + summary_block + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
     return {"labels": labels, "search_description": search_description, "content": content, "char_count": len(content)}
 
 

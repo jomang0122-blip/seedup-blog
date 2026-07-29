@@ -60,6 +60,16 @@ def _build_stock_anchor(data: dict) -> str:
     return result
 
 
+def _fmt_won(amount) -> str:
+    """원화 금액(양수) → 조원/억원 문자열. None이면 '-'."""
+    if amount is None:
+        return "-"
+    eok = amount / 100_000_000
+    if eok >= 10_000:
+        return f"{eok / 10_000:.1f}조원"
+    return f"{eok:,.0f}억원"
+
+
 def _build_marketcap_anchor(data: dict) -> str:
     """시가총액 상위 10종목 당일 등락 — 상승/하락 특징주(등락률 기준 TOP5)와
     별개로 항상 노출한다. 등락률이 작아도 삼성전자·SK하이닉스 같은 대형주는
@@ -69,6 +79,41 @@ def _build_marketcap_anchor(data: dict) -> str:
         return "(시가총액 상위 종목 데이터 없음 — 섹션 생략)"
     parts = [f"{s['name']} {s['change_pct']:+.2f}%" for s in top]
     return "시가총액 순서 그대로(이유 문장 작성 금지 — 등락률만 표기):\n" + "\n".join(parts)
+
+
+def _build_marketcap_table_html(data: dict) -> str:
+    """시가총액 상위 10종목 표 — AI가 아니라 Python이 직접 HTML로 조립한다
+    (숫자 단위 변환을 AI에 맡기면 조/억 단위 실수 위험이 있어 제목 조립과
+    동일하게 코드로 강제). 순위·종목명·시가총액·등락률·거래대금 5개 컬럼."""
+    top = data.get("marketcap_top", [])
+    if not top:
+        return ""
+    rows = []
+    for s in top:
+        color = "#3182f6" if s["change_pct"] < 0 else "#e74c3c"
+        rows.append(
+            '<tr>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{s.get("rank", "")}</td>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;"><strong>{s["name"]}</strong></td>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{_fmt_won(s.get("marcap"))}</td>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;"><span style="color:{color}"><b>{s["change_pct"]:+.2f}%</b></span></td>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{_fmt_won(s.get("amount"))}</td>'
+            '</tr>'
+        )
+    header = (
+        '<tr>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">순위</th>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">종목명</th>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">시가총액</th>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">등락률</th>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">거래대금</th>'
+        '</tr>'
+    )
+    return (
+        '<h3>🏆 시가총액 상위 종목 당일 등락</h3>'
+        '<div style="overflow-x:auto;"><table border="1" style="border-collapse:collapse;width:100%;font-size:14px;">'
+        f'<thead>{header}</thead><tbody>{"".join(rows)}</tbody></table></div>'
+    )
 
 
 def _build_sector_anchor(data: dict) -> str:
@@ -408,13 +453,9 @@ SeedUP INVEST 블로그에 올릴 {date} 마감 국내 증시 시황 포스팅�
 (데이터 블록 '뉴스기반 특징주'에 있는 종목만 작성. 없으면 이 섹션 전체 생략.)
 - **[종목명]** <span style="color:#e74c3c"><b>+X.XX%</b></span> — [해당 종목 [뉴스] 내용에서만 추출한 명사형 구 — "~습니다" 종결 금지]
 
-#### 🏆 시가총액 상위 종목 당일 등락
-(데이터 블록 '시가총액 상위 10종목' 목록 그대로 순서·수치 유지. 이유 문장 작성 금지 — 종목명과 등락률만.
-데이터 없으면 이 하위 섹션 전체 생략 — 소제목 포함 텍스트 한 줄도 출력 금지.)
-| 종목명 | 등락률 |
-| :--- | :--- |
-| **[종목A]** | [색상태그 포함 등락률] |
-| **[종목B]** | [색상태그 포함 등락률] |
+{{{{MARKETCAP_TABLE}}}}
+(이 자리에 위 플레이스홀더 문자열을 정확히 그대로 한 줄 출력하고 아무것도 더 쓰지 말 것 —
+시가총액 상위 종목 표는 시스템이 자동으로 삽입한다. 소제목·표·설명 문구 직접 작성 금지.)
 
 #### 📋 관련 공시
 (데이터 블록 'DART' 목록에 있는 종목만 작성. 없으면 이 하위 섹션 전체 생략 — 소제목 포함 텍스트 한 줄도 출력 금지.
@@ -491,7 +532,7 @@ def _make_date_prefix(date: str) -> str:
 _SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시와 동일 — AI가 넘겨도 여기서 최종 강제 컷
 
 
-def _parse_response(raw: str, date: str = "") -> dict:
+def _parse_response(raw: str, date: str = "", data: dict = None) -> dict:
     title = ""
     search_description = ""
     content_lines = []
@@ -535,7 +576,17 @@ def _parse_response(raw: str, date: str = "") -> dict:
     if date:
         md_body = fix_weekday_labels(md_body, date)
 
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
+    summary_block = ""
+    if search_description:
+        summary_block = f'\n<h3>🔍 오늘 시장 요약</h3>\n<p>{search_description}</p>\n'
+
+    content_html = apply_color_spans(md_to_html(md_body))
+    marketcap_table = _build_marketcap_table_html(data or {})
+    content_html = content_html.replace("{{MARKETCAP_TABLE}}", marketcap_table)
+    # AI가 플레이스홀더를 <p>로 감싸는 경우 대비 (md_to_html이 단독 줄을 <p>로 래핑)
+    content_html = content_html.replace(f"<p>{marketcap_table}</p>", marketcap_table)
+
+    content = content_html + summary_block + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
     return {"title": title, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
@@ -550,7 +601,7 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
             messages=[{"role": "user", "content": prompt}],
         )
         raw = message.content[0].text
-        result = _parse_response(raw, date=date)
+        result = _parse_response(raw, date=date, data=data)
         result["labels"] = _build_labels(data)
         print(f"  [작성] 제목: {result['title']}")
         print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")

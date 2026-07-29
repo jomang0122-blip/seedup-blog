@@ -270,13 +270,16 @@ def get_marketcap_top_stocks(stock_maps: dict) -> dict:
         stock_pct_map = stock_maps["stock_pct_map"]
 
         results = []
-        for _, r in top.iterrows():
+        for rank, (_, r) in enumerate(top.iterrows(), start=1):
             name = str(r["Name"])
             pct = stock_pct_map.get(name)
             if pct is None:
                 continue
             results.append({
+                "rank": rank,
                 "name": name,
+                "marcap": float(r["Marcap"]) if pd.notna(r.get("Marcap")) else None,
+                "amount": float(r["Amount"]) if "Amount" in r and pd.notna(r.get("Amount")) else None,
                 "change_pct": round(float(pct), 2),
                 "is_upper_limit": round(float(pct), 2) >= 29.0,
             })
