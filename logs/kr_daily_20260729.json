@@ -1,0 +1,41 @@
+{
+  "date": "2026-07-29",
+  "published_at": "2026-07-29T07:05:33.999158",
+  "title": "[26년 7월 29일 국내증시] 전기장비·우주항공 업종 전반 급락, KOSPI 5,663pt 마감",
+  "search_description": "2026년 7월 29일 KOSPI -5.98%, KOSDAQ -6.12% 급락 마감. 전기장비 섹터 업종 전반 하락 속 가온전선·HD현대일렉트릭 대폭 약세, SK하이닉스도 실적 실망에 낙폭 확대.",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-29-kospi-5663pt.html",
+  "char_count": 6370,
+  "kospi_close": 5663.24,
+  "kospi_change_pct": -5.98,
+  "validation_issues": [
+    {
+      "type": "number_mismatch",
+      "section": "뉴스 기반 특징주 테이블",
+      "description": "SK하이닉스 등락률 오류",
+      "found": "-9.61%",
+      "expected": "-2.26%"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "LG생활건강 뉴스 내용 추가 기술 오류",
+      "details": "본문에서 'LG생활건강 - 이대통령 브라질 순방 중 K뷰티 협력 강조'라고 서술했으나, 제공된 데이터에는 LG생활건강 관련 공시(2Q 영업익 1,028억 예상치 상회)만 있고 이대통령 브라질 순방 관련 뉴스는 없음"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "셀트리온 뉴스 내용 오류",
+      "details": "본문에서 '셀트리온 - 영업이익 4,300억 역대 실적 발표 이후 강세'라고 서술했으나, 제공된 데이터에는 셀트리온의 '영업이익 4,300억' 관련 정보가 없음. 데이터에는 셀트리온의 등락률(+1.47%)만 있음"
+    },
+    {
+      "type": "number_mismatch",
+      "section": "하락 특징주",
+      "description": "HD현대일렉트릭 섹션에서 '수주 목표 상향' 언급했으나 데이터 근거 없음",
+      "details": "제공된 실제 수집 데이터에는 HD현대일렉트릭의 수주 목표 상향 관련 정보가 없음"
+    },
+    {
+      "type": "dart_disclosure_mismatch",
+      "description": "공시 섹션에 'LG생활건강' 언급은 있으나 실제 보고서명('연결재무제표기준영업(잠정)실적(공정공시)              ')과 불일치 — 섹션 전체 제거",
+      "found": "📋 관련 공시</h3>\n<ul>\n<li><strong>LG생활건강</strong> 연결재무제표기준영업(잠정)실적(공정공시) (접수 2026-07-29) <a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260729800683\">[원문보기]</a> — 2분기 영업이익 1,028억, 예상치 상회</li>\n</ul>\n<h3>🏆 시가총액 상위 종목 당일 등락</h3>\n<div style=\"overflow-x:auto;\"><table border=\"1\" style=\"border-collapse:collapse;width:100%;font-size:14px;\">\n<thead>\n<tr>\n<th style=\"padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;\">종목명</th>\n<th style=\"padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;\">등락률</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>삼성전자</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-5.23%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>SK하이닉스</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-9.61%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>SK스퀘어</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-8.11%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>삼성전기</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-7.63%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>현대차</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-2.88%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>LG에너지솔루션</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-4.30%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>삼성바이오로직스</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-4.52%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>KB금융</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-3.09%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>삼성생명</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-6.84%</b></span></td>\n</tr>\n<tr>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><strong>기아</strong></td>\n<td style=\"padding:8px;vertical-align:top;white-space:nowrap;\"><span style=\"color:#3182f6\"><b>-1.15%</b></span></td>\n</tr>\n</tbody>\n</table></div>\n<p>시가총액 상위 10종목이 예외 없이 하락 마감한 점은 오늘 매도세가 특정 업종이나 테마에 그치지 않고 시장 전반에 고르게 퍼져 있었음을 보여줍니다.</p>\n<hr/>\n<h2>🔮 3. 다음 거래일 전망 (7월 30일(목))</h2>\n<p>오늘 장에서 가장 눈에 띄는 구조적 특징은 상승 종목과 하락 종목 사이의 등락폭 격차가 이례적으로 컸다는 점입니다. 셀트리온·오리온·파마리서치 등 상승 특징주가 최대 5%대 강세에 그친 반면, 가온전선·HD현대일렉트릭·한국항공우주 등 하락 특징주는 15~19%대 낙폭을 기록하며 쏠림 깊이 자체가 달랐고, 이는 오늘 반등을 방어한 종목들이 낙폭을 일부 억제하는 데 구조적으로 불리한 하루였음을 시사합니다. 실적 시즌이 이어지는 가운데 호실적조차 주가 상승으로 이어지지 못한 사례(하이브·한화시스템)가 복수 확인됐다는 점에서, 7월 30일(목)에는 실적 발표 종목들에 대한 시장의 수익성 해석 방향이 바뀌는지 여부가 관건입니다.</p>\n<p style=\"margin-top:30px;padding:15px;background:#f5f5f5;border-left:4px solid #999;font-size:12px;color:#666;\">⚠️ 본 포스팅은 공시 데이터 및 시장 뉴스를 바탕으로 작성된 단순 정보 제공 목적의 글이며, 특정 종목에 대한 매수 또는 매도 추천이 아닙니다. 모든 투자에 대한 판단과 책임은 투자자 본인에게 있습니다. SeedUP 블로그는 본 내용으로 인한 손실에 대해 책임을 지지 않습니다. ⚠️</p>\n<div style=\"margin-top:24px;padding:16px;background:#f2f4f6;border-radius:8px;\"><p style=\"margin:0 0 8px;font-weight:bold;font-size:13px;\">📎 국내증시 리포트 모아보기</p><p style=\"margin:4px 0;font-size:13px;\">👉 <a href=\"https://www.seedup-invest.com/search/label/%EA%B5%AD%EB%82%B4%EB%8D%B0%EC%9D%BC%EB%A6%AC\">국내증시 데일리 리포트 모아보기</a></p><p style=\"margin:4px 0;font-size:13px;\">👉 <a href=\"https://www.seedup-invest.com/search/label/%EA%B5%AD%EB%82%B4%EC%9C%84%ED%81%B4%EB%A6%AC\">국내증시 위클리 리포트 모아보기</a></p></div>",
+      "expected": "(섹션 제거)"
+    }
+  ]
+}
