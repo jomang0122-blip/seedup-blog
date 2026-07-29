@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block
+from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block, truncate_at_sentence
 
 client = Anthropic()
 
@@ -305,13 +305,13 @@ d) ### 📰 오늘의 핵심 뉴스
 출력 형식 — 아래 헤더 뒤에 마크다운 본문만 작성 (면책 조항은 포함하지 말 것. 시스템이 자동 추가):
 LABELS: {all_labels}
 SEARCH_DESC: 구글 검색결과 설명(meta description)으로 그대로 쓰일 문장 — 본문의 "📌 오늘 미국증시 핵심"과
-  같은 소재를 다루되, 반드시 이모티콘 제외 130자 이내로 더 짧게 압축한 별도 문장. 날짜·나스닥·S&P500·다우
+  같은 소재를 다루되, 반드시 이모티콘 제외 110자 이내로 더 짧게 압축한 별도 문장. 날짜·나스닥·S&P500·다우
   등락률·가장 눈에 띄는 종목 키워드 포함. HTML 태그·이모티콘·따옴표 없는 순수 텍스트 한 문단.
 CONTENT:
 [마크다운 본문]"""
 
 
-_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시와 동일 — AI가 넘겨도 여기서 최종 강제 컷
+_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시(110자)보다 여유를 둔 최종 안전선 — 문장단위 컷 시 정보량 과소 손실 방지
 
 
 def _parse_response(raw: str, us_date: str = "") -> dict:
@@ -329,8 +329,7 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
             labels_line_idx = i
         elif line.startswith("SEARCH_DESC:"):
             search_description = line.removeprefix("SEARCH_DESC:").strip()
-            if len(search_description) > _SEARCH_DESC_MAX_LEN:
-                search_description = search_description[:_SEARCH_DESC_MAX_LEN].rstrip()
+            search_description = truncate_at_sentence(search_description, _SEARCH_DESC_MAX_LEN)
         elif line.startswith("CONTENT:"):
             in_content = True
             found_content_marker = True

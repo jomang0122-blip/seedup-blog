@@ -105,6 +105,20 @@ def next_kr_trading_day_label(date_str: str) -> str:
     return f"{nd.month}월 {nd.day}일({_WEEKDAYS_KR[nd.weekday()]})"
 
 
+def truncate_at_sentence(text: str, max_len: int) -> str:
+    """max_len을 넘으면 그 안에서 마지막 문장부호(. ! ?) 뒤까지만 남기고 자른다.
+    적당한 문장부호가 없으면(문장이 통째로 너무 길면) 원래대로 글자 수 컷 폴백.
+    검색설명(SEARCH_DESC)이 130자 제한에 걸려 문장 중간에서 뚝 끊기는 사고
+    방지용(2026-07-29 kr_daily 실사고: "...실적 부진으로 두"에서 잘림)."""
+    if len(text) <= max_len:
+        return text
+    truncated = text[:max_len]
+    cut = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
+    if cut >= max_len // 2:  # 문장부호가 너무 앞쪽이면(전체가 지나치게 짧아짐) 폴백
+        return truncated[:cut + 1]
+    return truncated.rstrip()
+
+
 def fmt_amount(amount: int, force_eok: bool = False) -> str:
     """순매수거래대금(원) → 조원(1조↑) 또는 억원 단위 문자열 (kr_daily·kr_weekly 공통).
     force_eok=True 이면 크기 무관하게 억원 단위 강제.

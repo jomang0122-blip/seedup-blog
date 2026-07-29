@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label, truncate_at_sentence
 
 client = Anthropic()
 
@@ -493,7 +493,7 @@ TITLE: 핵심내용만 (날짜 prefix 없이 핵심내용만 출력 — 예: "�
   - 핵심내용은 오늘 지수 등락률·상위 섹터명·대장 종목명만 사용. 임의 조어·축약어·한자 조합 절대 금지.
   - HTML 태그 없는 순수 텍스트. 대괄호 [] 사용 금지.
 SEARCH_DESC: 구글 검색결과 설명(meta description)으로 그대로 쓰일 문장 — 본문의 "📌 오늘 시장 핵심"과
-  같은 소재를 다루되, 반드시 이모티콘 제외 130자 이내로 더 짧게 압축한 별도 문장. 날짜·KOSPI·KOSDAQ
+  같은 소재를 다루되, 반드시 이모티콘 제외 110자 이내로 더 짧게 압축한 별도 문장. 날짜·KOSPI·KOSDAQ
   등락률·가장 눈에 띄는 종목/섹터 키워드 포함. HTML 태그·이모티콘·따옴표 없는 순수 텍스트 한 문단.
 CONTENT:
 [마크다운 본문]"""
@@ -529,7 +529,7 @@ def _make_date_prefix(date: str) -> str:
         return f"[{date} 국내증시]" if date else ""
 
 
-_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시와 동일 — AI가 넘겨도 여기서 최종 강제 컷
+_SEARCH_DESC_MAX_LEN = 130  # 프롬프트 지시(110자)보다 여유를 둔 최종 안전선 — 문장단위 컷 시 정보량 과소 손실 방지
 
 
 def _parse_response(raw: str, date: str = "", data: dict = None) -> dict:
@@ -552,8 +552,7 @@ def _parse_response(raw: str, date: str = "", data: dict = None) -> dict:
             title_line_idx = i
         elif line.startswith("SEARCH_DESC:"):
             search_description = _strip_html(_strip_code_fences(line.removeprefix("SEARCH_DESC:").strip()))
-            if len(search_description) > _SEARCH_DESC_MAX_LEN:
-                search_description = search_description[:_SEARCH_DESC_MAX_LEN].rstrip()
+            search_description = truncate_at_sentence(search_description, _SEARCH_DESC_MAX_LEN)
         elif line.startswith("CONTENT:"):
             in_content = True
             found_content_marker = True
