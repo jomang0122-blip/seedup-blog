@@ -1,0 +1,40 @@
+{
+  "date": "2026-07-30",
+  "published_at": "2026-07-30T07:04:01.193062",
+  "title": "[26년 7월 30일 국내증시] 방산·조선 강세에도 전자장비 급락으로 KOSPI 하락 마감, 삼성전기·SK하이닉스 동반 약세",
+  "search_description": "2026년 7월 30일 KOSPI -1.23%, KOSDAQ -2.70% 하락 마감. 삼성전기 -14.58% 급락·전자장비 섹터 약세 속 HD한국조선해양 +10.90%, 한화에어로스페이스 +9.75% 방산·조선주 강세.",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-30-kospi-sk.html",
+  "char_count": 12543,
+  "kospi_close": 5593.56,
+  "kospi_change_pct": -1.23,
+  "validation_issues": [
+    {
+      "type": "body_number",
+      "section": "상승 특징주 - 조선 섹터 대표 종목",
+      "description": "조선 섹터의 대표 종목 중 '대한조선' 등락률이 잘못 표기됨",
+      "found": "대한조선(+9.61%)",
+      "expected": "대한조선(+11.17%)"
+    },
+    {
+      "type": "body_number",
+      "section": "뉴스 기반 특징주",
+      "description": "LG생활건강의 등락률이 데이터에 없음. 실제 데이터에는 'LG: +4.45%'만 있으며, 'LG생활건강'이라는 종목명과 '+9.51%'라는 수치는 확인되지 않음",
+      "found": "LG생활건강 +9.51%",
+      "expected": "데이터 없음 (제거 필요)"
+    },
+    {
+      "type": "news_fabrication",
+      "section": "뉴스 기반 특징주",
+      "description": "LG생활건filling '2분기 호실적 발표에 급등 마감'이라는 구체적 뉴스 내용이 실제 수집 데이터에 없음. 데이터에는 'LG: +4.45%'만 있고, '호실적 발표'라는 뉴스 근거 없음",
+      "found": "LG생활건강 +9.51% — 2분기 호실적 발표에 급등 마감",
+      "expected": "해당 내용 삭제 필요"
+    },
+    {
+      "type": "body_number",
+      "section": "상승 특징주 - 조선 섹터 대표 종목",
+      "description": "조선 섹터 테이블에서 HD한국조선해양의 등락률이 잘못 표기됨",
+      "found": "HD한국조선해양(+10.00%)",
+      "expected": "HD한국조선해양(+10.90%)"
+    }
+  ]
+}
