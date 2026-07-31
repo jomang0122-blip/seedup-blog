@@ -1,0 +1,47 @@
+{
+  "date": "2026-07-31",
+  "published_at": "2026-07-31T07:03:13.822444",
+  "title": "[26년 7월 31일 국내증시] 반도체 상한가 랠리로 KOSPI 역대급 급등, 삼성전자·SK하이닉스·삼성전기 동반 강세",
+  "search_description": "2026년 7월 31일 반도체와반도체장비 섹터가 28% 급등하며 SK하이닉스·삼성전기 상한가. KOSPI +17.91%, KOSDAQ +11.63% 마감. 삼성전자 25% 급등, 외국인·기관 동반 매수.",
+  "url": "https://www.seedup-invest.com/2026/07/26-7-31-kospi-sk.html",
+  "char_count": 12642,
+  "kospi_close": 6595.45,
+  "kospi_change_pct": 17.91,
+  "validation_issues": [
+    {
+      "type": "number_accuracy",
+      "section": "주도 섹터 표 - 반도체와반도체장비 섹터",
+      "description": "SK하이닉스 등락률이 잘못 표기됨",
+      "found": "SK하이닉스(+29.95%)",
+      "expected": "SK하이닉스(+29.73%)"
+    },
+    {
+      "type": "number_accuracy",
+      "section": "주도 섹터 표 - 전기장비 섹터",
+      "description": "효성중공업 등락률이 잘못 표기됨",
+      "found": "효성중공업(+27.61%)",
+      "expected": "효성중공업(+29.14%)"
+    },
+    {
+      "type": "number_accuracy",
+      "section": "주도 섹터 표 - 전기장비 섹터",
+      "description": "대원전선 등락률이 잘못 표기됨",
+      "found": "대원전선(+25.97%)",
+      "expected": "대원전선(+27.52%)"
+    },
+    {
+      "type": "number_accuracy",
+      "section": "뉴스 기반 특징주 섹션",
+      "description": "두산 등락률이 데이터에 없는 수치임",
+      "found": "두산(+27.78%)",
+      "expected": "데이터 미보유 - 제거 필요"
+    },
+    {
+      "type": "number_accuracy",
+      "section": "뉴스 기반 특징주 섹션",
+      "description": "에코프로비엠 등락률이 데이터에 없는 수치임",
+      "found": "에코프로비엠(+4.77%)",
+      "expected": "데이터에 에코프로(+10.76%)만 있음 - 종목명 및 수치 불일치"
+    }
+  ]
+}
