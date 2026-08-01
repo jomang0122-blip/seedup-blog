@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 38,
+    "published_count": 39,
     "last_updated": "2026-08-01"
   },
   "topics": [
@@ -842,9 +842,9 @@
         "리밸런싱 시 세금(양도세·배당소득세)과 거래 비용이 발생하므로, 너무 잦은 리밸런싱은 비효율적이다",
         "주식 60% + 채권 40% 포트폴리오처럼 자산군 간 리밸런싱이 종목 간 리밸런싱보다 장기 성과에 더 중요하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-01",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post.html",
       "format": "전략활용형"
     },
     {
