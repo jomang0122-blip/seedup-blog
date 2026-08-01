@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 37,
-    "last_updated": "2026-07-26"
+    "published_count": 38,
+    "last_updated": "2026-08-01"
   },
   "topics": [
     {
@@ -820,9 +820,9 @@
         "어닝 쇼크(예상 하회)는 주가 급락을 유발하며, 실적 발표 전 기대감이 높았던 종목일수록 충격이 크다",
         "EPS 성장만 보지 말고 매출 성장도 함께 확인해야 한다 — 비용 절감으로만 EPS가 늘어난 경우 지속 가능성이 낮다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-01",
+      "post_url": "https://www.seedup-invest.com/2026/08/eps.html",
       "format": "개념정의형"
     },
     {
