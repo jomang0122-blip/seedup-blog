@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 40,
+    "published_count": 41,
     "last_updated": "2026-08-01"
   },
   "topics": [
@@ -886,9 +886,9 @@
         "MACD는 추세 추종 지표로, 추세가 강할 때 유효하며 횡보 구간에서는 잦은 오신호를 발생시킬 수 있다",
         "MACD 다이버전스: 주가는 신저가를 갱신하는데 MACD가 상승하면 하락 모멘텀 약화를 의미할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-01",
+      "post_url": "https://www.seedup-invest.com/2026/08/macd.html",
       "format": "개념정의형"
     },
     {
