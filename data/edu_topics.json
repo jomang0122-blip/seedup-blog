@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 44,
+    "published_count": 45,
     "last_updated": "2026-08-02"
   },
   "topics": [
@@ -975,9 +975,9 @@
         "주가가 상단 밴드에 닿으면 과매수, 하단 밴드에 닿으면 과매도로 해석하지만, 강한 추세에서는 밴드를 따라 움직일 수 있다",
         "볼린저밴드 워킹(Band Walking): 강한 상승 추세에서 주가가 상단 밴드를 타고 이동하는 현상"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-02",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_834.html",
       "format": "전략활용형"
     },
     {
