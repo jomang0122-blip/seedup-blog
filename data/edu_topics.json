@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 42,
+    "published_count": 43,
     "last_updated": "2026-08-02"
   },
   "topics": [
@@ -931,9 +931,9 @@
         "다이버전스 하나만으로 매매 진입을 결정하기보다, 지지·저항선이나 거래량 변화와 함께 확인하는 것이 안전하다",
         "강한 추세 구간에서는 다이버전스가 여러 번 발생해도 추세가 계속 이어지는 경우가 있어(히든 다이버전스와 구분 필요), 맹신은 금물이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-02",
+      "post_url": "https://www.seedup-invest.com/2026/08/rsimacd.html",
       "format": "사례분석형"
     },
     {
