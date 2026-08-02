@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 43,
+    "published_count": 44,
     "last_updated": "2026-08-02"
   },
   "topics": [
@@ -953,9 +953,9 @@
         "신용잔고 비율이 5% 이상이면 해당 종목 투자 시 신용 리스크를 반드시 확인해야 한다",
         "신용잔고 데이터는 증권거래소(KRX) 또는 HTS에서 종목별로 확인 가능하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-02",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_297.html",
       "format": "개념정의형"
     },
     {
