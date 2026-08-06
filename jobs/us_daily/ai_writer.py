@@ -354,7 +354,7 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
     return {"labels": labels, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
+def generate_post(data: dict, model: str = "claude-sonnet-5") -> dict:
     prompt = build_prompt(data)
     message = client.messages.create(
         model=model,

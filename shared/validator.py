@@ -413,10 +413,11 @@ def validate_post(data: dict, post: dict) -> dict:
 def apply_corrections(post: dict, validation: dict) -> dict:
     """검증 결과를 반영. 제목은 corrected_title로 교체하고,
     본문은 corrections(원본→수정 문자열) 중 원본이 본문에 정확히 1번만 등장하는
-    항목만 치환한다. AI가 수정값 대신 설명 문구를 넣는 과거 사고를 막기 위해
-    원본 문자열이 본문에 없거나 지나치게 긴 항목(설명 문구로 의심)은 건너뛰고,
-    본문에 2번 이상 등장하는 항목도 건너뛴다(다른 종목·섹터가 우연히 같은
-    문자열을 가진 경우까지 전역 치환되어 엉뚱한 곳이 바뀌는 사고 방지) —
+    항목만 치환한다. 본문에 0번 또는 2번 이상 등장하는 항목은 건너뛴다
+    (AI가 원문을 잘못 짚었거나, 다른 종목·섹터가 우연히 같은 문자열을 가진
+    경우까지 전역 치환되어 엉뚱한 곳이 바뀌는 사고 방지) — 원본이 1번만
+    등장할 때는 길이가 길어도(뉴스 창작 문장 전체 삭제 등) 그 유일한
+    등장 위치만 안전하게 치환되므로 길이 제한을 두지 않는다.
     발행을 막는 대신 본문을 고쳐서 그대로 발행."""
     corrected = dict(post)
     new_title = validation.get("corrected_title")
@@ -433,10 +434,10 @@ def apply_corrections(post: dict, validation: dict) -> dict:
         fixed = (c or {}).get("corrected")
         if not original or not fixed:
             continue
-        if len(original) > 80 or len(fixed) > 80 or content.count(original) != 1:
+        if content.count(original) != 1:
             skipped.append(original)
             continue
-        content = content.replace(original, fixed)
+        content = content.replace(original, fixed, 1)
         applied.append(original)
 
     corrected["content"] = content

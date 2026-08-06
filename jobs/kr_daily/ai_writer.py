@@ -589,7 +589,7 @@ def _parse_response(raw: str, date: str = "", data: dict = None) -> dict:
     return {"title": title, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
-def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: list = None) -> dict:
+def generate_post(data: dict, model: str = "claude-sonnet-5", prev_issues: list = None) -> dict:
     prompt = _build_prompt(data, prev_issues=prev_issues)
     date = data.get("date", "")
 

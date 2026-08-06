@@ -333,7 +333,7 @@ def _insert_before_caution(body: str, chart_section: str) -> str:
 
 # ── 공개 API ─────────────────────────────────────────────────────────────────
 
-def generate_post(topic: dict, model: str = "claude-sonnet-4-6") -> dict:
+def generate_post(topic: dict, model: str = "claude-sonnet-5") -> dict:
     """주제 dict → Claude → {title, labels, content, char_count}"""
     news_headlines = search_topic_news(topic.get("tags", []))
     prompt  = _build_prompt(topic, news_headlines=news_headlines)
