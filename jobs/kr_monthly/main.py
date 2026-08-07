@@ -150,6 +150,15 @@ def run(dry_run: bool = False, force: bool = False):
         corr_log = candidate.pop("_correction_log", {"applied": [], "skipped": []})
         log(f"  수정 후 제목: {candidate['title']}")
         log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
+
+        # 3번째(마지막) 시도에서 재생성이 필요했던 근거없는 창작이 자동교정으로도
+        # 못 고쳐지고 그대로 남으면 — 문제 있는 글을 강행 발행하지 말고 중단한다
+        # (2026-08-07 실사고: needs_regenerate가 3번째 시도에서 corrections 없이
+        # 그대로 발행되어 뉴스 창작이 실제 발행본에 노출됨).
+        if validation.get("needs_regenerate") and corr_log["skipped"]:
+            log(f"  [오류] 3회차 재생성 필요 판정 + 자동교정 {len(corr_log['skipped'])}건 실패 — 발행 중단")
+            sys.exit(1)
+
         post = candidate
         break
 
