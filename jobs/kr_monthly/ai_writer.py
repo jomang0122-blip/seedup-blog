@@ -232,6 +232,8 @@ def generate_post(data: dict, model: str = "claude-sonnet-5", prev_issues: list 
     message = client.messages.create(
         model=model,
         max_tokens=8000,
+        thinking={"type": "adaptive"},
+        output_config={"effort": "low"},
         messages=[{"role": "user", "content": prompt}],
     )
     raw = extract_text(message)
