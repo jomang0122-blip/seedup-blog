@@ -1,0 +1,79 @@
+{
+  "kst_date": "2026-08-07",
+  "us_date": "2026-08-06",
+  "published_at": "2026-08-07T01:42:45.280216",
+  "title": "[26년 8월 6일 미증시 마감] 나스닥 0.1% 하락, 스페이스엑스 +6.1%",
+  "search_description": "8월6일 미국증시 마감, 다우 -0.85% S&P500 -0.18% 나스닥 -0.06% 하락. 마이크로소프트 강세, 데이터독 19% 급락 소식 정리.",
+  "url": "https://www.seedup-invest.com/2026/08/26-8-6-01-61.html",
+  "char_count": 8274,
+  "nasdaq_close": 26348.35,
+  "nasdaq_change_pct": -0.06,
+  "validation_issues": [
+    {
+      "type": "news_fabrication",
+      "description": "NVDA에 대해 '스페이스X 실적 관련 수혜주로 거론'이라고 구체적으로 서술했으나, 실제 수집 데이터에는 이러한 뉴스 근거가 없음",
+      "found": "스페이스X 실적 관련 수혜주로 거론",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "TSLA에 대해 '리비안 R2 부상 소식에 경쟁 부담'이라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "리비안 R2 부상 소식에 경쟁 부담",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "IONQ에 대해 '리제티 실적 호조 속 양자주 동반 약세'라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "리제티 실적 호조 속 양자주 동반 약세",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "AAPL에 대해 '중국 희토류 독점 완화 기대감 반영'이라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "중국 희토류 독점 완화 기대감 반영",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "GOOGL에 대해 'AI 조직 개편 이슈로 약세'라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "AI 조직 개편 이슈로 약세",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "MSFT에 대해 'AI 사업 수익화 성과 가시화'라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "AI 사업 수익화 성과 가시화",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "SPCX에 대해 '락업 해제라는 부담 요인'이라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "락업 해제에도 매수세 유입",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "UBER에 대해 '스페이스X 락업 관련 훈풍에 동반 강세'라고 구체적 연결을 서술했으나, 실제 수집 데이터에는 이러한 연관 뉴스가 없음",
+      "found": "스페이스X 락업 관련 훈풍에 동반 강세",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "SMCI에 대해 '토큰화 주식 상품 편입 소식에도 약세'라고 구체적 사건을 서술했으나, 실제 수집 데이터에는 이러한 뉴스가 없음",
+      "found": "토큰화 주식 상품 편입 소식에도 약세",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "닐 카시카리 연은 총재의 '금리를 서서히 올리기 시작할 때'라는 발언이 실제 수집 데이터에는 없음",
+      "found": "닐 카시카리 연은 총재는 \"금리를 서서히 올리기 시작할 때\"라고 발언",
+      "expected": "데이터에 근거 없음 — 제거 필요"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "오늘의 핵심 뉴스 섹션의 모든 항목(스몰캡 성과, 클라우드플레어 실적, 사운드하운드AI 10% 급등, 셀시우스 18% 급락, 로켓랩/삼사라/RH 언급)이 실제 수집 데이터에 근거 없음",
+      "found": "오늘의 핵심 뉴스 섹션 전체",
+      "expected": "데이터에 근거 없음 — 섹션 전체 제거 필요"
+    }
+  ]
+}
