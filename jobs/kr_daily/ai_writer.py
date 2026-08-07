@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label, truncate_at_sentence
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label, truncate_at_sentence, extract_text
 
 client = Anthropic()
 
@@ -596,10 +596,10 @@ def generate_post(data: dict, model: str = "claude-sonnet-5", prev_issues: list 
     for attempt in range(3):
         message = client.messages.create(
             model=model,
-            max_tokens=4096,
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = message.content[0].text
+        raw = extract_text(message)
         result = _parse_response(raw, date=date, data=data)
         result["labels"] = _build_labels(data)
         print(f"  [작성] 제목: {result['title']}")

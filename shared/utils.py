@@ -3,6 +3,16 @@ import re
 import time
 
 
+def extract_text(message) -> str:
+    """Anthropic 메시지 응답에서 텍스트 블록만 골라 이어붙인다.
+
+    확장 사고(thinking) 모드에서는 content[0]이 텍스트가 아니라
+    ThinkingBlock으로 먼저 오는 경우가 있어, content[0].text로
+    무조건 첫 블록을 가정하면 AttributeError가 난다(2026-08-07 us_daily
+    발행 실패 실사고). type이 "text"인 블록만 골라 이어붙여 방어한다."""
+    return "".join(block.text for block in message.content if block.type == "text")
+
+
 def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwargs):
     """requests.get with exponential backoff retry (네트워크 불안정 대응)."""
     import requests

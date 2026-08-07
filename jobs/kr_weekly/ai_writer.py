@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, fmt_amount, apply_color_spans, fix_weekday_labels
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, fmt_amount, apply_color_spans, fix_weekday_labels, extract_text
 
 client = Anthropic()
 
@@ -298,10 +298,10 @@ def generate_post(data: dict, model: str = "claude-sonnet-5", prev_issues: list 
     prompt  = build_prompt(data, prev_issues=prev_issues)
     message = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8000,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw    = message.content[0].text
+    raw    = extract_text(message)
     result = _parse_response(raw, data.get("week_end", ""))
     result["labels"] = _build_labels(data)  # AI의 LABELS: 출력 대신 Python 고정 라벨로 덮어쓰기
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")

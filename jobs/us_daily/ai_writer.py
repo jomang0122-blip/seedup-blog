@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block, truncate_at_sentence
+from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block, truncate_at_sentence, extract_text
 
 client = Anthropic()
 
@@ -358,10 +358,10 @@ def generate_post(data: dict, model: str = "claude-sonnet-5") -> dict:
     prompt = build_prompt(data)
     message = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8000,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw = message.content[0].text
+    raw = extract_text(message)
     result = _parse_response(raw, data.get("us_date", ""))
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
     return result

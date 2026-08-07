@@ -17,6 +17,7 @@ from anthropic import Anthropic
 from banner import generate_banner_card, generate_key3_box
 from news_search import search_topic_news
 from shared.chart_generator import chart_image_html
+from shared.utils import extract_text
 
 client = Anthropic()
 
@@ -339,10 +340,10 @@ def generate_post(topic: dict, model: str = "claude-sonnet-5") -> dict:
     prompt  = _build_prompt(topic, news_headlines=news_headlines)
     message = client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8000,
         messages=[{"role": "user", "content": prompt}],
     )
-    raw    = message.content[0].text
+    raw    = extract_text(message)
     result = _parse_response(raw, topic)
     print(f"  [작성] 제목: {result['title']}")
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
