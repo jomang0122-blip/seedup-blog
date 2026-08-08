@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 46,
+    "published_count": 47,
     "last_updated": "2026-08-08"
   },
   "topics": [
@@ -1019,9 +1019,9 @@
         "두 번째 저점(또는 고점)에서 거래량이 첫 번째보다 감소하면 패턴의 신뢰도가 더 높아지는 경향이 있다",
         "패턴이 완성되기 전(넥라인 돌파 전)에 미리 진입하면 패턴이 무산될 위험이 있어, 확인 후 진입이 원칙이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-08",
+      "post_url": "https://www.seedup-invest.com/2026/08/wm.html",
       "format": "개념정의형"
     },
     {
