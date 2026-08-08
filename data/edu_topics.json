@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 48,
+    "published_count": 49,
     "last_updated": "2026-08-08"
   },
   "topics": [
@@ -1063,9 +1063,9 @@
         "컵의 형태가 U자에 가까울수록(V자로 급격하지 않을수록) 패턴의 신뢰도가 높다고 알려져 있다",
         "이 패턴은 미국 성장주 분석가 윌리엄 오닐이 체계화한 것으로, 대형 우량주보다 성장 초기 단계 종목에서 더 자주 관찰된다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-08",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_855.html",
       "format": "개념정의형"
     },
     {
