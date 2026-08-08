@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 47,
+    "published_count": 48,
     "last_updated": "2026-08-08"
   },
   "topics": [
@@ -1041,9 +1041,9 @@
         "패턴의 하락 목표가는 통상 넥라인에서 머리 꼭짓점까지의 높이만큼 넥라인 아래로 추정한다",
         "오른쪽 어깨 형성 시 거래량이 왼쪽 어깨보다 감소하는 경향이 있어, 이는 매수세 약화의 보조 신호로 쓰인다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-08",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_104.html",
       "format": "전략활용형"
     },
     {
