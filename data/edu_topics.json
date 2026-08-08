@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 45,
-    "last_updated": "2026-08-02"
+    "published_count": 46,
+    "last_updated": "2026-08-08"
   },
   "topics": [
     {
@@ -997,9 +997,9 @@
         "스토캐스틱은 단기 매매에 적합하며, RSI와 달리 횡보 구간에서도 비교적 잘 작동한다",
         "RSI와 함께 두 지표가 동시에 과매도를 보일 때 매수 신호의 신뢰도가 높아진다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-08",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_08.html",
       "format": "전략활용형"
     },
     {
