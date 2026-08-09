@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 51,
+    "published_count": 52,
     "last_updated": "2026-08-09"
   },
   "topics": [
@@ -1129,9 +1129,9 @@
         "성장률과 할인율 가정이 조금만 달라져도 적정 주가가 크게 변하므로, DCF는 범위값으로 해석하는 것이 현실적이다",
         "DCF는 현금흐름이 안정적인 성숙 기업에 적합하며, 초기 성장주나 적자 기업에는 적용이 어렵다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-09",
+      "post_url": "https://www.seedup-invest.com/2026/08/dcf.html",
       "format": "개념정의형"
     },
     {
