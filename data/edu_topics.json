@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 52,
+    "published_count": 53,
     "last_updated": "2026-08-09"
   },
   "topics": [
@@ -1151,9 +1151,9 @@
         "백테스트(과거 데이터 검증)가 좋아도 실전에서 다를 수 있으며, 과적합(overfitting) 문제를 주의해야 한다",
         "국내에서는 증권사 MTS의 조건 검색이나 파이썬(pykrx 등)을 활용한 자동화 스크리닝으로 퀀트 전략을 구현할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-09",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_457.html",
       "format": "전략활용형"
     },
     {
