@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 50,
+    "published_count": 51,
     "last_updated": "2026-08-09"
   },
   "topics": [
@@ -1107,9 +1107,9 @@
         "선물·옵션은 레버리지가 높아 원금 이상의 손실이 발생할 수 있으며, 개인 투자자에게는 매우 위험한 상품이다",
         "개인 투자자가 파생상품을 직접 거래하지 않더라도 만기일 효과를 이해하면 현물 매매에 도움이 된다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-09",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_675.html",
       "format": "개념정의형"
     },
     {
