@@ -1,0 +1,33 @@
+{
+  "date": "2026-08-10",
+  "published_at": "2026-08-10T07:03:23.444605",
+  "title": "[26년 8월 10일 국내증시] 코스닥 7% 급등, 알테오젠·티씨케이·대한광통신 강세로 KOSPI·KOSDAQ 동반 상승 마감",
+  "search_description": "2026년 8월 10일 KOSPI +0.65% 6,299.66pt, KOSDAQ +6.97% 854.47pt 마감. 알테오젠 블랙록 지분 확대, 대한광통신 미국 광트랜시버 규제 수혜 기대, 티씨케이 상반기 호실적에 코스닥 강세 주도.",
+  "url": "https://www.seedup-invest.com/2026/08/26-8-10-7-kospikosdaq.html",
+  "char_count": 12901,
+  "kospi_close": 6299.66,
+  "kospi_change_pct": 0.65,
+  "validation_issues": [
+    {
+      "type": "number_error",
+      "section": "뉴스 기반 특징주",
+      "description": "대한광통신 등락률 오류",
+      "found": "+22.51%",
+      "expected": "+16.75%"
+    },
+    {
+      "type": "number_error",
+      "section": "섹터 표 - 비철금속",
+      "description": "고려아연 등락률 오류",
+      "found": "+11.66%",
+      "expected": "+11.12%"
+    },
+    {
+      "type": "number_error",
+      "section": "섹터 표 - 생물공학",
+      "description": "알테오젠 등락률 오류",
+      "found": "+14.10%",
+      "expected": "+12.46%"
+    }
+  ]
+}
