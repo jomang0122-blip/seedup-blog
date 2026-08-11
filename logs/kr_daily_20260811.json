@@ -1,0 +1,36 @@
+{
+  "date": "2026-08-11",
+  "published_at": "2026-08-11T07:05:09.831080",
+  "title": "[26년 8월 11일 국내증시] NHN 역대 최대 실적 급등·삼성전자 강세로 KOSPI 상승, 우주항공·조선 약세",
+  "search_description": "2026-08-11 KOSPI +0.73%, KOSDAQ +0.39% 상승 마감. NHN 2분기 역대 최대 실적에 29.82% 급등, 삼성전자 4.13% 강세. 한국항공우주·조선 섹터는 업종 전반 약세로 상승 탄력을 제한했다.",
+  "url": "https://www.seedup-invest.com/2026/08/26-8-11-nhn-kospi.html",
+  "char_count": 2483,
+  "kospi_close": 6345.53,
+  "kospi_change_pct": 0.73,
+  "validation_issues": [
+    {
+      "type": "content_repetition",
+      "description": "NHN 종목이 뉴스 기반 특징주 섹션에서 4회 반복 등재됨 (동일 재료 '+29.82%')",
+      "found": "NHN이 4번 나타남",
+      "expected": "NHN은 1회만 나타나야 함"
+    },
+    {
+      "type": "content_repetition",
+      "description": "금호건설 종목이 뉴스 기반 특징주 섹션에서 2회 반복 등재됨 (동일 재료 '+29.98%')",
+      "found": "금호건설이 2번 나타남",
+      "expected": "금호건설은 1회만 나타나야 함"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "실제 수집 데이터에 없는 구체적 뉴스 사건 서술 - 현대해상 '2분기 순이익 3,000억 어닝 서프라이즈'",
+      "found": "현대해상 — 2분기 순이익 3,000억 어닝 서프라이즈에 외국인 순매수 유입",
+      "expected": "실제 데이터에는 현대해상 +7.44%만 있고, 구체적 실적 수치나 '어닝 서프라이즈' 표현은 근거 없음"
+    },
+    {
+      "type": "news_fabrication",
+      "description": "실제 수집 데이터에 없는 구체적 뉴스 사건 서술 - 주성엔지니어링 'AI 반도체 투자 기대감'",
+      "found": "주성엔지니어링 — AI 반도체 투자 기대감에 52주 신고가 경신 급등",
+      "expected": "실제 데이터에는 주성엔지니어링 +12.15%만 있고, '52주 신고가' 등 구체적 뉴스는 근거 없음"
+    }
+  ]
+}
