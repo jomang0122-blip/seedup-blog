@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 54,
+    "published_count": 55,
     "last_updated": "2026-08-15"
   },
   "topics": [
@@ -1195,9 +1195,9 @@
         "적용 대상 기업 여부는 배당성향·배당수익률 등 요건을 충족해 세법에서 정한 고배당 기업으로 지정돼야 하므로 모든 배당주에 적용되지 않는다",
         "이 제도는 밸류업(기업가치 제고) 정책의 일환으로 도입되어, 기업의 배당 확대를 유도하려는 목적을 가진다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-15",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_146.html",
       "format": "실전가이드형"
     },
     {
