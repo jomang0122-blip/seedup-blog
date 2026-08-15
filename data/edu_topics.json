@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 55,
+    "published_count": 56,
     "last_updated": "2026-08-15"
   },
   "topics": [
@@ -1217,9 +1217,9 @@
         "파동 카운팅은 주관적 요소가 강해 같은 차트를 보고도 분석자마다 해석이 달라지는 단점이 있다",
         "엘리어트 파동 이론은 완성된 후에야 명확하게 보이는 경향이 있어, 실시간 매매보다는 사후 분석에 더 유용하다는 비판도 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-15",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_647.html",
       "format": "전략활용형"
     },
     {
