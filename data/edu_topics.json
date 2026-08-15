@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 56,
+    "published_count": 57,
     "last_updated": "2026-08-15"
   },
   "topics": [
@@ -1239,9 +1239,9 @@
         "임원·최대주주의 주식 매수는 내부자가 저평가를 확신한다는 긍정 신호, 대규모 매도는 주의 신호로 해석된다",
         "사업보고서의 우발채무, 진행 중인 소송, 특수관계자 거래를 주석에서 반드시 확인해야 숨겨진 리스크를 파악할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-15",
+      "post_url": "https://www.seedup-invest.com/2026/08/ir.html",
       "format": "전략활용형"
     },
     {
