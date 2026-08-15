@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 53,
-    "last_updated": "2026-08-09"
+    "published_count": 54,
+    "last_updated": "2026-08-15"
   },
   "topics": [
     {
@@ -1173,9 +1173,9 @@
         "경기선행지수(CLI)는 향후 6~9개월 경기 방향을 예측하는 데 활용되며, 한국은행과 OECD에서 발표한다",
         "경제 지표 발표 전후에 시장 변동성이 커지므로, 주요 지표 발표 일정을 미리 파악하는 것이 리스크 관리에 중요하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-15",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_15.html",
       "format": "전략활용형"
     },
     {
