@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 60,
+    "published_count": 61,
     "last_updated": "2026-08-16"
   },
   "topics": [
@@ -1327,9 +1327,9 @@
         "최대 손실 한도를 미리 설정하고(예: 월 -10% 시 매매 중단), 이를 어기지 않는 것이 장기 생존의 핵심이다",
         "분산 투자와 포지션 사이징은 수익을 극대화하는 것이 아니라 '파산하지 않을 확률'을 높이는 것이 목적이다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-16",
+      "post_url": "https://www.seedup-invest.com/2026/08/mdd.html",
       "format": "개념정의형"
     },
     {
