@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 59,
+    "published_count": 60,
     "last_updated": "2026-08-16"
   },
   "topics": [
@@ -1305,9 +1305,9 @@
         "갭 상승 후 시가 아래로 주가가 내려오면 갭 매수 세력의 손절 물량이 나오면서 하락이 가속될 수 있다",
         "갭 매매는 시초가 변동성이 크므로 진입 타이밍과 손절 설정이 매우 중요하다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-16",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_594.html",
       "format": "전략활용형"
     },
     {
