@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 57,
-    "last_updated": "2026-08-15"
+    "published_count": 58,
+    "last_updated": "2026-08-16"
   },
   "topics": [
     {
@@ -1261,9 +1261,9 @@
         "RS(상대강도)는 특정 종목이 시장(또는 업종)보다 얼마나 강하게 움직이는지를 나타내며, 모멘텀 종목 선별의 핵심 지표이다",
         "모멘텀 전략은 높은 회전율로 인한 거래비용과 세금을 고려해야 실질 수익률을 계산할 수 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-16",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_16.html",
       "format": "전략활용형"
     },
     {
