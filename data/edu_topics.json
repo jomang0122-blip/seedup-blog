@@ -1,7 +1,7 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 58,
+    "published_count": 59,
     "last_updated": "2026-08-16"
   },
   "topics": [
@@ -1283,9 +1283,9 @@
         "환전 시점이 아니라 매매 체결일 기준 환율로 원화 환산하여 취득가·양도가를 계산한다",
         "증권사가 발급하는 해외주식 양도소득세 신고 대행 서비스를 이용하면 계산 실수를 줄일 수 있지만, 최종 신고 책임은 납세자 본인에게 있다"
       ],
-      "published": false,
-      "published_at": null,
-      "post_url": null,
+      "published": true,
+      "published_at": "2026-08-16",
+      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_389.html",
       "format": "실전가이드형"
     },
     {
