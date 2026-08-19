@@ -514,7 +514,7 @@ def _strip_code_fences(text: str) -> str:
 
 
 def _build_labels(data: dict) -> list:
-    base = ["코스피", "코스닥", "시황", "주식", "오늘증시", "특징주", "국내데일리"]
+    base = ["국내증시", "코스피", "코스닥", "시황", "주식", "오늘증시", "특징주", "국내데일리"]
     sector_labels = [s["name"] for s in data.get("top_sectors", [])[:2]]
     return base + sector_labels
 
