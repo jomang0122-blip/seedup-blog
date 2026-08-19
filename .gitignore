@@ -14,3 +14,9 @@ __pycache__/
 # 내부 기획 문서·임시 검토 파일 — 커밋 대상 아님
 docs/
 _review_tmp/
+
+# 시드업 클래스 초안(검토중, 미승인) — 로컬 전용, GitHub Actions는 볼 필요 없음
+# _approved/, _published/는 승인 큐라서 GitHub Actions 자동발행이 봐야 하므로 예외 처리
+jobs/edu_weekly/_drafts/*
+!jobs/edu_weekly/_drafts/_approved/
+!jobs/edu_weekly/_drafts/_published/

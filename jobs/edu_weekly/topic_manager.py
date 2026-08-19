@@ -39,6 +39,18 @@ def get_next_topic(topic_id: int = None) -> dict | None:
     return None  # 52개 모두 완료
 
 
+def peek_next(current_id: int) -> dict | None:
+    """current_id 바로 다음 번호(current_id+1) 주제를 반환 (다음 시간 예고용). 없으면 None.
+
+    과거에는 published 플래그로 "다음 미발행 주제"를 찾았으나, 87개 전체를 1번부터
+    순서대로 재작성하는 지금 시기에는 id1~61이 예전 기준 published=true로 남아있어
+    (Blogger에서는 비공개 처리했지만 데이터는 아직 안 바뀜) 엉뚱하게 훨씬 뒤(id62 등)를
+    "다음 시간"으로 잘못 가리키는 문제가 있었다(2026-08-18 발견). 지금 실제 발행 순서가
+    id 오름차순 그대로이므로, published 여부와 무관하게 단순히 current_id+1을 반환한다."""
+    data = load_topics()
+    return next((t for t in data["topics"] if t["id"] == current_id + 1), None)
+
+
 def mark_published(topic_id: int, post_url: str) -> None:
     """발행 완료 처리 — published=true, 날짜·URL 기록, meta 갱신."""
     data = load_topics()

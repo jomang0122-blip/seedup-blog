@@ -64,10 +64,16 @@ _WD_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 
 def _kr_holiday_name(d) -> str:
-    """휴장 사유 이름 조회 — 실제 휴장 판정은 is_trading_day()가 담당."""
+    """휴장 사유 이름 조회 — 실제 휴장 판정은 is_trading_day()가 담당.
+
+    language='ko'를 명시하지 않으면 holidays 라이브러리가 실행 환경(로컬 vs
+    GitHub Actions 러너)의 로케일에 따라 영문 이름을 반환하는 경우가 있다
+    (2026-08-17 실사고: "Alternative holiday for Liberation Day"가 반환되어
+    assert_no_english_holiday_name()이 발행을 막고 크래시함 — 안전장치는
+    의도대로 작동했으나 애초에 한글을 강제하는 게 근본 해결책)."""
     try:
         import holidays as _hol
-        name = _hol.KR(years=d.year).get(d)
+        name = _hol.KR(years=d.year, language="ko").get(d)
         if name:
             return name
     except Exception:

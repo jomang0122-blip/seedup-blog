@@ -6,6 +6,13 @@ import os
 import re
 import requests
 
+# 시드업 클래스는 국내 주식 교육 콘텐츠 — 태그 키워드만으로 검색하면 검색 결과에
+# 가상자산(코인) 뉴스가 섞여 들어올 수 있어(2026-08-18 확인), 제목에 이 키워드가
+# 포함된 기사는 결과에서 제외한다.
+_EXCLUDE_KEYWORDS = [
+    "비트코인", "이더리움", "코인", "가상자산", "암호화폐", "리플", "도지코인", "NFT",
+]
+
 
 def search_topic_news(tags: list, display: int = 5) -> list:
     """태그 키워드로 Naver 뉴스 검색. 최신 뉴스 제목 리스트 반환.
@@ -30,6 +37,10 @@ def search_topic_news(tags: list, display: int = 5) -> list:
         resp.raise_for_status()
         items = resp.json().get("items", [])
         titles = [re.sub(r"<[^>]+>", "", item["title"]) for item in items]
+        before = len(titles)
+        titles = [t for t in titles if not any(kw in t for kw in _EXCLUDE_KEYWORDS)]
+        if len(titles) < before:
+            print(f"  [뉴스검색] 가상자산 관련 {before - len(titles)}건 제외")
         print(f"  [뉴스검색] '{query}' → {len(titles)}건")
         return titles
     except Exception as e:
