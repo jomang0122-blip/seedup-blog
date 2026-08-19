@@ -1,0 +1,24 @@
+{
+  "date": "2026-08-19",
+  "published_at": "2026-08-19T07:04:15.456900",
+  "title": "[26년 8월 19일 국내증시] 반도체·생명보험 급락에 KOSPI 5.80% 하락, SK하이닉스·삼성전자 동반 약세",
+  "search_description": "2026년 8월 19일 KOSPI 6,471.17pt(-5.80%) 급락 마감. 반도체와반도체장비 섹터 전반 약세 속 SK하이닉스·삼성전자 동반 하락. KOSDAQ -1.17%. 현대건설·HPSP 낙폭 방어.",
+  "url": "https://www.seedup-invest.com/2026/08/26-8-19-kospi-580-sk.html",
+  "char_count": 7016,
+  "kospi_close": 6471.17,
+  "kospi_change_pct": -5.8,
+  "validation_issues": [
+    {
+      "type": "incomplete_content",
+      "description": "뉴스 기반 특징주 섹션에서 'HPSP' 항목이 불완전함. 실제 데이터에는 'HPSP: +7.15%'가 있으나, 포스팅에서는 '**HPSP'로만 표기되고 등락률 및 설명이 누락됨",
+      "found": "**HPSP",
+      "expected": "**HPSP** <span style=\"color:#e74c3c\"><b>+7.15%</b></span> — [관련 뉴스/설명]"
+    },
+    {
+      "type": "field_narrative_mismatch",
+      "description": "뉴스 기반 특징주 섹션 마지막 항목이 미완성 상태로 끝나있음. 목록의 마지막 항목 'HPSP'가 불완전하여 섹션 전체가 구조적으로 결함 있음",
+      "found": "**HPSP",
+      "expected": "**HPSP** <span style=\"color:#e74c3c\"><b>+7.15%</b></span>"
+    }
+  ]
+}
