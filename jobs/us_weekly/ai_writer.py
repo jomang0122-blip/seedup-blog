@@ -4,6 +4,18 @@ from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_col
 
 client = Anthropic()
 
+# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체 — us_weekly는 조건부 생략 섹션이
+# 없어 전부 필수 (2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로 적용).
+US_WEEKLY_REQUIRED_SECTIONS = [
+    ("이번 주 미국증시 핵심",      "이번 주 미국증시 핵심"),
+    ("주간 3대 지수 성적",        "📊 주간 3대 지수 성적"),
+    ("한국인 관심 종목 주간 성적",  "🔥 한국인 관심 종목 주간 성적"),
+    ("주간 급등락 TOP3",         "💥 주간 급등락 TOP3"),
+    ("이번 주 핵심 뉴스 & 이슈",    "📰 이번 주 핵심 뉴스"),
+    ("이번 주를 돌아보며",         "💬 이번 주를 돌아보며"),
+    ("다음 주 전망",             "🔮 다음 주 전망"),
+]
+
 
 def _fmt_vol(vol: int) -> str:
     if vol >= 1_000_000_000:
@@ -291,7 +303,7 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
     prompt = build_prompt(data, prev_issues=prev_issues)
     message = client.messages.create(
         model=model,
-        max_tokens=8000,
+        max_tokens=14000,
         thinking={"type": "adaptive"},
         output_config={"effort": "low"},
         messages=[{"role": "user", "content": prompt}],

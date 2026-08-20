@@ -4,6 +4,19 @@ from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, fmt_amoun
 
 client = Anthropic()
 
+# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체 — kr_weekly는 조건부 생략 섹션이
+# 없어 8개 모두 필수 (2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로 적용).
+KR_WEEKLY_REQUIRED_SECTIONS = [
+    ("이번 주 핵심 요약",           "이번 주 핵심 요약"),
+    ("주간 시장 지표",             "📊 주간 시장 지표"),
+    ("코스피 투자자별 매매동향",     "💰 이번 주 코스피 투자자별 매매동향"),
+    ("시가총액 TOP10 주간 성적",    "💥 시가총액 TOP10 주간 성적"),
+    ("당일 주도·약세 섹터",         "🏭 당일 주도·약세 섹터"),
+    ("이번 주 핵심 뉴스 & 이슈",     "📰 이번 주 핵심 뉴스"),
+    ("이번 주를 돌아보며",          "💬 이번 주를 돌아보며"),
+    ("다음 주 전망",              "🔮 다음 주 전망"),
+]
+
 
 def _build_index_block(data: dict) -> str:
     lines = []
@@ -298,7 +311,7 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
     prompt  = build_prompt(data, prev_issues=prev_issues)
     message = client.messages.create(
         model=model,
-        max_tokens=8000,
+        max_tokens=14000,
         thinking={"type": "adaptive"},
         output_config={"effort": "low"},
         messages=[{"role": "user", "content": prompt}],

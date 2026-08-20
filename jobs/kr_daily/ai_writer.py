@@ -513,6 +513,19 @@ def _strip_code_fences(text: str) -> str:
     return re.sub(r"```[a-zA-Z]*", "", text).strip()
 
 
+# 프롬프트의 "레이아웃 구조 고정"(항상 존재해야 하는 섹션만) 마커 —
+# 뉴스기반 특징주·관련공시·시가총액표는 데이터 유무에 따라 조건부 생략되므로 제외.
+KR_DAILY_REQUIRED_SECTIONS = [
+    ("시장 지표 종합",         "📊 1."),
+    ("국내 증시 마감 지수",     "국내 증시 마감 지수"),
+    ("당일 주도 섹터 및 테마",   "당일 주도 섹터 및 테마"),
+    ("오늘 시장의 특징주",      "💥 2."),
+    ("상승 특징주",            "📈 상승 특징주"),
+    ("하락 특징주",            "📉 하락 특징주"),
+    ("다음 거래일 전망",       "🔮 3."),
+]
+
+
 def _build_labels(data: dict) -> list:
     base = ["국내증시", "코스피", "코스닥", "시황", "주식", "오늘증시", "특징주", "국내데일리"]
     sector_labels = [s["name"] for s in data.get("top_sectors", [])[:2]]
@@ -596,7 +609,7 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
     for attempt in range(3):
         message = client.messages.create(
             model=model,
-            max_tokens=8000,
+            max_tokens=12000,
             thinking={"type": "adaptive"},
             output_config={"effort": "low"},
             messages=[{"role": "user", "content": prompt}],

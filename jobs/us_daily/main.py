@@ -19,9 +19,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from data_collector import collect_all
-from ai_writer import generate_post
+from ai_writer import generate_post, US_DAILY_REQUIRED_SECTIONS
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
-from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_no_english_holiday_name
+from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_structure_complete, assert_no_english_holiday_name
 from shared.blog_publisher import publish_post, check_today_post
 
 KST = pytz.timezone("Asia/Seoul")
@@ -306,6 +306,16 @@ def run(dry_run: bool = False, force: bool = False):
             sys.exit(1)
 
         try:
+            assert_structure_complete(candidate["content"], US_DAILY_REQUIRED_SECTIONS, "미국증시 데일리")
+        except ValueError as e:
+            log(f"  [경고] {e}")
+            if attempt < 2:
+                log(f"  [재시도 {attempt + 1}/3] 본문 구조 불완전(생성 중간에 잘림 추정) — 글 재생성")
+                continue
+            log("  [오류] 3회 모두 본문 구조 불완전 — 발행 중단")
+            sys.exit(1)
+
+        try:
             validation = validate_post(data, candidate)
         except Exception as e:
             log(f"  [경고] 검증 실패 (발행은 계속): {e}")
@@ -331,12 +341,14 @@ def run(dry_run: bool = False, force: bool = False):
         log(f"  수정 후 제목: {candidate['title']}")
         log(f"  본문 자동교정: 적용 {len(corr_log['applied'])}건 / 건너뜀 {len(corr_log['skipped'])}건")
 
-        # 3번째(마지막) 시도에서 재생성이 필요했던 근거없는 창작이 자동교정으로도
-        # 못 고쳐지고 그대로 남으면 — 문제 있는 글을 강행 발행하지 말고 중단한다
-        # (2026-08-07 실사고: needs_regenerate가 3번째 시도에서 corrections 없이
-        # 그대로 발행되어 뉴스 창작 11건이 실제 발행본에 노출됨).
-        if validation.get("needs_regenerate") and corr_log["skipped"]:
-            log(f"  [오류] 3회차 재생성 필요 판정 + 자동교정 {len(corr_log['skipped'])}건 실패 — 발행 중단")
+        # 3번째(마지막) 시도에서 재생성이 필요했던 근거없는 창작·반복서술이 그대로
+        # 남으면 — 문제 있는 글을 강행 발행하지 말고 중단한다 (2026-08-07 실사고).
+        # ⚠️ corr_log["skipped"] 유무로 판단하면 안 된다 — content_repetition처럼
+        # apply_corrections()의 corrections 목록에 애초에 항목이 안 잡히는 이슈는
+        # "건너뜀"조차 안 되어 skipped가 비어있는 채로 통과해버린다(2026-08-20
+        # kr_daily 실사고로 확인된 동일 계열 버그, us_daily도 같은 로직이라 함께 수정).
+        if validation.get("needs_regenerate"):
+            log(f"  [오류] 3회차까지 재생성 필요 판정 해소 안 됨(자동교정 {len(corr_log['skipped'])}건 실패) — 발행 중단")
             sys.exit(1)
 
         post = candidate

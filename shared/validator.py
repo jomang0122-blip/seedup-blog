@@ -186,6 +186,21 @@ def assert_market_keywords(content: str, keywords: list, label: str) -> None:
         raise ValueError(f"본문에 {label} 관련 키워드가 전혀 없음 — 다른 시장 콘텐츠 오발행 의심")
 
 
+def assert_structure_complete(content: str, required_markers: list, label: str) -> None:
+    """본문에 필수 섹션 마커가 모두 있는지 확인 — 하나라도 없으면 예외를 발생시킨다.
+
+    AI 응답이 thinking 예산·max_tokens 소진으로 본문 중간에 잘리는 경우, 잘린
+    본문 안의 수치만 정확하면 validate_post()의 수치 검증은 통과해버려 반토막
+    글이 그대로 발행되는 사고가 있었다(2026-08-20 kr_daily 실사고: 📊1 섹션의
+    표 2개만 있고 💥2·🔮3 섹션 전체와 상승/하락 특징주가 통째로 없는 글이 검증을
+    통과해 발행됨). validate_post()는 "있는 내용이 정확한가"만 보고 "다 있는가"는
+    보지 않으므로, 이 함수를 결과 기반 2차 방어선으로 별도 둔다.
+    """
+    missing = [name for name, marker in required_markers if marker not in content]
+    if missing:
+        raise ValueError(f"본문 구조 불완전({label}) — 누락된 섹션: {', '.join(missing)} (생성 중간에 잘렸을 가능성)")
+
+
 def _build_data_summary(data: dict) -> str:
     """kr/us x daily/weekly 4종 데이터 구조를 모두 지원하는 검증용 요약."""
     lines = []
