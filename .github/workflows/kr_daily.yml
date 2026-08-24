@@ -1,7 +1,9 @@
 name: SeedUP — 국내증시 데일리
 
 on:
-  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 16:00 평일)
+  # cron-job.org 에서 workflow_dispatch로 트리거 (KST 16:30 평일)
+  # ⚠️ 16:00→16:30 변경(2026-08-23): 장마감(15:30) 직후 16:00 트리거 시
+  # 지수·특징주 데이터가 아직 반영지연 상태라 발행이 자주 실패해 30분 늦춤.
   workflow_dispatch:
     inputs:
       date:
