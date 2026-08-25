@@ -183,8 +183,8 @@
       "category": "투자기초",
       "tags": [
         "나스닥",
-        "미국증시",
-        "코스피영향"
+        "코스피영향",
+        "미국시황"
       ],
       "key_facts": [
         "나스닥 종합지수는 미국 나스닥 거래소 전체 상장 종목을 포함하며, 기술주 비중이 높아 성장주 투자심리의 바로미터이다",
@@ -446,7 +446,7 @@
         "ETF 투자 비용은 총보수(운용보수)로 연 0.05~0.5% 수준이며, 일반 펀드보다 훨씬 저렴하다",
         "국내 ETF 매매차익은 배당소득세(15.4%) 과세 대상이며, 해외 지수 추종 ETF는 매매차익도 배당소득으로 과세된다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-12",
       "post_url": "https://www.seedup-invest.com/2026/07/etf-etf.html"
     },
@@ -467,7 +467,7 @@
         "대주주(지분율 1% 이상 또는 시가총액 50억 원 이상 보유 등 기준)에 해당하면 장내 매도에도 양도소득세(20~25%)가 부과될 수 있다",
         "해외주식은 국내주식과 과세 방식이 달라 매매차익에 양도소득세(기본공제 250만 원, 세율 22%)가 적용된다 — 국내주식과 혼동하지 않아야 한다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-18",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_18.html",
       "format": "실전가이드형"
@@ -489,7 +489,7 @@
         "지지·저항선은 정확한 하나의 가격이 아니라 일정 범위의 '가격대'로 이해하는 것이 더 현실적이다",
         "거래량이 많이 발생한 가격대일수록 지지·저항의 강도가 강하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-18",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_252.html",
       "format": "개념정의형"
@@ -511,7 +511,7 @@
         "국내 상장주식·국내주식형 펀드의 매매차익은 원래 비과세이므로, ISA의 절세 효과는 주로 배당·이자·해외자산 매매차익에서 발생한다",
         "만기 후 연금계좌(연금저축·IRP)로 이전하면 이전 금액의 일부에 대해 추가 세액공제를 받을 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-18",
       "post_url": "https://www.seedup-invest.com/2026/07/isa.html",
       "format": "실전가이드형"
@@ -533,7 +533,7 @@
         "영업이익률(영업이익/매출액)이 높고 지속적으로 개선되는 기업이 경쟁력 있는 기업이다",
         "매출은 늘어도 영업이익이 감소한다면 비용 구조가 악화되고 있는 것으로 주의 신호이다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-18",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_216.html",
       "format": "전략활용형"
@@ -555,7 +555,7 @@
         "실적 발표 직전에 진입하는 것은 결과에 따른 양방향 변동성 리스크가 크므로 주의가 필요하다",
         "실적 가이던스(다음 분기 전망)가 하향 조정되면 당기 실적이 좋아도 주가가 하락할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-19",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_19.html",
       "format": "전략활용형"
@@ -577,7 +577,7 @@
         "섹터 ETF를 활용하면 개별 종목 리스크 없이 특정 업종에 투자할 수 있다",
         "한 업종의 급등이 오래 지속되면 이익 실현 매물이 나오면서 다른 업종으로 자금이 이동한다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-19",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_208.html",
       "format": "전략활용형"
@@ -600,7 +600,7 @@
         "지지선 이탈 후 반등 없이 추가 하락하는 경우, 이전 지지선이 저항선으로 전환되는 역할 전환 현상이 자주 관찰된다",
         "실전에서는 지지·저항 돌파를 판단할 때 종가 기준으로 확인하는 것이 장중 일시적 이탈보다 신뢰도가 높다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-19",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_314.html",
       "format": "사례분석형"
@@ -622,7 +622,7 @@
         "연금으로 수령 시에는 연금소득세(연령에 따라 3.3~5.5%)만 부과되어 일반 소득세보다 세부담이 낮다",
         "연금저축은 펀드·ETF 위주로, IRP는 예금·보험 등 안전자산 편입 의무 비율이 있다는 점에서 두 계좌의 운용 자유도가 다르다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-19",
       "post_url": "https://www.seedup-invest.com/2026/07/irp-200.html",
       "format": "전략활용형"
@@ -644,7 +644,7 @@
         "부채를 많이 써서 ROE가 높아진 경우(레버리지 효과)는 진정한 수익성 개선이 아니므로 ROA와 함께 확인해야 한다",
         "PBR = ROE × PER 관계가 성립하므로, ROE가 높은 기업은 PBR도 높게 평가받는 경향이 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-25",
       "post_url": "https://www.seedup-invest.com/2026/07/roe-roa.html",
       "format": "개념정의형"
@@ -666,7 +666,7 @@
         "박스권 상단 돌파(거래량 수반)는 강력한 매수 신호로, 박스권 폭만큼 추가 상승하는 경향이 있다",
         "박스권 구간이 길수록(에너지 축적) 이탈 후 방향성이 강하고 지속적인 경향이 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-25",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_25.html",
       "format": "전략활용형"
@@ -688,7 +688,7 @@
         "10년물 국채 수익률은 주식 밸류에이션의 기준금리 역할을 하며, 급등 시 주식 매도 압력이 커진다",
         "금리와 주가의 관계는 절대적이지 않으며, 경제 성장 기대가 강하면 금리가 올라도 주가가 상승할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-25",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_832.html",
       "format": "전략활용형"
@@ -710,7 +710,7 @@
         "추세 채널은 추세선과 평행하게 반대편에 선을 그어 만든 것으로, 목표가와 과열 구간 파악에 활용된다",
         "추세선 기울기가 너무 가파르면 지속 가능성이 낮으며, 조정 후 완만한 추세선을 다시 그어야 한다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-25",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_365.html",
       "format": "개념정의형"
@@ -732,7 +732,7 @@
         "업종마다 적정 부채비율이 크게 다르다 — 건설·금융업은 부채비율이 높아도 정상이므로 업종 평균과 비교해야 한다",
         "이자보상배율(영업이익 ÷ 이자비용)이 1 미만이면 영업이익으로 이자도 못 내는 위험 상태이다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-26",
       "post_url": "https://www.seedup-invest.com/2026/07/5.html",
       "format": "전략활용형"
@@ -754,7 +754,7 @@
         "눌림목이 이전 지지선을 이탈하면 추세 전환 가능성이 높으므로 손절해야 한다",
         "눌림목 매매는 추세가 명확한 종목에서만 유효하며, 횡보 또는 하락 추세 종목에 적용하면 위험하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-26",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_26.html",
       "format": "전략활용형"
@@ -776,7 +776,7 @@
         "달러 강세(DXY 지수 상승) 시기에 신흥국 증시에서 자금이 이탈하는 경향이 있으며, 코스피도 영향을 받는다",
         "환헤지가 없는 해외 ETF는 환율 변동에 따라 실제 수익률이 환율 방향으로 영향을 받는다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-26",
       "post_url": "https://www.seedup-invest.com/2026/07/blog-post_446.html",
       "format": "전략활용형"
@@ -798,7 +798,7 @@
         "RSI 다이버전스: 주가는 신고가를 갱신하는데 RSI는 하락(약세 다이버전스)이면 추세 전환 가능성을 시사한다",
         "RSI는 추세 추종보다 횡보 구간에서 더 신뢰도가 높으며, 다른 지표(MACD, 볼린저밴드)와 함께 사용하면 정확도가 올라간다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-07-26",
       "post_url": "https://www.seedup-invest.com/2026/07/rsi.html",
       "format": "전략활용형"
@@ -820,7 +820,7 @@
         "어닝 쇼크(예상 하회)는 주가 급락을 유발하며, 실적 발표 전 기대감이 높았던 종목일수록 충격이 크다",
         "EPS 성장만 보지 말고 매출 성장도 함께 확인해야 한다 — 비용 절감으로만 EPS가 늘어난 경우 지속 가능성이 낮다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-01",
       "post_url": "https://www.seedup-invest.com/2026/08/eps.html",
       "format": "개념정의형"
@@ -842,7 +842,7 @@
         "리밸런싱 시 세금(양도세·배당소득세)과 거래 비용이 발생하므로, 너무 잦은 리밸런싱은 비효율적이다",
         "주식 60% + 채권 40% 포트폴리오처럼 자산군 간 리밸런싱이 종목 간 리밸런싱보다 장기 성과에 더 중요하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-01",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post.html",
       "format": "전략활용형"
@@ -864,7 +864,7 @@
         "개인 투자자는 주가 상승 시 이익 실현 매도를 하는 경향이 있어 '개인 매도 = 고점' 패턴이 나타나기도 한다",
         "수급 데이터는 후행적이며, 수급보다 실적·금리·매크로 요인이 중장기 주가에 더 큰 영향을 미친다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-01",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_01.html",
       "format": "개념정의형"
@@ -886,7 +886,7 @@
         "MACD는 추세 추종 지표로, 추세가 강할 때 유효하며 횡보 구간에서는 잦은 오신호를 발생시킬 수 있다",
         "MACD 다이버전스: 주가는 신저가를 갱신하는데 MACD가 상승하면 하락 모멘텀 약화를 의미할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-01",
       "post_url": "https://www.seedup-invest.com/2026/08/macd.html",
       "format": "개념정의형"
@@ -908,7 +908,7 @@
         "공매도 과열 종목으로 지정되면 해당 종목의 공매도가 일시적으로 금지된다",
         "공매도 비율이 높은 종목에서 주가가 급등하면 공매도 세력이 손실을 줄이기 위해 매수하는 숏 스퀴즈가 발생할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-02",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_02.html",
       "format": "전략활용형"
@@ -931,7 +931,7 @@
         "다이버전스 하나만으로 매매 진입을 결정하기보다, 지지·저항선이나 거래량 변화와 함께 확인하는 것이 안전하다",
         "강한 추세 구간에서는 다이버전스가 여러 번 발생해도 추세가 계속 이어지는 경우가 있어(히든 다이버전스와 구분 필요), 맹신은 금물이다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-02",
       "post_url": "https://www.seedup-invest.com/2026/08/rsimacd.html",
       "format": "사례분석형"
@@ -953,7 +953,7 @@
         "신용잔고 비율이 5% 이상이면 해당 종목 투자 시 신용 리스크를 반드시 확인해야 한다",
         "신용잔고 데이터는 증권거래소(KRX) 또는 HTS에서 종목별로 확인 가능하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-02",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_297.html",
       "format": "개념정의형"
@@ -975,7 +975,7 @@
         "주가가 상단 밴드에 닿으면 과매수, 하단 밴드에 닿으면 과매도로 해석하지만, 강한 추세에서는 밴드를 따라 움직일 수 있다",
         "볼린저밴드 워킹(Band Walking): 강한 상승 추세에서 주가가 상단 밴드를 타고 이동하는 현상"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-02",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_834.html",
       "format": "전략활용형"
@@ -997,7 +997,7 @@
         "스토캐스틱은 단기 매매에 적합하며, RSI와 달리 횡보 구간에서도 비교적 잘 작동한다",
         "RSI와 함께 두 지표가 동시에 과매도를 보일 때 매수 신호의 신뢰도가 높아진다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-08",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_08.html",
       "format": "전략활용형"
@@ -1019,7 +1019,7 @@
         "두 번째 저점(또는 고점)에서 거래량이 첫 번째보다 감소하면 패턴의 신뢰도가 더 높아지는 경향이 있다",
         "패턴이 완성되기 전(넥라인 돌파 전)에 미리 진입하면 패턴이 무산될 위험이 있어, 확인 후 진입이 원칙이다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-08",
       "post_url": "https://www.seedup-invest.com/2026/08/wm.html",
       "format": "개념정의형"
@@ -1041,7 +1041,7 @@
         "패턴의 하락 목표가는 통상 넥라인에서 머리 꼭짓점까지의 높이만큼 넥라인 아래로 추정한다",
         "오른쪽 어깨 형성 시 거래량이 왼쪽 어깨보다 감소하는 경향이 있어, 이는 매수세 약화의 보조 신호로 쓰인다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-08",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_104.html",
       "format": "전략활용형"
@@ -1063,7 +1063,7 @@
         "컵의 형태가 U자에 가까울수록(V자로 급격하지 않을수록) 패턴의 신뢰도가 높다고 알려져 있다",
         "이 패턴은 미국 성장주 분석가 윌리엄 오닐이 체계화한 것으로, 대형 우량주보다 성장 초기 단계 종목에서 더 자주 관찰된다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-08",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_855.html",
       "format": "개념정의형"
@@ -1085,7 +1085,7 @@
         "피보나치 되돌림은 다른 기술적 지표(이동평균선, 지지·저항선)와 겹칠 때 신뢰도가 높아진다",
         "단독으로 사용하면 오신호가 많으므로, 피보나치 구간에 도달했을 때 거래량과 캔들 패턴을 반드시 함께 확인해야 한다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-09",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_09.html",
       "format": "개념정의형"
@@ -1107,7 +1107,7 @@
         "선물·옵션은 레버리지가 높아 원금 이상의 손실이 발생할 수 있으며, 개인 투자자에게는 매우 위험한 상품이다",
         "개인 투자자가 파생상품을 직접 거래하지 않더라도 만기일 효과를 이해하면 현물 매매에 도움이 된다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-09",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_675.html",
       "format": "개념정의형"
@@ -1129,7 +1129,7 @@
         "성장률과 할인율 가정이 조금만 달라져도 적정 주가가 크게 변하므로, DCF는 범위값으로 해석하는 것이 현실적이다",
         "DCF는 현금흐름이 안정적인 성숙 기업에 적합하며, 초기 성장주나 적자 기업에는 적용이 어렵다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-09",
       "post_url": "https://www.seedup-invest.com/2026/08/dcf.html",
       "format": "개념정의형"
@@ -1151,7 +1151,7 @@
         "백테스트(과거 데이터 검증)가 좋아도 실전에서 다를 수 있으며, 과적합(overfitting) 문제를 주의해야 한다",
         "국내에서는 증권사 MTS의 조건 검색이나 파이썬(pykrx 등)을 활용한 자동화 스크리닝으로 퀀트 전략을 구현할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-09",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_457.html",
       "format": "전략활용형"
@@ -1173,7 +1173,7 @@
         "경기선행지수(CLI)는 향후 6~9개월 경기 방향을 예측하는 데 활용되며, 한국은행과 OECD에서 발표한다",
         "경제 지표 발표 전후에 시장 변동성이 커지므로, 주요 지표 발표 일정을 미리 파악하는 것이 리스크 관리에 중요하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-15",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_15.html",
       "format": "전략활용형"
@@ -1195,7 +1195,7 @@
         "적용 대상 기업 여부는 배당성향·배당수익률 등 요건을 충족해 세법에서 정한 고배당 기업으로 지정돼야 하므로 모든 배당주에 적용되지 않는다",
         "이 제도는 밸류업(기업가치 제고) 정책의 일환으로 도입되어, 기업의 배당 확대를 유도하려는 목적을 가진다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-15",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_146.html",
       "format": "실전가이드형"
@@ -1217,7 +1217,7 @@
         "파동 카운팅은 주관적 요소가 강해 같은 차트를 보고도 분석자마다 해석이 달라지는 단점이 있다",
         "엘리어트 파동 이론은 완성된 후에야 명확하게 보이는 경향이 있어, 실시간 매매보다는 사후 분석에 더 유용하다는 비판도 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-15",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_647.html",
       "format": "전략활용형"
@@ -1239,7 +1239,7 @@
         "임원·최대주주의 주식 매수는 내부자가 저평가를 확신한다는 긍정 신호, 대규모 매도는 주의 신호로 해석된다",
         "사업보고서의 우발채무, 진행 중인 소송, 특수관계자 거래를 주석에서 반드시 확인해야 숨겨진 리스크를 파악할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-15",
       "post_url": "https://www.seedup-invest.com/2026/08/ir.html",
       "format": "전략활용형"
@@ -1261,7 +1261,7 @@
         "RS(상대강도)는 특정 종목이 시장(또는 업종)보다 얼마나 강하게 움직이는지를 나타내며, 모멘텀 종목 선별의 핵심 지표이다",
         "모멘텀 전략은 높은 회전율로 인한 거래비용과 세금을 고려해야 실질 수익률을 계산할 수 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-16",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_16.html",
       "format": "전략활용형"
@@ -1283,7 +1283,7 @@
         "환전 시점이 아니라 매매 체결일 기준 환율로 원화 환산하여 취득가·양도가를 계산한다",
         "증권사가 발급하는 해외주식 양도소득세 신고 대행 서비스를 이용하면 계산 실수를 줄일 수 있지만, 최종 신고 책임은 납세자 본인에게 있다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-16",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_389.html",
       "format": "실전가이드형"
@@ -1305,7 +1305,7 @@
         "갭 상승 후 시가 아래로 주가가 내려오면 갭 매수 세력의 손절 물량이 나오면서 하락이 가속될 수 있다",
         "갭 매매는 시초가 변동성이 크므로 진입 타이밍과 손절 설정이 매우 중요하다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-16",
       "post_url": "https://www.seedup-invest.com/2026/08/blog-post_594.html",
       "format": "전략활용형"
@@ -1327,7 +1327,7 @@
         "최대 손실 한도를 미리 설정하고(예: 월 -10% 시 매매 중단), 이를 어기지 않는 것이 장기 생존의 핵심이다",
         "분산 투자와 포지션 사이징은 수익을 극대화하는 것이 아니라 '파산하지 않을 확률'을 높이는 것이 목적이다"
       ],
-      "published": true,
+      "published": false,
       "published_at": "2026-08-16",
       "post_url": "https://www.seedup-invest.com/2026/08/mdd.html",
       "format": "개념정의형"
