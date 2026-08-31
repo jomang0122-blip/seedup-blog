@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
-from shared.utils import fetch_with_retry
+from shared.utils import fetch_with_retry, fetch_naver_market_listing
 
 
 _NAVER_HEADERS = {
@@ -89,52 +89,6 @@ def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
     return df.dropna(subset=[chg_col])
 
 
-def _fetch_naver_market_listing(market: str) -> pd.DataFrame:
-    """네이버 모바일 API로 시장 전종목 등락률·시가총액 수집 (KRX 직접 호출 회피).
-
-    2026-08-26 실사고: fdr.StockListing()이 내부적으로 data.krx.co.kr을 직접
-    호출하는데, GitHub Actions 러너 IP를 KRX가 간헐적으로 차단해 발행이
-    중단됐다(pykrx가 같은 이유로 이미 폐기된 것과 동일 계열 문제 — 어느 러너가
-    배정되느냐에 따라 무작위로 걸리므로 재시도해도 같은 작업 안에서는 IP가
-    바뀌지 않아 소용없다). 이미 지수 조회(get_index_data)에 쓰고 있는 네이버
-    모바일 API로 전종목 목록도 통일해 KRX 의존을 제거한다.
-
-    반환 컬럼은 fdr.StockListing()과 동일하게 맞춰(Name/Code/ChagesRatio/
-    Marcap/Amount/Volume) 이 함수를 호출하는 쪽 로직을 바꾸지 않아도 되게 한다.
-    """
-    rows = []
-    page = 1
-    while True:
-        resp = fetch_with_retry(
-            f"https://m.stock.naver.com/api/stocks/marketValue/{market}",
-            params={"page": page, "pageSize": 100},
-            headers=_NAVER_HEADERS, timeout=10,
-        )
-        data = resp.json()
-        stocks = data.get("stocks", [])
-        if not stocks:
-            break
-        for s in stocks:
-            if s.get("stockEndType") != "stock":
-                continue
-            try:
-                rows.append({
-                    "Name": s["stockName"],
-                    "Code": s["itemCode"],
-                    "ChagesRatio": float(s["fluctuationsRatio"]),
-                    "Marcap": float(s["marketValueRaw"]),
-                    "Amount": float(s.get("accumulatedTradingValueRaw", 0) or 0),
-                    "Volume": float(s.get("accumulatedTradingVolumeRaw", 0) or 0),
-                })
-            except (KeyError, ValueError, TypeError):
-                continue
-        if page * 100 >= data.get("totalCount", 0):
-            break
-        page += 1
-        time.sleep(0.2)
-    return pd.DataFrame(rows)
-
-
 def _build_stock_maps() -> dict:
     """KOSPI+KOSDAQ 전종목 등락률·시가총액 사전과, TOP5 산출용 정제 DataFrame 생성.
 
@@ -142,7 +96,7 @@ def _build_stock_maps() -> dict:
     먼저 실행되어야 해서(뉴스기반으로 확정된 종목을 TOP5 후보에서 제외하기 위해)
     맵 생성과 TOP5 산출을 분리했다.
     """
-    df_kospi = _fetch_naver_market_listing("KOSPI")
+    df_kospi = fetch_naver_market_listing("KOSPI")
     chg_col = next(
         (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kospi.columns),
         None
@@ -170,7 +124,7 @@ def _build_stock_maps() -> dict:
         }
 
     try:
-        df_kosdaq = _fetch_naver_market_listing("KOSDAQ")
+        df_kosdaq = fetch_naver_market_listing("KOSDAQ")
         kq_chg = next(
             (c for c in ["ChagesRatio", "ChangeRatio", "Change%", "Chg%"] if c in df_kosdaq.columns),
             None

@@ -17,7 +17,7 @@ import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
 import pytz
-from shared.utils import fetch_with_retry
+from shared.utils import fetch_with_retry, fetch_naver_market_listing
 
 KST = pytz.timezone("Asia/Seoul")
 
@@ -205,9 +205,17 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
     kr_daily가 이미 검증한 FDR(FinanceDataReader) 기반으로 교체하고, 대상도
     시가총액 상위 10개 대형주로 한정 — 매주 안정적으로 채워지고 독자가 실제
     관심 있는 대형주 흐름만 보여준다.
+
+    ⚠️ 2026-08-29 실사고: 위 FDR로의 교체가 사실은 완전한 해결이 아니었다 —
+    fdr.StockListing()이 내부적으로 data.krx.co.kr을 직접 호출해 pykrx와 똑같이
+    KRX 차단에 걸릴 수 있었고, 실제로 8/29 발행이 이 때문에 실패했다(이 함수는
+    try/except로 보호돼 있어 죽지는 않았지만, TOP10이 통째로 비면서 AI가 그
+    섹션을 못 써 본문 구조 검증에서 3회 연속 실패 → 발행 자체가 중단됨). kr_daily
+    가 8/26에 검증한 네이버 모바일 API 기반(`fetch_naver_market_listing`)으로
+    다시 교체해 KRX 의존을 완전히 제거했다.
     """
     try:
-        df = fdr.StockListing("KOSPI")
+        df = fetch_naver_market_listing("KOSPI")
         if "Marcap" not in df.columns:
             print(f"  [시총TOP10] Marcap 컬럼 없음: {df.columns.tolist()}")
             return {"top_gainers": [], "top_losers": []}

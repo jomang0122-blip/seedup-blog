@@ -29,6 +29,64 @@ def fetch_with_retry(url: str, *, retries: int = 3, backoff: float = 2.0, **kwar
     raise last_exc
 
 
+NAVER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9",
+    "Referer": "https://finance.naver.com/",
+}
+
+
+def fetch_naver_market_listing(market: str):
+    """네이버 모바일 API로 시장 전종목 등락률·시가총액 수집 (KRX 직접 호출 회피).
+
+    2026-08-26 kr_daily 실사고: fdr.StockListing()이 내부적으로 data.krx.co.kr을
+    직접 호출하는데, GitHub Actions 러너 IP를 KRX가 간헐적으로 차단해 발행이
+    중단됐다(pykrx가 같은 이유로 이미 폐기된 것과 동일 계열 문제 — 어느 러너가
+    배정되느냐에 따라 무작위로 걸리므로 재시도해도 같은 작업 안에서는 IP가
+    바뀌지 않아 소용없다). 이미 지수 조회에 쓰고 있는 네이버 모바일 API로
+    전종목 목록도 통일해 KRX 의존을 제거한다. kr_daily에서 신설해 kr_weekly의
+    같은 계열 실사고(2026-08-29, get_top_stocks_weekly 데이터 공백 → 발행 중단)
+    이후 두 job이 공유하도록 shared로 옮겼다.
+
+    반환 컬럼은 fdr.StockListing()과 동일하게 맞춰(Name/Code/ChagesRatio/
+    Marcap/Amount/Volume) 호출하는 쪽 로직을 바꾸지 않아도 되게 한다.
+    """
+    import pandas as pd
+
+    rows = []
+    page = 1
+    while True:
+        resp = fetch_with_retry(
+            f"https://m.stock.naver.com/api/stocks/marketValue/{market}",
+            params={"page": page, "pageSize": 100},
+            headers=NAVER_HEADERS, timeout=10,
+        )
+        data = resp.json()
+        stocks = data.get("stocks", [])
+        if not stocks:
+            break
+        for s in stocks:
+            if s.get("stockEndType") != "stock":
+                continue
+            try:
+                rows.append({
+                    "Name": s["stockName"],
+                    "Code": s["itemCode"],
+                    "ChagesRatio": float(s["fluctuationsRatio"]),
+                    "Marcap": float(s["marketValueRaw"]),
+                    "Amount": float(s.get("accumulatedTradingValueRaw", 0) or 0),
+                    "Volume": float(s.get("accumulatedTradingVolumeRaw", 0) or 0),
+                })
+            except (KeyError, ValueError, TypeError):
+                continue
+        if page * 100 >= data.get("totalCount", 0):
+            break
+        page += 1
+        time.sleep(0.2)
+    return pd.DataFrame(rows)
+
+
 _WEEKDAYS_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 _KANJI_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
