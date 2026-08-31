@@ -51,13 +51,31 @@ def save_log(data: dict, post: dict, result: dict, validation_issues: list = Non
 
 
 def is_trading_day(date_str: str) -> bool:
-    import FinanceDataReader as fdr
-    date_fmt = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-    try:
-        df = fdr.DataReader("KS11", date_fmt, date_fmt)
-        return not df.empty
-    except Exception:
+    import datetime
+    import holidays
+
+    if not date_str:
+        target_date = datetime.date.today()
+    elif isinstance(date_str, str):
+        clean_str = date_str.replace("-", "")
+        target_date = datetime.datetime.strptime(clean_str, "%Y%m%d").date()
+    else:
+        target_date = date_str
+
+    # 1. 주말 체크 (토요일: 5, 일요일: 6)
+    if target_date.weekday() >= 5:
         return False
+
+    # 2. 한국 법정 공휴일 체크
+    kr_holidays = holidays.KR(years=target_date.year)
+    if target_date in kr_holidays:
+        return False
+
+    # 3. KRX 정기 특수 휴장일 (12월 31일 납회일)
+    if target_date.month == 12 and target_date.day == 31:
+        return False
+
+    return True
 
 
 _WD_KR = ["월", "화", "수", "목", "금", "토", "일"]
