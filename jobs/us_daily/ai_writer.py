@@ -356,11 +356,13 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
     if us_date:
         md_body = fix_weekday_labels(md_body, us_date)
 
-    summary_block = ""
-    if search_description:
-        summary_block = f'\n<h3>🔍 오늘 시장 요약</h3>\n<p>{search_description}</p>\n'
-
-    content = apply_color_spans(md_to_html(md_body)) + summary_block + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
+    # ⚠️ 2026-09-01 수정: search_description(SEO 메타디스크립션)을 "🔍 오늘 시장
+    # 요약"이라는 이름으로 본문에 그대로 노출시키고 있었는데, 이미 위에서 다룬
+    # 내용을 끝에 한 번 더 반복하는 어색한 섹션이 됐다. kr_daily·kr_monthly는
+    # 이 값을 본문에 넣지 않고 로그로만 남겨 총괄이 Blogger 편집화면에 수동으로
+    # 붙여넣게 하는데(searchDescription은 Blogger API로 설정 불가, 2026-08-26
+    # 확인됨), us_daily만 다르게 동작하고 있었다. 같은 방식으로 통일.
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
     return {"labels": labels, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
