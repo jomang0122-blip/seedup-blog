@@ -95,14 +95,19 @@ def get_index_data_monthly(month_start_str: str, month_end_str: str) -> dict:
     return result
 
 
-def get_kospi_daily_pct_monthly(month_start_str: str, month_end_str: str) -> list:
-    """이번 달 각 거래일의 KOSPI 전일 대비 등락률(%). [{date, pct}]"""
+def get_kospi_daily_pct_monthly(month_start_str: str, month_end_str: str, ticker: str = "KS11") -> list:
+    """이번 달 각 거래일의 지수 전일 대비 등락률(%). [{date, pct}]
+
+    ticker 인자로 KOSPI(KS11)·KOSDAQ(KQ11)을 모두 지원한다 — 예전엔 KOSPI만
+    조회해서 "월중 최고 상승일·하락일"이 코스피 기준 하나뿐이었는데, 총괄
+    피드백(2026-09-01)으로 두 지수를 구분해 보여주도록 확장했다.
+    """
     try:
         start_dt = datetime.strptime(month_start_str, "%Y%m%d")
         end_dt = datetime.strptime(month_end_str, "%Y%m%d")
         fetch_start = (start_dt - timedelta(days=5)).strftime("%Y-%m-%d")
         fetch_end = end_dt.strftime("%Y-%m-%d")
-        close = fdr.DataReader("KS11", fetch_start, fetch_end)["Close"].dropna()
+        close = fdr.DataReader(ticker, fetch_start, fetch_end)["Close"].dropna()
         pct = close.pct_change() * 100
         out = []
         for idx, val in pct.items():
@@ -110,8 +115,95 @@ def get_kospi_daily_pct_monthly(month_start_str: str, month_end_str: str) -> lis
                 out.append({"date": idx.strftime("%Y-%m-%d"), "pct": round(float(val), 2)})
         return out
     except Exception as e:
-        print(f"  [코스피 일별등락] 월간 수집 실패: {e}")
+        print(f"  [{ticker} 일별등락] 월간 수집 실패: {e}")
         return []
+
+
+def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
+    """지수별 월중 고점·저점(종가 기준)과 날짜, 월간 변동폭, 일평균 거래대금(전월 대비),
+    연초 대비 누적(YTD) 수익률 — 총괄 피드백(2026-09-01)으로 신설.
+
+    "월간 +3.4%" 한 숫자만으로는 그 달에 지수가 어디까지 갔다 왔는지, 돈이 실제로
+    들어왔는지(거래대금), 올해 전체에서 지금이 어디인지(YTD)를 알 수 없다.
+    모두 FDR이 이미 반환하는 컬럼(Close/Amount)으로 계산 — 신규 외부 소스 없음.
+    """
+    out = {}
+    start_dt = datetime.strptime(month_start_str, "%Y%m%d")
+    end_dt = datetime.strptime(month_end_str, "%Y%m%d")
+    prev_month_last = start_dt - timedelta(days=1)
+    prev_month_start = prev_month_last.replace(day=1)
+
+    for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+        try:
+            df = fdr.DataReader(ticker, start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
+            if df.empty:
+                continue
+            close = df["Close"].dropna()
+            hi_idx, lo_idx = close.idxmax(), close.idxmin()
+            info = {
+                "month_high": round(float(close.max()), 2),
+                "month_high_date": hi_idx.strftime("%Y-%m-%d"),
+                "month_low": round(float(close.min()), 2),
+                "month_low_date": lo_idx.strftime("%Y-%m-%d"),
+                "month_range_pct": round((float(close.max()) - float(close.min())) / float(close.min()) * 100, 2),
+            }
+
+            # 일평균 거래대금 (전월 대비) — FDR의 Amount 컬럼(원 단위)
+            if "Amount" in df.columns:
+                cur_amt = df["Amount"].dropna()
+                if len(cur_amt):
+                    info["avg_amount"] = float(cur_amt.mean())
+                    df_prev = fdr.DataReader(
+                        ticker,
+                        prev_month_start.strftime("%Y-%m-%d"),
+                        prev_month_last.strftime("%Y-%m-%d"),
+                    )
+                    prev_amt = df_prev["Amount"].dropna() if "Amount" in df_prev.columns else None
+                    if prev_amt is not None and len(prev_amt):
+                        info["prev_avg_amount"] = float(prev_amt.mean())
+                        info["amount_change_pct"] = round(
+                            (info["avg_amount"] - info["prev_avg_amount"]) / info["prev_avg_amount"] * 100, 2
+                        )
+
+            # 연초 대비 누적(YTD) — 전년도 마지막 거래일 종가 대비 이번 달 말 종가
+            ytd_start = fdr.DataReader(
+                ticker, f"{start_dt.year - 1}-12-15", f"{start_dt.year - 1}-12-31"
+            )["Close"].dropna()
+            if len(ytd_start):
+                base = float(ytd_start.iloc[-1])
+                info["ytd_pct"] = round((float(close.iloc[-1]) - base) / base * 100, 2)
+                info["ytd_base_close"] = round(base, 2)
+
+            out[key] = info
+        except Exception as e:
+            print(f"  [{key} 월간 부가지표] 수집 실패: {e}")
+    return out
+
+
+def get_fx_monthly(month_start_str: str, month_end_str: str) -> dict:
+    """원달러 환율 월간 등락 — 국내증시 결산에서 외국인 수급과 직결되는 지표인데
+    기존 리포트에 아예 없었다(총괄 피드백 2026-09-01로 신설)."""
+    try:
+        start_dt = datetime.strptime(month_start_str, "%Y%m%d")
+        end_dt = datetime.strptime(month_end_str, "%Y%m%d")
+        prev_last = start_dt - timedelta(days=1)
+        prev = fdr.DataReader(
+            "USD/KRW", (prev_last - timedelta(days=10)).strftime("%Y-%m-%d"), prev_last.strftime("%Y-%m-%d")
+        )["Close"].dropna()
+        cur = fdr.DataReader(
+            "USD/KRW", start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
+        )["Close"].dropna()
+        if not len(prev) or not len(cur):
+            return {}
+        start_close, end_close = float(prev.iloc[-1]), float(cur.iloc[-1])
+        return {
+            "start_close": round(start_close, 2),
+            "close": round(end_close, 2),
+            "monthly_pct": round((end_close - start_close) / start_close * 100, 2),
+        }
+    except Exception as e:
+        print(f"  [환율] 월간 수집 실패: {e}")
+        return {}
 
 
 def get_best_worst_days(daily_pct: list) -> dict:
@@ -225,6 +317,68 @@ def get_investor_trend_monthly(month_end_str: str) -> dict:
     return total
 
 
+def get_top10_rank_changes(month_start_str: str, month_end_str: str, top_n: int = 10) -> list:
+    """시가총액 TOP10의 전월 말 대비 순위 변화 — 총괄 피드백(2026-09-01)으로 신설.
+
+    시총 순위 히스토리를 주는 무료 소스가 없어서, 상장주식수가 한 달 사이 거의
+    바뀌지 않는다는 전제로 역산한다: 주식수 = 현재시총 ÷ 현재종가 → 전월 말 시총
+    = 주식수 × 전월 말 종가. 유상증자·액면분할처럼 주식수가 실제로 바뀐 종목은
+    오차가 생길 수 있어, 순위 변화는 "참고용 근사치"로만 쓰고 등락률처럼 확정
+    수치로 단정하지 않는다.
+
+    후보를 TOP10이 아니라 TOP20으로 넓게 잡는 이유: 지난달 10위였다가 이번 달
+    11위로 밀려난 종목이 있으면 그만큼 다른 종목의 순위가 올라간 것이므로,
+    현재 TOP10만 봐서는 순위 변동을 정확히 계산할 수 없다.
+    """
+    from shared.utils import fetch_naver_market_listing
+    try:
+        start_dt = datetime.strptime(month_start_str, "%Y%m%d")
+        prev_last = start_dt - timedelta(days=1)
+        prev_start = (prev_last - timedelta(days=10)).strftime("%Y-%m-%d")
+        prev_end = prev_last.strftime("%Y-%m-%d")
+
+        df = fetch_naver_market_listing("KOSPI")
+        df = df[~df["Name"].astype(str).str.match(r".*우[BC]?$")]  # 우선주 제외
+        cand = df.nlargest(top_n * 2, "Marcap")
+
+        rows = []
+        for _, r in cand.iterrows():
+            code = str(r["Code"]).zfill(6)
+            try:
+                prev_close = fdr.DataReader(code, prev_start, prev_end)["Close"].dropna()
+                if not len(prev_close):
+                    continue
+                cur_close = fdr.DataReader(code, start_dt.strftime("%Y-%m-%d"),
+                                           datetime.strptime(month_end_str, "%Y%m%d").strftime("%Y-%m-%d"))["Close"].dropna()
+                if not len(cur_close):
+                    continue
+                shares = float(r["Marcap"]) / float(cur_close.iloc[-1])
+                rows.append({
+                    "name": str(r["Name"]), "ticker": code,
+                    "cur_marcap": float(r["Marcap"]),
+                    "prev_marcap": shares * float(prev_close.iloc[-1]),
+                })
+            except Exception:
+                continue
+
+        cur_ranked = sorted(rows, key=lambda x: x["cur_marcap"], reverse=True)
+        prev_ranked = sorted(rows, key=lambda x: x["prev_marcap"], reverse=True)
+        prev_rank_map = {r["ticker"]: i + 1 for i, r in enumerate(prev_ranked)}
+
+        out = []
+        for i, r in enumerate(cur_ranked[:top_n]):
+            prev_rank = prev_rank_map.get(r["ticker"])
+            out.append({
+                "name": r["name"], "ticker": r["ticker"],
+                "rank": i + 1, "prev_rank": prev_rank,
+                "rank_change": (prev_rank - (i + 1)) if prev_rank else None,
+            })
+        return out
+    except Exception as e:
+        print(f"  [시총 순위변화] 수집 실패: {e}")
+        return []
+
+
 def get_news_monthly(month_label: str) -> list:
     """네이버 API로 월간 국내 증시 뉴스 수집."""
     client_id = os.getenv("NAVER_CLIENT_ID", "")
@@ -260,10 +414,15 @@ def collect_all() -> dict:
 
     index_data = get_index_data_monthly(month_start, month_end)
     daily_pct = get_kospi_daily_pct_monthly(month_start, month_end)
+    daily_pct_kq = get_kospi_daily_pct_monthly(month_start, month_end, ticker="KQ11")
     best_worst = get_best_worst_days(daily_pct)
+    best_worst_kq = get_best_worst_days(daily_pct_kq)
     volatility = get_monthly_volatility(daily_pct)
     prev_volatility = get_prev_month_volatility(month_start)
+    index_extra = get_index_extra_monthly(month_start, month_end)
+    fx = get_fx_monthly(month_start, month_end)
     stock_data = get_top_stocks_weekly(month_end, month_start)  # 기간만 월 단위로 재사용
+    rank_changes = get_top10_rank_changes(month_start, month_end)
     investor_trend = get_investor_trend_monthly(month_end)
     news = get_news_monthly(month_label)
 
@@ -275,8 +434,12 @@ def collect_all() -> dict:
         **index_data,
         "daily_pct_count": len(daily_pct),
         **best_worst,
+        "best_worst_kosdaq": best_worst_kq,
         "volatility": volatility,
         "prev_volatility": prev_volatility,
+        "index_extra": index_extra,
+        "fx": fx,
+        "rank_changes": rank_changes,
         **stock_data,
         "investor_trend_monthly": investor_trend,
         "news": news,

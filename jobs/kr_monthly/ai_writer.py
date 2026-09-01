@@ -13,25 +13,54 @@ def _build_index_block(data: dict) -> str:
             continue
         sign = "▲" if (v.get("monthly_pct") or 0) >= 0 else "▼"
         lines.append(
-            f"{label}: {v['close']:,.2f}  {sign}{abs(v.get('monthly_pct') or 0):.2f}%  "
-            f"(월초 종가: {v.get('month_start_close', 'N/A'):,.2f})"
+            f"{label}: 당월 말 종가 {v['close']:,.2f}  {sign}{abs(v.get('monthly_pct') or 0):.2f}%  "
+            f"(전월 말 종가: {v.get('month_start_close', 'N/A'):,.2f})"
         )
+
+    extra = data.get("index_extra") or {}
+    for key, label in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
+        e = extra.get(key)
+        if not e:
+            continue
+        lines.append(
+            f"{label} 월중 고점: {e['month_high']:,.2f}({e['month_high_date']})  "
+            f"월중 저점: {e['month_low']:,.2f}({e['month_low_date']})  "
+            f"월간 변동폭: {e['month_range_pct']:.2f}%p"
+        )
+        if e.get("ytd_pct") is not None:
+            lines.append(f"{label} 연초(전년 말 {e['ytd_base_close']:,.2f}) 대비 누적(YTD): {e['ytd_pct']:+.2f}%")
+        if e.get("amount_change_pct") is not None:
+            amt_sign = "증가" if e["amount_change_pct"] >= 0 else "감소"
+            lines.append(
+                f"{label} 일평균 거래대금: {e['avg_amount']/1e12:,.1f}조원 "
+                f"(전월 {e['prev_avg_amount']/1e12:,.1f}조원 대비 {abs(e['amount_change_pct']):.1f}% {amt_sign})"
+            )
+
+    fx = data.get("fx") or {}
+    if fx.get("monthly_pct") is not None:
+        fx_sign = "▲(원화 약세)" if fx["monthly_pct"] >= 0 else "▼(원화 강세)"
+        lines.append(
+            f"원달러 환율: {fx['close']:,.2f}원  {fx_sign} {abs(fx['monthly_pct']):.2f}%  "
+            f"(전월 말: {fx['start_close']:,.2f}원)"
+        )
+
     return "\n".join(lines) if lines else "(지수 데이터 없음)"
 
 
 def _build_best_worst_block(data: dict) -> str:
-    best = data.get("best_day")
-    worst = data.get("worst_day")
     lines = []
-    if best:
-        lines.append(f"이번 달 최고 상승일: {best['date']} ({best['pct']:+.2f}%)")
-    if worst:
-        lines.append(f"이번 달 최고 하락일: {worst['date']} ({worst['pct']:+.2f}%)")
+    for label, key in [("KOSPI", None), ("KOSDAQ", "best_worst_kosdaq")]:
+        bw = data if key is None else (data.get(key) or {})
+        best, worst = bw.get("best_day"), bw.get("worst_day")
+        if best:
+            lines.append(f"{label} 이번 달 최고 상승일: {best['date']} ({best['pct']:+.2f}%)")
+        if worst:
+            lines.append(f"{label} 이번 달 최고 하락일: {worst['date']} ({worst['pct']:+.2f}%)")
 
     vol = data.get("volatility") or {}
     prev_vol = data.get("prev_volatility") or {}
     if vol.get("volatility") is not None:
-        line = f"이번 달 변동성(일별 등락률 표준편차): {vol['volatility']:.2f}%p"
+        line = f"KOSPI 이번 달 변동성(일별 등락률 표준편차): {vol['volatility']:.2f}%p"
         if prev_vol.get("volatility") is not None:
             diff = vol["volatility"] - prev_vol["volatility"]
             trend = "확대" if diff > 0 else ("축소" if diff < 0 else "유지")
@@ -41,15 +70,32 @@ def _build_best_worst_block(data: dict) -> str:
     return "\n".join(lines) if lines else "(일별 등락 데이터 없음)"
 
 
-def _build_stocks_block(gainers: list, losers: list) -> str:
+def _build_stocks_block(gainers: list, losers: list, rank_changes: list) -> str:
+    rank_map = {r["ticker"]: r for r in (rank_changes or [])}
+
+    def _rank_str(ticker):
+        r = rank_map.get(ticker)
+        if not r or r.get("rank_change") is None:
+            return ""
+        ch = r["rank_change"]
+        if ch > 0:
+            return f", 시총순위 {r['prev_rank']}위→{r['rank']}위(▲{ch})"
+        if ch < 0:
+            return f", 시총순위 {r['prev_rank']}위→{r['rank']}위(▼{abs(ch)})"
+        return f", 시총순위 {r['rank']}위(변동없음)"
+
     parts = []
     if gainers:
         parts.append("[시총 TOP10 중 월간 상승]\n" + "\n".join(
-            f"  {s['name']}({s['ticker']}): +{s['change_pct']:.2f}%" for s in gainers
+            f"  {s['name']}({s['ticker']}): 전월말 {s['start_close']:,.0f}원 → 당월말 {s['end_close']:,.0f}원 "
+            f"+{s['change_pct']:.2f}%{_rank_str(s['ticker'])}"
+            for s in gainers
         ))
     if losers:
         parts.append("[시총 TOP10 중 월간 하락]\n" + "\n".join(
-            f"  {s['name']}({s['ticker']}): {s['change_pct']:.2f}%" for s in losers
+            f"  {s['name']}({s['ticker']}): 전월말 {s['start_close']:,.0f}원 → 당월말 {s['end_close']:,.0f}원 "
+            f"{s['change_pct']:.2f}%{_rank_str(s['ticker'])}"
+            for s in losers
         ))
     return "\n".join(parts) if parts else "(종목 데이터 없음)"
 
@@ -81,7 +127,7 @@ def build_prompt(data: dict, prev_issues: list = None) -> str:
 
     index_block = _build_index_block(data)
     best_worst_block = _build_best_worst_block(data)
-    stocks_block = _build_stocks_block(data.get("top_gainers", []), data.get("top_losers", []))
+    stocks_block = _build_stocks_block(data.get("top_gainers", []), data.get("top_losers", []), data.get("rank_changes", []))
     investor_block = _build_investor_block(data.get("investor_trend_monthly", {}))
     news_block = _build_news_block(data.get("news", []))
 
@@ -93,10 +139,14 @@ def build_prompt(data: dict, prev_issues: list = None) -> str:
     stocks_prompt_sec = """
 c) ### 💥 시가총액 TOP10 월간 성적
    국내 시가총액 상위 10개 대형주 중 이번 달 상승·하락한 종목입니다.
-   #### 📈 월간 상승 종목
-   - 종목별 bullet 항목: **종목명(티커)** <span style="color:#e74c3c"><b>+X.XX%</b></span>
-   #### 📉 월간 하락 종목
-   - 종목별 bullet 항목: **종목명(티커)** <span style="color:#3182f6"><b>-X.XX%</b></span>
+   마크다운 테이블 하나로 작성: 종목명(티커) | 전월말 종가 | 당월말 종가 | 월간 등락률 | 시총순위 변화
+   - 종목명(티커) 열: **종목명(티커)** 형식
+   - 종가 열: 데이터에 제공된 전월말·당월말 종가 숫자를 그대로 표기(원 단위, 콤마 구분)
+   - 등락률 열: 상승은 <span style="color:#e74c3c"><b>+X.XX%</b></span>, 하락은 <span style="color:#3182f6"><b>-X.XX%</b></span>
+   - 시총순위 변화 열: 데이터에 제공된 문구를 그대로 옮길 것("▲2", "▼1", "변동없음" 등) — 순위 데이터가 없는
+     종목은 "-"로 표기. 이 열은 근사치이므로 확정적 어투(반드시 ~위) 대신 표 안에서만 담백하게 표기.
+   - 표는 상승 종목 먼저, 하락 종목 다음 순서로 정렬
+   - 표 아래 1~2문장: 순위가 가장 크게 오르내린 종목이 있으면 그 사실만 언급(이유는 뉴스 근거 없이 창작 금지)
 """ if has_stocks else ""
 
     all_labels = ",".join(_build_labels(data))
@@ -126,8 +176,11 @@ SeedUP INVEST 블로그에 올릴 국내 증시 월간 결산 포스팅을 한�
 [작성 지침]
 1. 위 데이터의 수치를 한 글자도 바꾸지 말 것 (환각 절대 금지)
 1-1. 수급 금액 총액 언급 시 반드시 [월간 투자자별 순매수 합계] 수치만 인용. 직접 합산·추정 절대 금지.
-1-2. 지수 레벨 언급 시 반드시 제공된 월간 종가·월초 종가 수치만 사용. 일중 가격·추정치 언급 절대 금지.
+1-2. 지수 레벨 언급 시 반드시 제공된 당월말·전월말 종가, 월중 고점·저점, YTD, 거래대금, 환율 수치만
+     사용. 일중 가격·데이터에 없는 추정치 언급 절대 금지.
 1-3. 시가총액 TOP10 종목의 상승·하락 이유는 뉴스 근거 없이 절대 서술하지 말 것 — 종목명과 등락률 수치만 표기.
+1-4. 시총순위 변화는 상장주식수 변동이 없다는 가정 하의 근사치임을 감안해, 순위 자체를 팩트처럼 단정하는
+     서술(예: "확실히 X위로 올라섰다") 대신 표에 표기된 문구를 담백하게 옮기는 수준으로만 언급.
 2. 마크다운 형식, 1800~2500자
 3. 단락은 2~3문장 이내로 짧게
 4. 어조: 전문적이고 정중한 톤 (~입니다, ~로 분석됩니다)
@@ -146,18 +199,28 @@ SeedUP INVEST 블로그에 올릴 국내 증시 월간 결산 포스팅을 한�
 구조 (반드시 이 순서로, 제시된 섹션만 작성):
 0) 📌 **이번 달 핵심 요약** — 아래 4가지를 3~4문장(이모티콘 제외 200~280자)으로 작성:
    - 문장 1: KOSPI·KOSDAQ 월간 등락률 수치 + 한 줄 평가
-   - 문장 2: 월중 최고 상승일·최고 하락일 + (변동성 데이터가 있으면) 전월 대비 변동성 확대·축소 여부 (데이터에서 도출되는 범위만)
+   - 문장 2: 월중 최고 상승일·최고 하락일 — 데이터에 KOSPI·KOSDAQ 두 지수가 다 있으면 간단히 둘 다 언급
+     (지수명 생략하지 말 것) + (변동성 데이터가 있으면) 전월 대비 변동성 확대·축소 여부 (데이터에서 도출되는 범위만)
    - 문장 3: 월간 수급 흐름 핵심 (개인·외국인·기관 중 어느 주체가 순매수/순매도를 주도했는지)
    - 문장 4: 다음 달 관전 포인트 한 줄 예고 — 이번 달 데이터에서 도출되는 추세만.
      데이터에 없는 구체적 일정(FOMC 등) 날짜를 추측해 넣지 말 것.
 
 a) ### 📊 이번 달 지수 성적 ({month_label})
-   - 마크다운 테이블: 지수명 | 월말 종가 | 월초 종가 | 월간 등락률 | 월간 흐름 한 줄
+   - 마크다운 테이블: 지수명 | 전월말 종가 | 당월말 종가 | 월간 등락률 | 월중 고점(날짜) | 월중 저점(날짜) | 월간 변동폭
+     * "전월말 종가"는 데이터의 [KOSPI/KOSDAQ 월간 지수] 블록에 있는 "전월 말 종가" 값을 그대로 사용
+     * "당월말 종가"는 같은 블록의 "당월 말 종가" 값을 그대로 사용 — 절대 서로 바꿔 쓰지 말 것
+     * 월중 고점·저점·변동폭은 데이터에 지수별로 없으면 그 지수 행의 해당 칸에 "-" 표기(창작 금지)
    - 등락률 셀에 상승/하락 색상 인라인 스타일 적용
    - 표 아래 단락 1~2개: KOSPI/KOSDAQ 흐름 차이 및 원인 서술
+   - 데이터에 연초 대비 누적(YTD) 수치가 있으면 별도 문장으로 "올해 들어 지금까지" 흐름을 1문장 추가
+   - 데이터에 일평균 거래대금(전월 대비 증감)이 있으면 1문장으로 "돈이 실제로 늘었는지/줄었는지" 언급
+   - 데이터에 원달러 환율이 있으면 1문장으로 언급 — 외국인 수급과 연결지어 서술하되, 데이터에 없는
+     인과관계(예: "환율 때문에 외국인이 팔았다")를 단정하지 말고 사실 병렬 서술에 그칠 것
 
 b) ### 📅 월중 최고 상승일·최고 하락일
-   - [월중 최고 상승일·최고 하락일] 데이터를 근거로 2~3문장 서술
+   - [월중 최고 상승일·최고 하락일] 데이터에 KOSPI·KOSDAQ 두 지수가 모두 있으면 **반드시 둘 다** 구분해서
+     서술할 것(예: "KOSPI는 8월 20일 +5.89%로 가장 크게 올랐고, KOSDAQ은 8월 10일 +6.97%로 최고 상승일을
+     기록했습니다"). 한 지수만 언급하고 끝내지 말 것.
    - 데이터에 없는 구체적 사건을 지어내 원인으로 서술하지 말 것 — 등락 사실과 날짜만 명시
    - 변동성(표준편차) 수치가 데이터에 있으면 마지막 문장에 전월 대비 확대/축소 여부를 포함해 서술.
      수치가 없으면 변동성 언급 생략(추정·창작 금지)

@@ -255,7 +255,13 @@ def get_top_stocks_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
                 if prev_close is None or this_close is None:
                     continue
                 pct = round((this_close - prev_close) / prev_close * 100, 2)
-                results.append({"name": name, "ticker": code, "change_pct": pct})
+                # start_close·end_close는 kr_monthly가 "전월 말 종가 → 당월 말 종가"를
+                # 표에 그대로 보여주기 위해 추가(2026-09-01). kr_weekly는 이 키를
+                # 쓰지 않으므로 기존 동작에 영향 없음.
+                results.append({
+                    "name": name, "ticker": code, "change_pct": pct,
+                    "start_close": round(prev_close, 2), "end_close": round(this_close, 2),
+                })
             except Exception as e:
                 print(f"  [시총TOP10] {name} 수집 실패: {e}")
                 continue
