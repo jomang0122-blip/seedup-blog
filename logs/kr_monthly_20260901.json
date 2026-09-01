@@ -3,10 +3,11 @@
   "month_start": "2026-08-01",
   "month_end": "2026-08-31",
   "month_label": "2026년 8월",
-  "published_at": "2026-09-01T01:03:20.045919",
+  "published_at": "2026-09-01T00:00:00+09:00",
   "title": "[2026년 8월 국내증시 결산] 코스피 3.4% 상승 월간 리뷰",
-  "url": "https://www.seedup-invest.com/2026/09/2026-8-34.html",
-  "char_count": 5657,
+  "url": "https://www.seedup-invest.com/2026/09/2026-8-34_01226172545.html",
+  "char_count": 10736,
   "kospi_monthly_pct": 3.4,
-  "validation_issues": []
+  "validation_issues": [],
+  "note": "총괄이 기존 발행글(구 형식) 수동 삭제 후, 세션이 신규 보강 항목(YTD·거래대금·환율·TOP10 순위변화·KOSPI+KOSDAQ 최고저일 구분)을 반영해 API 호출 없이 직접 작성·재발행함 (2026-09-01)"
 }
