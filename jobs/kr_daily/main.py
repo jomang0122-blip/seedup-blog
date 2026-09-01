@@ -51,14 +51,26 @@ def save_log(data: dict, post: dict, result: dict, validation_issues: list = Non
 
 
 def is_trading_day(date_str: str) -> bool:
-    import datetime
+    """오늘(또는 지정일)이 국내 증시 거래일인지 판정.
+
+    ⚠️ 2026-08-31 실사고: 예전엔 fdr.DataReader("KS11")로 그날 실제 거래
+    데이터가 있는지 확인하는 방식이었는데, 이게 KRX를 직접 부르는 게 아니라
+    제3자(FinanceData)가 GitHub에 관리하는 캐시 파일을 읽는 구조였다. 그
+    관리자가 당일 데이터를 아직 안 올리면 정상 거래일도 "데이터 없음"으로
+    오판됐다(실제로 정상 거래일인 8/31에 그 캐시가 8/28에서 멈춰있어 휴장으로
+    오판, 잘못된 휴장 안내 초안이 만들어짐). 외부 데이터 가용성에 의존하지
+    않도록, 요일·공휴일 캘린더만으로 순수 계산하는 방식으로 교체했다 —
+    실제 거래 데이터를 조회하지 않으므로 이런 종류의 캐시 지연에 원천적으로
+    영향받지 않는다.
+    """
+    import datetime as _dt
     import holidays
 
     if not date_str:
-        target_date = datetime.date.today()
+        target_date = _dt.date.today()
     elif isinstance(date_str, str):
         clean_str = date_str.replace("-", "")
-        target_date = datetime.datetime.strptime(clean_str, "%Y%m%d").date()
+        target_date = _dt.datetime.strptime(clean_str, "%Y%m%d").date()
     else:
         target_date = date_str
 
@@ -71,11 +83,41 @@ def is_trading_day(date_str: str) -> bool:
     if target_date in kr_holidays:
         return False
 
-    # 3. KRX 정기 특수 휴장일 (12월 31일 납회일)
+    # 3. 근로자의 날(5/1) — holidays.KR()에는 법정공휴일만 있고 근로자의 날은
+    #    없어서(법정공휴일이 아님) 별도 체크 필요. KRX는 이날 휴장한다.
+    if target_date.month == 5 and target_date.day == 1:
+        return False
+
+    # 4. KRX 정기 특수 휴장일 (12월 31일 납회일)
     if target_date.month == 12 and target_date.day == 31:
         return False
 
     return True
+
+
+def _verify_trading_today_live() -> bool | None:
+    """네이버 실시간 지수 API로 '오늘 실제로 거래가 있었는지' 교차 확인.
+
+    is_trading_day()는 순수 달력 계산이라 외부 데이터 지연엔 안전하지만,
+    "holidays 라이브러리가 아직 모르는 신규 지정 임시공휴일"처럼 달력 판단
+    자체가 틀릴 수 있는 드문 경우까지는 못 잡는다(2026-09-01 총괄 논의).
+    네이버의 실시간 값(localTradedAt)을 오늘 날짜와 대조해 이 틈을 보완한다.
+
+    조회 자체가 실패하면(네트워크 등) None을 반환해 "확인 불가"로 처리하고,
+    이 경우 판정을 막지 않는다 — 교차검증은 어디까지나 보조 신호이지, 그
+    자체가 새로운 단일 장애점이 되면 안 된다(2026-08-31 실사고와 같은 함정
+    반복 방지)."""
+    try:
+        import requests
+        resp = requests.get(
+            "https://m.stock.naver.com/api/index/KOSPI/basic",
+            headers={"User-Agent": "Mozilla/5.0"}, timeout=10,
+        )
+        traded_at = resp.json().get("localTradedAt", "")
+        today_str = datetime.today().strftime("%Y-%m-%d")
+        return traded_at[:10] == today_str
+    except Exception:
+        return None
 
 
 _WD_KR = ["월", "화", "수", "목", "금", "토", "일"]
@@ -189,11 +231,20 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
 
     if date is None:
         today = datetime.today().strftime("%Y%m%d")
-        if not is_trading_day(today):
+        calendar_trading = is_trading_day(today)
+        live_trading = None if force else _verify_trading_today_live()
+
+        if not calendar_trading:
             today_d = datetime.today().date()
             if today_d.weekday() >= 5:
                 log(f"  오늘({today})은 주말입니다 — 발행 생략")
                 sys.exit(0)
+
+            if not force and live_trading is True:
+                log(f"  [오류] 달력상 휴장({_kr_holiday_name(today_d)})으로 판정됐는데, 네이버 실시간"
+                    " 데이터는 오늘 거래 중으로 나옵니다 — 공휴일 라이브러리 오류 가능성. 확신 없이"
+                    " 휴장 안내를 자동 발행하지 않고 중단 (--force로 강제 진행 가능)")
+                sys.exit(1)
 
             log(f"  오늘({today})은 휴장일 — 휴장 안내 발행 모드")
             post = build_kr_holiday_post(today_d)
@@ -225,6 +276,13 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
                 log(f"  [오류] 휴장 안내 발행 실패: {e}")
                 sys.exit(1)
             return
+
+        if not force and live_trading is False:
+            log(f"  [오류] 달력상 거래일인데, 네이버 실시간 데이터엔 오늘({today}) 거래 데이터가 없습니다"
+                " — holidays 라이브러리가 아직 모르는 신규 지정 임시공휴일일 가능성. 확신 없이 정상"
+                " 시황으로 진행하지 않고 중단합니다. 실제 사유를 확인한 뒤 수동으로 발행해주세요"
+                " (--force로 강제 진행 가능, 2026-09-01 총괄 논의로 추가된 안전장치)")
+            sys.exit(1)
     else:
         if not is_trading_day(date):
             log(f"  [오류] 지정한 날짜({date})는 거래일이 아닙니다(주말·공휴일) — 백필 중단")
