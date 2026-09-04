@@ -286,10 +286,20 @@ def _build_data_summary(data: dict) -> str:
     stock_pct_map = data.get("stock_pct_map", {})
     if news_headlines and stock_pct_map:
         lines.append("뉴스 기반 주요 종목 실제 등락률:")
+        # 같은 종목이 여러 헤드라인에 걸려도 한 줄만 출력한다.
+        # 중복 출력되면 검증 AI가 이를 "반복 서술"로 오탐해 content_repetition을
+        # 올리고, 그 유형은 needs_regenerate를 강제하므로(아래 프롬프트 규칙)
+        # 3회차에서 글 자체는 정상인데도 발행이 통째로 막힌다.
+        # (2026-09-04 kr_daily 실사고: 스카이랩스가 뉴스 3건에 걸려 3줄로 렌더링됐고,
+        #  검증 AI가 "포스팅은 정상"이라고 결론내고도 이슈를 올려 발행 중단됨.
+        #  글 작성용 데이터(ai_writer)는 원래 중복 제거가 되어 있었고 검증용만 빠져 있었다.)
+        seen_news_stocks = set()
         for h in news_headlines:
             for name, pct in stock_pct_map.items():
                 if name in h:
-                    lines.append(f"  {name}: {pct:+.2f}%")
+                    if name not in seen_news_stocks:
+                        seen_news_stocks.add(name)
+                        lines.append(f"  {name}: {pct:+.2f}%")
                     break
 
     dart_disclosures = data.get("dart_disclosures", {})
