@@ -277,6 +277,17 @@ def _build_data_summary(data: dict) -> str:
             lines.append(f"{label} 섹터 TOP3:")
             for s in sectors:
                 line = f"  {s['name']} {s['change_pct']:+.2f}%"
+                # 섹터 대표종목 — ai_writer._sector_line()이 작성 프롬프트에 넣는 것과 같은 항목.
+                # 여기서 빼면 검증 AI가 본문 섹터 표의 대표종목을 "수집 데이터에 없는 종목"으로
+                # 오판해 news_fabrication을 올리고, 그 유형은 needs_regenerate를 강제하므로
+                # 정상 작성된 글이 3회차에서 통째로 차단된다.
+                # (2026-09-07 kr_daily 실사고: 서진시스템·코스메카코리아·에이피알·실리콘투가
+                #  모두 실제 수집 데이터에 있었는데 창작으로 몰려 발행 중단됨.)
+                top_stocks = s.get("top_stocks", [])
+                if top_stocks:
+                    line += " [관련종목: " + ", ".join(
+                        f"{t['name']}({t['change_pct']:+.2f}%)" for t in top_stocks
+                    ) + "]"
                 breadth = s.get("breadth")
                 if breadth:
                     line += f" (업종폭: {breadth['total']}종목 중 {breadth['same_dir']}개 동방향)"
@@ -301,6 +312,19 @@ def _build_data_summary(data: dict) -> str:
                         seen_news_stocks.add(name)
                         lines.append(f"  {name}: {pct:+.2f}%")
                     break
+
+    # 뉴스기반 특징주 — data_collector가 4단계 검증(실거래 확인·등락률 임계·시총·당일뉴스)을
+    # 통과시킨 목록이며 ai_writer가 "이 목록 종목만 이유 작성 가능"으로 프롬프트에 넣는다.
+    # 검증기에도 같은 목록을 줘야 본문의 뉴스기반 특징주를 창작으로 오판하지 않는다
+    # (2026-09-07 실사고: 두산퓨얼셀 +13.80%는 실제 값이었는데 검증기에 목록이 없어 차단).
+    featured_verified = data.get("featured_verified", [])
+    if featured_verified:
+        lines.append("뉴스기반 특징주 (4단계 검증 완료 — 본문에서 이유 서술이 허용된 종목):")
+        for v in featured_verified:
+            line = f"  {v['name']} {v['change_pct']:+.2f}%"
+            if v.get("news"):
+                line += f" [뉴스: {v['news']}]"
+            lines.append(line)
 
     dart_disclosures = data.get("dart_disclosures", {})
     if dart_disclosures:
