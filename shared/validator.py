@@ -3,6 +3,7 @@ import json
 import re
 from anthropic import Anthropic
 from shared.utils import DISCLAIMER
+import html as _html
 
 client = Anthropic()
 
@@ -113,7 +114,12 @@ def assert_no_english_holiday_name(text: str, label: str = "휴장 안내") -> N
     결과값 자체를 검사해 영문 잔존 시 예외로 발행을 막는다.
     HTML 태그·속성(div, style 등)은 검사 대상에서 제외 — 순수 텍스트만 검사.
     """
-    visible_text = _HTML_TAG_RE.sub(" ", text or "")
+    # HTML 태그 제거 후 엔티티까지 복원한다. 태그만 지우면 "S&P 500"이
+    # md_to_html()을 거쳐 "S&amp;P 500"이 된 상태에서 "amp"가 영문 단어로
+    # 오검출돼 정상 글의 발행이 막힌다
+    # (2026-09-08 us_daily 실사고: 노동절 휴장 안내가 ValueError: ['amp']로 차단).
+    # &nbsp;·&lt;·&quot; 등 다른 엔티티도 같은 방식으로 오검출되므로 근본 차단.
+    visible_text = _html.unescape(_HTML_TAG_RE.sub(" ", text or ""))
     hits = [w for w in _ENGLISH_WORD_RE.findall(visible_text) if w.upper() not in {a.upper() for a in _ALLOWED_ENGLISH}]
     if hits:
         raise ValueError(f"{label}에 영문 단어 잔존 — 한글 표기 필요: {hits}")
