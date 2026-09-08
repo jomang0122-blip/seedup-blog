@@ -73,7 +73,10 @@ jobs:
           if [ "$INPUT_FORCE" = "true" ]; then
             ARGS="$ARGS --force"
           fi
-          python jobs/us_daily/main.py $ARGS
+          # 실패 사유를 카카오톡 알림에 담기 위해 출력을 파일로도 남긴다.
+          # pipefail이 없으면 tee의 성공 코드가 파이프라인 결과가 되어 실패가 성공으로 둔갑한다.
+          set -o pipefail
+          python jobs/us_daily/main.py $ARGS 2>&1 | tee "$RUNNER_TEMP/publish.log"
 
       - name: 갱신된 token.json을 Secret에 업데이트
         if: ${{ github.event.inputs.dry_run != 'true' }}
@@ -109,6 +112,8 @@ jobs:
           KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
         run: |
           python -c "
-          from shared.kakao_notify import notify_failure
-          notify_failure('미증시 데일리 (us_daily)', '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          import os
+          from shared.kakao_notify import notify_failure, extract_reason
+          reason = extract_reason(os.path.join(os.environ.get('RUNNER_TEMP', ''), 'publish.log'))
+          notify_failure('미증시 데일리 (us_daily)', '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}', reason)
           "
