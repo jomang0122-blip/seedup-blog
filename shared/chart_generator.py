@@ -17,15 +17,20 @@ import base64
 import io
 from datetime import datetime, timedelta
 
-import FinanceDataReader as fdr
 import matplotlib
 matplotlib.use("Agg")
 import mplfinance as mpf
+import pandas as pd
+
+from shared.utils import fetch_naver_index_history
 
 _INDEX_LABELS = {
     "KS11": "KOSPI",
     "KQ11": "KOSDAQ",
 }
+
+# 호출부는 예전부터 FDR 코드(KS11/KQ11)를 넘기므로 그대로 받고 내부에서 변환한다
+_NAVER_INDEX = {"KS11": "KOSPI", "KQ11": "KOSDAQ"}
 
 # 한국 증권 관례 색상(상승 빨강 #e74c3c, 하락 파랑 #3182f6) — B009 규칙과 통일
 _MARKET_COLORS = mpf.make_marketcolors(
@@ -37,13 +42,22 @@ _STYLE = mpf.make_mpf_style(
 
 
 def _fetch_ohlc(index_code: str, days: int):
-    end = datetime.today()
-    start = end - timedelta(days=int(days * 1.6))  # 주말·휴장 감안 여유
-    df = fdr.DataReader(index_code, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
-    df = df.dropna(subset=["Open", "High", "Low", "Close"]).tail(days)
-    if df.empty:
+    """캔들차트용 OHLC — 네이버 지수 시세(fetch_naver_index_history).
+
+    2026-09-10: FDR 지수 데이터가 09-08부터 멈춰 교체했다. 네이버 지수 시세는
+    같은 응답에 시가·고가·저가를 함께 주므로 추가 요청이 필요 없다.
+    """
+    index = _NAVER_INDEX.get(index_code, index_code)
+    hist = [h for h in fetch_naver_index_history(index, days=days)
+            if all(k in h for k in ("open", "high", "low", "close"))]
+    if not hist:
         raise RuntimeError(f"{index_code} 캔들차트용 데이터를 가져오지 못했습니다.")
-    return df
+    df = pd.DataFrame(
+        [{"Open": h["open"], "High": h["high"], "Low": h["low"], "Close": h["close"]}
+         for h in hist],
+        index=pd.DatetimeIndex([h["date"] for h in hist]),
+    )
+    return df.tail(days)
 
 
 def generate_index_candle_chart(index_code: str = "KS11", days: int = 60) -> str:

@@ -110,7 +110,9 @@ def fetch_naver_index_history(index: str, days: int = 30) -> list:
         days:  가져올 거래일 수. 60을 넘으면 페이지를 나눠 이어붙인다
                (pageSize 100 이상은 네이버가 HTTP 400으로 거절 — 실측 확인).
     Returns:
-        과거→최신 순 [{"date": "YYYY-MM-DD", "close": float, "change_pct": float}]
+        과거→최신 순 [{"date", "close", "change_pct", "open", "high", "low"}]
+        시가·고가·저가는 같은 응답에 이미 들어 있어 추가 요청 없이 함께 담는다
+        (캔들차트용). 종가만 쓰는 호출부는 그냥 무시하면 된다.
     """
     out, page = [], 1
     while len(out) < days:
@@ -124,13 +126,19 @@ def fetch_naver_index_history(index: str, days: int = 30) -> list:
             break
         for r in rows:
             try:
-                out.append({
+                row = {
                     "date":       r["localTradedAt"],
                     "close":      float(str(r["closePrice"]).replace(",", "")),
                     "change_pct": float(str(r["fluctuationsRatio"]).replace(",", "")),
-                })
+                }
             except (KeyError, ValueError, TypeError):
                 continue
+            for key, field in (("open", "openPrice"), ("high", "highPrice"), ("low", "lowPrice")):
+                try:
+                    row[key] = float(str(r[field]).replace(",", ""))
+                except (KeyError, ValueError, TypeError):
+                    pass          # OHLC가 빠진 행이 있어도 종가 기반 용도는 계속 쓸 수 있게
+            out.append(row)
         if len(rows) < _NAVER_INDEX_PAGE_SIZE:
             break                              # 마지막 페이지
         page += 1

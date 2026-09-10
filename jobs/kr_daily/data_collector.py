@@ -9,7 +9,11 @@ from datetime import datetime, timedelta
 import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
-from shared.utils import fetch_with_retry, fetch_naver_market_listing
+from shared.utils import (
+    fetch_with_retry,
+    fetch_naver_market_listing,
+    fetch_naver_index_history,
+)
 
 
 _NAVER_HEADERS = {
@@ -899,18 +903,27 @@ def get_index_data_historical(date_str: str) -> dict:
     """
     result = {}
     date_fmt = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:]}"
-    for key, code in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+    # 대상 날짜까지 거슬러 갈 거래일 수를 달력 일수로 어림한다(주말·휴장 감안
+    # 약 0.7배). 여유 10일을 더하고, 네이버가 한 번에 주는 60행 단위로 페이징된다.
+    back_days = (datetime.today() - datetime.strptime(date_fmt, "%Y-%m-%d")).days
+    need = max(int(back_days * 0.72) + 10, 20)
+    for key, index in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
         try:
-            start = (datetime.strptime(date_fmt, "%Y-%m-%d") - timedelta(days=10)).strftime("%Y-%m-%d")
-            close_series = fdr.DataReader(code, start, date_fmt)["Close"].dropna()
-            if len(close_series) < 2:
+            hist = [h for h in fetch_naver_index_history(index, days=need)
+                    if h["date"] <= date_fmt]
+            if not hist:
+                print(f"  [{key}] {date_fmt} 이전 지수 데이터를 찾지 못했습니다"
+                      f" (조회 {need}거래일)")
                 result[key] = {}
                 continue
-            close, prev = float(close_series.iloc[-1]), float(close_series.iloc[-2])
+            last = hist[-1]
+            # 전일 대비 변동폭은 바로 앞 행의 종가와 빼서 구한다
+            # (등락률에서 역산하면 읽기 어렵고 반올림 오차도 쌓인다)
+            change = round(last["close"] - hist[-2]["close"], 2) if len(hist) >= 2 else None
             result[key] = {
-                "close":      round(close, 2),
-                "change":     round(close - prev, 2),
-                "change_pct": round((close - prev) / prev * 100, 2),
+                "close":      round(last["close"], 2),
+                "change":     change,
+                "change_pct": round(last["change_pct"], 2),
                 "volume":     0,
             }
         except Exception as e:

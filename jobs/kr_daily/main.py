@@ -160,20 +160,27 @@ def _next_kr_open(d):
 
 
 def _last_kr_index_snapshot():
-    """직전 거래일 KOSPI/KOSDAQ 종가·등락률 (FDR 최근 데이터)."""
-    from datetime import timedelta
-    import FinanceDataReader as fdr
+    """직전 거래일 KOSPI/KOSDAQ 종가·등락률.
+
+    2026-09-10: FDR 지수 데이터가 09-08부터 멈춰 네이버로 교체했다. 예전 구조
+    그대로 뒀다면 다음 휴장일 안내의 "직전 거래일 요약" 표에 09-07 값이 실린
+    채 발행됐을 것이다 — 휴장 안내는 몇 달에 한 번만 타는 경로라 사고가 나도
+    한참 뒤에야 발견된다(교훈 B071).
+
+    등락률은 직접 계산하지 않고 네이버가 준 값을 그대로 쓴다.
+    """
+    from shared.utils import fetch_naver_index_history
     rows = []
     last_date = None
-    start = (datetime.today() - timedelta(days=14)).strftime("%Y-%m-%d")
-    for code, name in [("KS11", "KOSPI"), ("KQ11", "KOSDAQ")]:
+    for index, name in [("KOSPI", "KOSPI"), ("KOSDAQ", "KOSDAQ")]:
         try:
-            s = fdr.DataReader(code, start)["Close"].dropna()
-            if len(s) >= 2:
-                close, prev = float(s.iloc[-1]), float(s.iloc[-2])
-                rows.append((name, close, (close - prev) / prev * 100))
-                last_date = s.index[-1].date()
-        except Exception:
+            hist = fetch_naver_index_history(index, days=5)
+            if hist:
+                last = hist[-1]
+                rows.append((name, last["close"], last["change_pct"]))
+                last_date = datetime.strptime(last["date"], "%Y-%m-%d").date()
+        except Exception as e:
+            print(f"  [경고] {name} 직전 거래일 조회 실패: {e}")
             continue
     return rows, last_date
 
