@@ -26,14 +26,43 @@ def _naver_soup(url: str, params: dict = None) -> BeautifulSoup:
 
 
 def get_latest_trading_date() -> str:
-    """FDR로 최근 거래일 탐색 (빠른 응답, 날짜 확인용)."""
+    """최근 거래일 — 본문 수치와 같은 출처(네이버 실시간)에서 가져온다.
+
+    ⚠️ 2026-09-10 실사고로 교체됨. 예전에는 FDR로 오늘부터 하루씩 거슬러
+    올라가며 KOSPI 데이터가 있는 첫 날짜를 찾았는데, FDR 쪽 데이터가
+    2026-09-08부터 갱신을 멈추자 역순 탐색이 계속 09-07에서 걸렸다.
+    본문 수치는 네이버 실시간이라 매일 정확히 갱신됐고 날짜 라벨만 얼어붙어,
+    9월 8일·9일 리포트가 둘 다 "[26년 9월 7일 국내증시]"로 발행됐다.
+    두 번 다 실행은 "성공"으로 끝나 알림도 가지 않았다.
+
+    날짜와 수치를 다른 소스에서 구하는 한 한쪽이 밀리면 언제든 재발하므로,
+    같은 출처(네이버 지수 시세)에서 거래일을 받아 구조적으로 어긋날 수
+    없게 한다. FDR은 네이버 조회가 실패할 때만 쓰는 폴백으로 남긴다.
+    """
+    try:
+        resp = fetch_with_retry(
+            "https://m.stock.naver.com/api/index/KOSPI/price",
+            params={"pageSize": 5, "page": 1},
+            headers=_NAVER_HEADERS, timeout=10,
+        )
+        rows = resp.json()
+        traded_at = rows[0].get("localTradedAt") if rows else None
+        if traded_at:
+            return traded_at.replace("-", "")
+        print("  [경고] 네이버 지수 시세에 거래일이 없습니다 — FDR로 대체합니다")
+    except Exception as e:
+        print(f"  [경고] 네이버 최근 거래일 조회 실패 — FDR로 대체합니다: {e}")
+
     date = datetime.today()
     for _ in range(10):
         date_str = date.strftime("%Y-%m-%d")
         try:
             df = fdr.DataReader("KS11", date_str, date_str)
             if not df.empty:
-                return date.strftime("%Y%m%d")
+                fallback = date.strftime("%Y%m%d")
+                print(f"  [폴백] FDR 기준 최근 거래일: {fallback}"
+                      " — FDR 데이터가 밀려 있으면 실제보다 과거일 수 있습니다")
+                return fallback
         except Exception:
             pass
         date -= timedelta(days=1)
