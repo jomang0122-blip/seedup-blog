@@ -26,9 +26,20 @@ _spec.loader.exec_module(_kr_weekly_dc)
 _NAVER_HEADERS = _kr_weekly_dc._NAVER_HEADERS
 get_top_stocks_weekly = _kr_weekly_dc.get_top_stocks_weekly
 
-from shared.utils import fetch_with_retry
+from shared.utils import (
+    fetch_with_retry,
+    fetch_naver_index_history,
+    fetch_naver_index_amount,
+    fetch_naver_fx_history,
+)
 
 KST = pytz.timezone("Asia/Seoul")
+
+# FDR 지수 데이터 중단(2026-09-08~)으로 지수·환율을 네이버로 교체하며 도입.
+# 당월 + 전월을 함께 봐야 해서 45거래일, YTD는 전년 말까지 거슬러 올라간다.
+_MONTH_LOOKBACK_DAYS = 45
+_YTD_LOOKBACK_DAYS = 300
+_TICKER_TO_INDEX = {"KS11": "KOSPI", "KQ11": "KOSDAQ"}
 
 
 def get_month_range() -> tuple[str, str, str, str]:
@@ -65,23 +76,27 @@ def get_index_data_monthly(month_start_str: str, month_end_str: str) -> dict:
     start_dt = datetime.strptime(month_start_str, "%Y%m%d")
     end_dt = datetime.strptime(month_end_str, "%Y%m%d")
     prev_month_last_dt = start_dt - timedelta(days=1)
-    for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+    prev_end_date = prev_month_last_dt.strftime("%Y-%m-%d")
+    start_date, end_date = start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
+    for key, index in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
         try:
-            # 전월 마지막 거래일 종가 — 전월 말일 이전 여유(공휴일·주말 대비 10일)
-            prev_start = (prev_month_last_dt - timedelta(days=10)).strftime("%Y-%m-%d")
-            prev_end = prev_month_last_dt.strftime("%Y-%m-%d")
-            df_prev = fdr.DataReader(ticker, prev_start, prev_end)
-            if df_prev.empty:
+            # FDR 지수 데이터가 2026-09-08부터 멈춰 네이버로 교체
+            # (shared/utils.fetch_naver_index_history() 참고)
+            hist = fetch_naver_index_history(index, days=_MONTH_LOOKBACK_DAYS)
+
+            # 전월 마지막 거래일 종가
+            prev_rows = [h for h in hist if h["date"] <= prev_end_date]
+            if not prev_rows:
                 result[key] = {}
                 continue
-            first_close = float(df_prev["Close"].dropna().iloc[-1])
+            first_close = prev_rows[-1]["close"]
 
             # 당월 마지막 거래일 종가
-            df_cur = fdr.DataReader(ticker, start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
-            if df_cur.empty:
+            cur_rows = [h for h in hist if start_date <= h["date"] <= end_date]
+            if not cur_rows:
                 result[key] = {}
                 continue
-            last_close = float(df_cur["Close"].dropna().iloc[-1])
+            last_close = cur_rows[-1]["close"]
 
             pct = (last_close - first_close) / first_close * 100
             result[key] = {
@@ -101,19 +116,21 @@ def get_kospi_daily_pct_monthly(month_start_str: str, month_end_str: str, ticker
     ticker 인자로 KOSPI(KS11)·KOSDAQ(KQ11)을 모두 지원한다 — 예전엔 KOSPI만
     조회해서 "월중 최고 상승일·하락일"이 코스피 기준 하나뿐이었는데, 총괄
     피드백(2026-09-01)으로 두 지수를 구분해 보여주도록 확장했다.
+
+    2026-09-10: FDR 지수 중단으로 네이버로 교체. 등락률을 pct_change()로
+    재계산하지 않고 네이버가 준 날짜별 값을 그대로 쓴다 — 날짜와 값이 한 행에
+    묶여 있어 어긋날 수 없다(kr_weekly의 같은 계열 버그 재발 방지).
+    ticker 인자는 호출부 호환을 위해 유지하고 내부에서 지수명으로 변환한다.
     """
+    index = _TICKER_TO_INDEX.get(ticker, "KOSPI")
     try:
-        start_dt = datetime.strptime(month_start_str, "%Y%m%d")
-        end_dt = datetime.strptime(month_end_str, "%Y%m%d")
-        fetch_start = (start_dt - timedelta(days=5)).strftime("%Y-%m-%d")
-        fetch_end = end_dt.strftime("%Y-%m-%d")
-        close = fdr.DataReader(ticker, fetch_start, fetch_end)["Close"].dropna()
-        pct = close.pct_change() * 100
-        out = []
-        for idx, val in pct.items():
-            if pd.notna(val) and idx >= pd.Timestamp(start_dt):
-                out.append({"date": idx.strftime("%Y-%m-%d"), "pct": round(float(val), 2)})
-        return out
+        start_date = datetime.strptime(month_start_str, "%Y%m%d").strftime("%Y-%m-%d")
+        end_date = datetime.strptime(month_end_str, "%Y%m%d").strftime("%Y-%m-%d")
+        return [
+            {"date": h["date"], "pct": round(h["change_pct"], 2)}
+            for h in fetch_naver_index_history(index, days=_MONTH_LOOKBACK_DAYS)
+            if start_date <= h["date"] <= end_date
+        ]
     except Exception as e:
         print(f"  [{ticker} 일별등락] 월간 수집 실패: {e}")
         return []
@@ -133,45 +150,47 @@ def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
     prev_month_last = start_dt - timedelta(days=1)
     prev_month_start = prev_month_last.replace(day=1)
 
-    for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+    start_date, end_date = start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
+    prev_start_date = prev_month_start.strftime("%Y-%m-%d")
+    prev_last_date = prev_month_last.strftime("%Y-%m-%d")
+    ytd_cut = f"{start_dt.year - 1}-12-31"
+
+    for key, index in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
         try:
-            df = fdr.DataReader(ticker, start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d"))
-            if df.empty:
+            # 연초 기준값까지 한 번에 받으려면 전년 말까지 거슬러 올라가야 한다
+            # (네이버는 페이지당 60행 — fetch_naver_index_history가 페이징 처리)
+            hist = fetch_naver_index_history(index, days=_YTD_LOOKBACK_DAYS)
+            cur = [h for h in hist if start_date <= h["date"] <= end_date]
+            if not cur:
                 continue
-            close = df["Close"].dropna()
-            hi_idx, lo_idx = close.idxmax(), close.idxmin()
+            hi = max(cur, key=lambda h: h["close"])
+            lo = min(cur, key=lambda h: h["close"])
             info = {
-                "month_high": round(float(close.max()), 2),
-                "month_high_date": hi_idx.strftime("%Y-%m-%d"),
-                "month_low": round(float(close.min()), 2),
-                "month_low_date": lo_idx.strftime("%Y-%m-%d"),
-                "month_range_pct": round((float(close.max()) - float(close.min())) / float(close.min()) * 100, 2),
+                "month_high": round(hi["close"], 2),
+                "month_high_date": hi["date"],
+                "month_low": round(lo["close"], 2),
+                "month_low_date": lo["date"],
+                "month_range_pct": round((hi["close"] - lo["close"]) / lo["close"] * 100, 2),
             }
 
-            # 일평균 거래대금 (전월 대비) — FDR의 Amount 컬럼(원 단위)
-            if "Amount" in df.columns:
-                cur_amt = df["Amount"].dropna()
-                if len(cur_amt):
-                    info["avg_amount"] = float(cur_amt.mean())
-                    df_prev = fdr.DataReader(
-                        ticker,
-                        prev_month_start.strftime("%Y-%m-%d"),
-                        prev_month_last.strftime("%Y-%m-%d"),
+            # 일평균 거래대금 (전월 대비) — 네이버 금융 일별 표(백만원 단위).
+            # 지수 시세 JSON API에는 거래대금이 없어 이 지표만 별도 소스를 쓴다.
+            amt = fetch_naver_index_amount(index, days=_MONTH_LOOKBACK_DAYS)
+            cur_amt = [v for d, v in amt.items() if start_date <= d <= end_date]
+            prev_amt = [v for d, v in amt.items() if prev_start_date <= d <= prev_last_date]
+            if cur_amt:
+                info["avg_amount"] = sum(cur_amt) / len(cur_amt)
+                if prev_amt:
+                    info["prev_avg_amount"] = sum(prev_amt) / len(prev_amt)
+                    info["amount_change_pct"] = round(
+                        (info["avg_amount"] - info["prev_avg_amount"]) / info["prev_avg_amount"] * 100, 2
                     )
-                    prev_amt = df_prev["Amount"].dropna() if "Amount" in df_prev.columns else None
-                    if prev_amt is not None and len(prev_amt):
-                        info["prev_avg_amount"] = float(prev_amt.mean())
-                        info["amount_change_pct"] = round(
-                            (info["avg_amount"] - info["prev_avg_amount"]) / info["prev_avg_amount"] * 100, 2
-                        )
 
             # 연초 대비 누적(YTD) — 전년도 마지막 거래일 종가 대비 이번 달 말 종가
-            ytd_start = fdr.DataReader(
-                ticker, f"{start_dt.year - 1}-12-15", f"{start_dt.year - 1}-12-31"
-            )["Close"].dropna()
-            if len(ytd_start):
-                base = float(ytd_start.iloc[-1])
-                info["ytd_pct"] = round((float(close.iloc[-1]) - base) / base * 100, 2)
+            ytd_rows = [h for h in hist if h["date"] <= ytd_cut]
+            if ytd_rows:
+                base = ytd_rows[-1]["close"]
+                info["ytd_pct"] = round((cur[-1]["close"] - base) / base * 100, 2)
                 info["ytd_base_close"] = round(base, 2)
 
             out[key] = info
@@ -186,16 +205,16 @@ def get_fx_monthly(month_start_str: str, month_end_str: str) -> dict:
     try:
         start_dt = datetime.strptime(month_start_str, "%Y%m%d")
         end_dt = datetime.strptime(month_end_str, "%Y%m%d")
-        prev_last = start_dt - timedelta(days=1)
-        prev = fdr.DataReader(
-            "USD/KRW", (prev_last - timedelta(days=10)).strftime("%Y-%m-%d"), prev_last.strftime("%Y-%m-%d")
-        )["Close"].dropna()
-        cur = fdr.DataReader(
-            "USD/KRW", start_dt.strftime("%Y-%m-%d"), end_dt.strftime("%Y-%m-%d")
-        )["Close"].dropna()
-        if not len(prev) or not len(cur):
+        prev_last = (start_dt - timedelta(days=1)).strftime("%Y-%m-%d")
+        # FDR의 USD/KRW가 2거래일 밀려 있어(2026-09-10 확인) 네이버로 교체.
+        # 월말에 도는 job이라 마지막 날 환율이 빠지면 월간 등락률이 틀어진다.
+        hist = fetch_naver_fx_history(days=_MONTH_LOOKBACK_DAYS)
+        prev = [h for h in hist if h["date"] <= prev_last]
+        cur = [h for h in hist
+               if start_dt.strftime("%Y-%m-%d") <= h["date"] <= end_dt.strftime("%Y-%m-%d")]
+        if not prev or not cur:
             return {}
-        start_close, end_close = float(prev.iloc[-1]), float(cur.iloc[-1])
+        start_close, end_close = prev[-1]["close"], cur[-1]["close"]
         return {
             "start_close": round(start_close, 2),
             "close": round(end_close, 2),

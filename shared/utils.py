@@ -87,6 +87,10 @@ def fetch_naver_market_listing(market: str):
     return pd.DataFrame(rows)
 
 
+_NAVER_INDEX_PAGE_SIZE = 60   # pageSize 100 이상은 HTTP 400 (실측, 2026-09-10)
+_NAVER_AMOUNT_MAX_PAGES = 40  # 페이지당 6행 — 폭주 방지 상한
+
+
 def fetch_naver_index_history(index: str, days: int = 30) -> list:
     """네이버 모바일 API로 지수 일별 종가·등락률 조회 (FDR 지수 의존 제거).
 
@@ -103,17 +107,109 @@ def fetch_naver_index_history(index: str, days: int = 30) -> list:
 
     Args:
         index: "KOSPI" 또는 "KOSDAQ"
-        days:  가져올 거래일 수 (네이버 pageSize, 1회 요청 상한 있음)
+        days:  가져올 거래일 수. 60을 넘으면 페이지를 나눠 이어붙인다
+               (pageSize 100 이상은 네이버가 HTTP 400으로 거절 — 실측 확인).
+    Returns:
+        과거→최신 순 [{"date": "YYYY-MM-DD", "close": float, "change_pct": float}]
+    """
+    out, page = [], 1
+    while len(out) < days:
+        resp = fetch_with_retry(
+            f"https://m.stock.naver.com/api/index/{index}/price",
+            params={"pageSize": _NAVER_INDEX_PAGE_SIZE, "page": page},
+            headers=NAVER_HEADERS, timeout=10,
+        )
+        rows = resp.json()
+        if not rows:
+            break
+        for r in rows:
+            try:
+                out.append({
+                    "date":       r["localTradedAt"],
+                    "close":      float(str(r["closePrice"]).replace(",", "")),
+                    "change_pct": float(str(r["fluctuationsRatio"]).replace(",", "")),
+                })
+            except (KeyError, ValueError, TypeError):
+                continue
+        if len(rows) < _NAVER_INDEX_PAGE_SIZE:
+            break                              # 마지막 페이지
+        page += 1
+        time.sleep(0.2)
+    out.sort(key=lambda x: x["date"])          # 네이버는 최신순 → 과거순으로 뒤집는다
+    return out[-days:] if len(out) > days else out
+
+
+def fetch_naver_index_amount(index: str, days: int = 45) -> dict:
+    """지수 일별 거래대금 — {"YYYY-MM-DD": 원 단위 float}
+
+    ⚠️ 단위 주의: 네이버 표는 **백만원** 단위로 표시하는데, 이 함수는 **원**으로
+    환산해 반환한다. 교체 이전 FDR의 Amount 컬럼이 원 단위였고 kr_monthly의
+    ai_writer가 `avg_amount / 1e12`로 조원을 만들기 때문 — 백만원을 그대로
+    돌려주면 거래대금이 100만분의 1로 표시된다.
+
+    지수 시세 JSON API(fetch_naver_index_history)는 시가·고가·저가·종가와
+    등락률만 주고 거래대금이 없다. 월간 결산의 "일평균 거래대금(전월 대비)"은
+    총괄이 2026-09-01에 직접 요청해 넣은 지표라 뺄 수 없어, 거래대금만
+    네이버 금융의 일별 지수 표(HTML)에서 따로 가져온다.
+
+    종가·등락률까지 여기서 같이 받지 않는 이유: 데일리·위클리가 이미 JSON
+    API로 검증돼 있는데 월간만 다른 경로를 쓰면 또 출처가 갈라진다. 거래대금은
+    날짜를 키로 병합하므로 이번 사고처럼 "위치가 어긋나 값이 뒤바뀌는" 위험은
+    없다.
+
+    Args:
+        index: "KOSPI" 또는 "KOSDAQ"
+        days:  가져올 거래일 수 (페이지당 6행)
+    """
+    import re
+
+    out = {}
+    page = 1
+    while len(out) < days and page <= _NAVER_AMOUNT_MAX_PAGES:
+        resp = fetch_with_retry(
+            "https://finance.naver.com/sise/sise_index_day.naver",
+            params={"code": index, "page": page},
+            headers=NAVER_HEADERS, timeout=10,
+        )
+        resp.encoding = "euc-kr"
+        found = 0
+        for tr in re.findall(r"<tr>(.*?)</tr>", resp.text, re.S):
+            tds = [re.sub(r"<[^>]+>", "", t).strip()
+                   for t in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
+            tds = [t for t in tds if t]
+            if len(tds) < 6 or not re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", tds[0]):
+                continue                       # 페이지 이동 링크 행 등은 건너뛴다
+            try:
+                # tds = [날짜, 체결가, 전일비, 등락률, 거래량(천주), 거래대금(백만원)]
+                out[tds[0].replace(".", "-")] = float(tds[5].replace(",", "")) * 1e6
+                found += 1
+            except ValueError:
+                continue
+        if not found:
+            break
+        page += 1
+        time.sleep(0.2)
+    return out
+
+
+def fetch_naver_fx_history(days: int = 45, code: str = "FX_USDKRW") -> list:
+    """원달러 등 환율 일별 종가·등락률 (FDR 환율 지연 대응).
+
+    2026-09-10 확인: FDR의 USD/KRW가 2거래일 밀려 있었다(지수처럼 완전히
+    멈추지는 않았지만, 월말에 도는 월간 결산에서 마지막 날 환율이 빠질 수 있다).
+    지수와 같은 처방으로 네이버에서 직접 받는다 — 응답 필드 구조도 동일하다.
+
     Returns:
         과거→최신 순 [{"date": "YYYY-MM-DD", "close": float, "change_pct": float}]
     """
     resp = fetch_with_retry(
-        f"https://m.stock.naver.com/api/index/{index}/price",
-        params={"pageSize": days, "page": 1},
+        "https://m.stock.naver.com/front-api/marketIndex/prices",
+        params={"category": "exchange", "reutersCode": code,
+                "page": 1, "pageSize": days},
         headers=NAVER_HEADERS, timeout=10,
     )
     out = []
-    for r in resp.json():
+    for r in resp.json().get("result", []):
         try:
             out.append({
                 "date":       r["localTradedAt"],
@@ -122,7 +218,7 @@ def fetch_naver_index_history(index: str, days: int = 30) -> list:
             })
         except (KeyError, ValueError, TypeError):
             continue
-    out.sort(key=lambda x: x["date"])          # 네이버는 최신순 → 과거순으로 뒤집는다
+    out.sort(key=lambda x: x["date"])
     return out
 
 
