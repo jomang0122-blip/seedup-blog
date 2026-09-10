@@ -13,11 +13,14 @@ import time
 import requests
 from datetime import datetime, timedelta
 
-import pandas as pd
 import FinanceDataReader as fdr
 from bs4 import BeautifulSoup
 import pytz
-from shared.utils import fetch_with_retry, fetch_naver_market_listing
+from shared.utils import (
+    fetch_with_retry,
+    fetch_naver_market_listing,
+    fetch_naver_index_history,
+)
 
 KST = pytz.timezone("Asia/Seoul")
 
@@ -50,27 +53,30 @@ _NAVER_INDEX_CODE = {"kospi": "KOSPI", "kosdaq": "KOSDAQ"}
 
 
 def get_index_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
-    """KOSPI/KOSDAQ 주간 등락률 (이전 금요일 종가는 FDR 과거 조회, 이번 금요일 종가는 네이버 모바일 API).
+    """KOSPI/KOSDAQ 주간 등락률 (양쪽 종가 모두 네이버 모바일 API).
 
     이번 금요일 종가를 FDR 과거 데이터로 조회하면 장마감 직후 최신값 반영이 지연돼
     실제 종가와 다른 값이 나올 수 있음(실측: 마감 2시간 후에도 구값 노출, 2026-07-03).
-    kr_daily가 이미 검증한 네이버 모바일 API(실시간)로 이번 금요일 종가만 별도 조회.
+    그래서 이번 금요일 종가만 네이버 실시간으로 쓰고 있었는데, 2026-09-10 실사고로
+    이전 금요일 종가까지 네이버 지수 이력으로 옮겼다(FDR 지수 데이터가 09-08부터
+    갱신 중단 — shared/utils.fetch_naver_index_history() 참고). 이제 두 종가가
+    같은 출처라 한쪽만 밀려 주간 등락률이 틀어질 여지가 없다.
     """
     result = {}
-    prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
-    for key, ticker in [("kospi", "KS11"), ("kosdaq", "KQ11")]:
+    prev_fri_date = datetime.strptime(prev_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+    for key in ("kospi", "kosdaq"):
         try:
-            # 이전 금요일 종가 — FDR 과거 데이터 (직전 5일 창으로 공휴일 대비)
-            start = (prev_fri_dt - timedelta(days=5)).strftime("%Y-%m-%d")
-            end   = prev_fri_dt.strftime("%Y-%m-%d")
-            df = fdr.DataReader(ticker, start, end)
-            if df.empty:
+            code = _NAVER_INDEX_CODE[key]
+            # 이전 금요일 종가 — 네이버 지수 이력에서 그 날짜 이하 마지막 거래일
+            # (공휴일로 금요일이 휴장이면 그 직전 거래일이 자연히 잡힌다)
+            hist = [h for h in fetch_naver_index_history(code, days=20)
+                    if h["date"] <= prev_fri_date]
+            if not hist:
                 result[key] = {}
                 continue
-            prev_close = float(df["Close"].dropna().iloc[-1])
+            prev_close = hist[-1]["close"]
 
             # 이번 금요일 종가 — 네이버 모바일 API 실시간 (kr_daily와 동일 방식)
-            code = _NAVER_INDEX_CODE[key]
             resp = fetch_with_retry(
                 f"https://m.stock.naver.com/api/index/{code}/basic",
                 headers=_NAVER_HEADERS, timeout=10,
@@ -148,28 +154,24 @@ def get_market_investor_trend_weekly(this_fri_str: str) -> list:
 def get_kospi_daily_pct_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
     """이번 주 각 거래일의 KOSPI 전일 대비 등락률(%). {YYYY-MM-DD: pct}
 
-    이번 금요일(마지막 값) 종가는 FDR 반영지연 위험이 있어(실측 확인, 2026-07-03)
-    네이버 모바일 API 실시간 값으로 교정 후 등락률을 재계산한다.
+    ⚠️ 2026-09-10 실사고로 전면 교체. 예전에는 FDR 종가 시계열을 받아
+    마지막 값만 네이버 실시간 종가로 덮어쓰고 pct_change()로 재계산했는데,
+    FDR 지수 데이터가 09-08부터 멈추면서 시계열이 09-07에서 끝났다. 그러면
+    "마지막 값 덮어쓰기"가 **09-07 종가 자리에 금요일 종가를 넣어버려**
+    없는 값이 비는 게 아니라 틀린 등락률이 표에 채워지는 상태가 된다.
+
+    이제 네이버 지수 이력에서 날짜별 등락률을 그대로 받는다. 날짜와 등락률이
+    한 행에 묶여 오므로 위치를 잘못 짚어 값이 어긋날 수가 없고, 우리가
+    등락률을 재계산하지도 않는다.
     """
     try:
-        prev_fri_dt = datetime.strptime(prev_fri_str, "%Y%m%d")
-        start = (prev_fri_dt - timedelta(days=3)).strftime("%Y-%m-%d")
-        end   = datetime.strptime(this_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
-        close = fdr.DataReader("KS11", start, end)["Close"].dropna()
-
-        try:
-            resp = fetch_with_retry(
-                "https://m.stock.naver.com/api/index/KOSPI/basic",
-                headers=_NAVER_HEADERS, timeout=10,
-            )
-            live_close = float(resp.json().get("closePrice", "0").replace(",", ""))
-            if live_close:
-                close.iloc[-1] = live_close
-        except Exception as e:
-            print(f"  [코스피 종가교정] 실패(FDR 값 유지): {e}")
-
-        pct = close.pct_change() * 100
-        return {idx.strftime("%Y-%m-%d"): round(float(val), 2) for idx, val in pct.items() if pd.notna(val)}
+        prev_fri_date = datetime.strptime(prev_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+        this_fri_date = datetime.strptime(this_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+        return {
+            h["date"]: round(h["change_pct"], 2)
+            for h in fetch_naver_index_history("KOSPI", days=20)
+            if prev_fri_date <= h["date"] <= this_fri_date
+        }
     except Exception as e:
         print(f"  [코스피 일별등락] 수집 실패: {e}")
         return {}

@@ -87,6 +87,45 @@ def fetch_naver_market_listing(market: str):
     return pd.DataFrame(rows)
 
 
+def fetch_naver_index_history(index: str, days: int = 30) -> list:
+    """네이버 모바일 API로 지수 일별 종가·등락률 조회 (FDR 지수 의존 제거).
+
+    2026-09-10 실사고: FDR의 지수 데이터(KS11·KQ11)가 2026-09-08부터 갱신을
+    멈췄다(개별 종목은 정상 — 지수 경로만 고장). FDR 0.9.202가 이미 PyPI
+    최신이라 버전을 올려 고칠 수도 없고, 한국 IP에서도 동일해 KRX 차단 같은
+    지역 문제도 아니다. kr_daily는 이 때문에 발행 날짜가 09-07에 고착돼
+    9월 8일·9일 리포트가 둘 다 "9월 7일"로 나갔고, kr_weekly는 주간 일별
+    등락률 표가 통째로 틀어질 상황이었다.
+
+    fetch_naver_market_listing()이 전종목 목록에서 KRX 의존을 걷어낸 것과
+    같은 처방을 지수에 적용한다. 등락률은 우리가 계산하지 않고 네이버가 준
+    값을 그대로 쓴다 — 종가와 등락률이 한 행에 묶여 있어 어긋날 수 없다.
+
+    Args:
+        index: "KOSPI" 또는 "KOSDAQ"
+        days:  가져올 거래일 수 (네이버 pageSize, 1회 요청 상한 있음)
+    Returns:
+        과거→최신 순 [{"date": "YYYY-MM-DD", "close": float, "change_pct": float}]
+    """
+    resp = fetch_with_retry(
+        f"https://m.stock.naver.com/api/index/{index}/price",
+        params={"pageSize": days, "page": 1},
+        headers=NAVER_HEADERS, timeout=10,
+    )
+    out = []
+    for r in resp.json():
+        try:
+            out.append({
+                "date":       r["localTradedAt"],
+                "close":      float(str(r["closePrice"]).replace(",", "")),
+                "change_pct": float(str(r["fluctuationsRatio"]).replace(",", "")),
+            })
+        except (KeyError, ValueError, TypeError):
+            continue
+    out.sort(key=lambda x: x["date"])          # 네이버는 최신순 → 과거순으로 뒤집는다
+    return out
+
+
 _WEEKDAYS_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 _KANJI_RE = re.compile(r"[㐀-䶿一-鿿豈-﫿]")
