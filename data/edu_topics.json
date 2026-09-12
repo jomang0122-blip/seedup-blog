@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 87,
-    "published_count": 29,
-    "last_updated": "2026-09-06"
+    "published_count": 30,
+    "last_updated": "2026-09-12"
   },
   "topics": [
     {
@@ -644,9 +644,9 @@
         "부채를 많이 써서 ROE가 높아진 경우(레버리지 효과)는 진정한 수익성 개선이 아니므로 ROA와 함께 확인해야 한다",
         "PBR = ROE × PER 관계가 성립하므로, ROE가 높은 기업은 PBR도 높게 평가받는 경향이 있다"
       ],
-      "published": false,
-      "published_at": "2026-07-25",
-      "post_url": "https://www.seedup-invest.com/2026/07/roe-roa.html",
+      "published": true,
+      "published_at": "2026-09-12",
+      "post_url": "https://www.seedup-invest.com/2026/09/roe-roa.html",
       "format": "개념정의형"
     },
     {
