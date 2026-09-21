@@ -225,7 +225,7 @@ def _build_prompt(data: dict, prev_issues: list = None) -> str:
             f"{sign}{abs(kosdaq['change']):.2f}pt ({kosdaq['change_pct']:+.2f}%)"
         )
 
-    has_stocks = bool(data.get("top_gainers") or data.get("top_losers"))
+    has_stocks = _section_availability(data)["오늘 시장의 특징주"]
     stocks_skip_note = (
         "\n⚠️ 특징주 데이터 없음 → ### 💥 2. 오늘 시장의 특징주 소제목 포함 해당 섹션 전체 완전 삭제. 텍스트 한 줄도 출력 금지."
         if not has_stocks
@@ -515,6 +515,15 @@ def _strip_code_fences(text: str) -> str:
 
 # 프롬프트의 "레이아웃 구조 고정"(항상 존재해야 하는 섹션만) 마커 —
 # 뉴스기반 특징주·관련공시·시가총액표는 데이터 유무에 따라 조건부 생략되므로 제외.
+# ⚠️ 2026-09-19 kr_weekly 실사고로 정정: 위 "제외" 목록에 실수로 안 넣었던
+# "오늘 시장의 특징주"·"상승 특징주"·"하락 특징주" 세 섹션도 사실은 조건부다 —
+# has_stocks가 False면 stocks_skip_note가 "### 💥 2. 오늘 시장의 특징주 섹션
+# 전체 완전 삭제"를 지시하는데, 이 목록은 항상 필수로 요구했다. top_gainers/
+# top_losers를 만드는 데이터 소스가 죽으면 kr_weekly와 똑같이(절대 채워질 수
+# 없는 섹션을 3회 재생성) 발행이 중단된다. kr_daily는 매일 도는 잡이라 kr_weekly
+# 보다 위험도가 높아, 사고가 나기 전에 같은 처방을 미리 적용한다.
+# 이 상수는 "전체 후보 목록"으로만 쓰고, 검증에는 required_sections_for()가
+# 데이터 가용성을 반영해 걸러낸 목록을 쓴다.
 KR_DAILY_REQUIRED_SECTIONS = [
     ("시장 지표 종합",         "📊 1."),
     ("국내 증시 마감 지수",     "국내 증시 마감 지수"),
@@ -524,6 +533,28 @@ KR_DAILY_REQUIRED_SECTIONS = [
     ("하락 특징주",            "📉 하락 특징주"),
     ("다음 거래일 전망",       "🔮 3."),
 ]
+
+# 이름은 위 목록의 첫 번째 원소와 정확히 일치해야 한다. _build_prompt()도 이
+# 함수로 판정해 "생략 지시"와 "필수 목록"이 같은 소스에서 나오게 한다.
+def _section_availability(data: dict) -> dict:
+    has_stocks = bool(data.get("top_gainers") or data.get("top_losers"))
+    return {
+        "오늘 시장의 특징주": has_stocks,
+        "상승 특징주":        has_stocks,
+        "하락 특징주":        has_stocks,
+    }
+
+
+def required_sections_for(data: dict) -> list:
+    """이 데이터로 실제 채울 수 있는 섹션만 남긴 필수 목록.
+
+    main.py의 assert_structure_complete()는 이 반환값을 써야 한다 — 정적
+    KR_DAILY_REQUIRED_SECTIONS를 그대로 쓰면 특징주 데이터가 없는 날 발행이
+    중단된다(2026-09-19 kr_weekly와 동일 계열 사고).
+    """
+    avail = _section_availability(data)
+    return [(name, marker) for name, marker in KR_DAILY_REQUIRED_SECTIONS
+            if avail.get(name, True)]
 
 
 def _build_labels(data: dict) -> list:
@@ -617,6 +648,7 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
         raw = extract_text(message)
         result = _parse_response(raw, date=date, data=data)
         result["labels"] = _build_labels(data)
+        result["required_sections"] = required_sections_for(data)
         print(f"  [작성] 제목: {result['title']}")
         print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
 

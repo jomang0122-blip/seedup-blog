@@ -20,6 +20,7 @@ from shared.utils import (
     fetch_with_retry,
     fetch_naver_market_listing,
     fetch_naver_index_history,
+    fetch_naver_investor_trend,
 )
 
 KST = pytz.timezone("Asia/Seoul")
@@ -102,48 +103,26 @@ def get_index_data_weekly(this_fri_str: str, prev_fri_str: str) -> dict:
 _WEEKDAY_KR = ["월", "화", "수", "목", "금", "토", "일"]
 
 
-def get_market_investor_trend_weekly(this_fri_str: str) -> list:
-    """네이버 investorDealTrendDay.naver — KOSPI 시장 전체 일별 개인/외국인/기관 순매수(원 단위).
-    한 번의 요청으로 최근 여러 거래일치를 함께 반환 (일자별 개별 수집 불필요).
+def get_market_investor_trend_weekly(this_fri_str: str, prev_fri_str: str) -> list:
+    """지수 시장 전체 일별 개인/외국인/기관 순매수(원 단위) — 이번 주(금~금) 거래일.
+
+    ⚠️ 2026-09-19 실사고로 교체됨. 기존 desktop 페이지(finance.naver.com/sise/
+    investorDealTrendDay.naver)가 HTTP 410 Gone으로 폐쇄됐다. 이 데이터가 없으면
+    kr_weekly는 필수 섹션 구조 검증에서 3회 재생성 끝에 발행이 중단되는데
+    (크레딧 3배 소모), 이번 실패가 그대로 그 경로였다.
+
+    거래일 목록은 지수 시세(이미 검증된 fetch_naver_index_history)에서 구하고,
+    각 날짜의 수급은 shared/utils.fetch_naver_investor_trend()로 하루씩 받는다
+    (새 모바일 API는 desktop 페이지와 달리 날짜 하나당 값 하나만 준다).
     """
+    prev_fri_date = datetime.strptime(prev_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
+    this_fri_date = datetime.strptime(this_fri_str, "%Y%m%d").strftime("%Y-%m-%d")
     try:
-        resp = fetch_with_retry(
-            "https://finance.naver.com/sise/investorDealTrendDay.naver",
-            params={"bizdate": this_fri_str, "sosok": "", "page": 1},
-            headers=_NAVER_HEADERS, timeout=10,
-        )
-        resp.encoding = "euc-kr"
-        soup = BeautifulSoup(resp.text, "lxml")
-        table = soup.find("table", {"class": "type_1"})
-        if not table:
-            return []
-
-        def _num(td):
-            raw = td.get_text(strip=True).replace(",", "")
-            try:
-                return int(raw)
-            except ValueError:
-                return None
-
-        rows = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 4:
-                continue
-            date_text = tds[0].get_text(strip=True)
-            if not re.match(r"^\d{2}\.\d{2}\.\d{2}$", date_text):
-                continue
-            individual, foreign, institution = _num(tds[1]), _num(tds[2]), _num(tds[3])
-            if individual is None or foreign is None or institution is None:
-                continue
-            yy, mm, dd = date_text.split(".")
-            rows.append({
-                "date":        f"20{yy}-{mm}-{dd}",
-                "individual":  individual * 100_000_000,
-                "foreign":     foreign * 100_000_000,
-                "institution": institution * 100_000_000,
-            })
-        rows.sort(key=lambda r: r["date"])
+        trading_days = [
+            h["date"].replace("-", "") for h in fetch_naver_index_history("KOSPI", days=20)
+            if prev_fri_date < h["date"] <= this_fri_date
+        ]
+        rows = fetch_naver_investor_trend("KOSPI", trading_days)
         print(f"  [시장수급] {len(rows)}개 거래일: {[r['date'] for r in rows]}")
         return rows
     except Exception as e:
@@ -181,7 +160,7 @@ def build_market_trend_weekly(this_fri_str: str, prev_fri_str: str) -> list:
     """일별 투자자 순매수 + 코스피 등락률 결합 — 이번 주(이전 금요일 초과 ~ 이번 금요일) 거래일만.
     [{date, weekday, individual, foreign, institution, kospi_pct}]
     """
-    trend = get_market_investor_trend_weekly(this_fri_str)
+    trend = get_market_investor_trend_weekly(this_fri_str, prev_fri_str)
     kospi_pct = get_kospi_daily_pct_weekly(this_fri_str, prev_fri_str)
     out = []
     for r in trend:

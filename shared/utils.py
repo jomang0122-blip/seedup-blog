@@ -465,3 +465,49 @@ def md_to_html(text: str) -> str:
         return str(soup)
     except ImportError:
         return text
+
+
+def fetch_naver_investor_trend(index: str, dates: list) -> list:
+    """지수 시장 전체 일별 개인/외국인/기관 순매수(원 단위) — 지정한 날짜들만 조회.
+
+    2026-09-19 실사고: 기존 desktop 페이지(finance.naver.com/sise/
+    investorDealTrendDay.naver)가 HTTP 410 Gone으로 완전히 폐쇄됐다. kr_weekly가
+    이 데이터 없이는 발행할 수 없는 구조(필수 섹션)라, 3회 재생성 끝에 발행이
+    통째로 중단됐다(크레딧만 3배 소모). 같은 사고를 막기 위해 데이터 소스를
+    모바일 API로 교체하고, 발행 구조 자체도 이 함수 하나에 의존하지 않도록
+    main.py 쪽에서 "데이터 없으면 섹션 생략" 처리를 별도로 강화한다(2부 작업).
+
+    새 엔드포인트(m.stock.naver.com/api/index/{index}/trend)는 desktop 페이지와
+    달리 날짜 하나당 값 하나만 주므로, 필요한 날짜 수만큼 개별 요청한다
+    (kr_weekly는 5일, kr_monthly는 최대 약 22일 — 요청 수가 크게 늘지 않는다).
+
+    Args:
+        index: "KOSPI" 또는 "KOSDAQ"
+        dates: 조회할 날짜 목록, "YYYYMMDD" 형식
+    Returns:
+        조회 성공한 날짜만 date 오름차순
+        [{"date": "YYYY-MM-DD", "individual": int, "foreign": int, "institution": int}]
+        (단위: 원 — 응답은 억원이라 1억을 곱해 맞춘다, 기존 반환 형식과 동일)
+    """
+    out = []
+    for d in dates:
+        try:
+            resp = fetch_with_retry(
+                f"https://m.stock.naver.com/api/index/{index}/trend",
+                params={"bizdate": d}, headers=NAVER_HEADERS, timeout=10,
+            )
+            r = resp.json()
+            individual   = int(str(r["personalValue"]).replace(",", "").replace("+", ""))
+            foreign      = int(str(r["foreignValue"]).replace(",", "").replace("+", ""))
+            institution  = int(str(r["institutionalValue"]).replace(",", "").replace("+", ""))
+        except Exception as e:
+            print(f"  [수급] {d} 조회 실패: {e}")
+            continue
+        out.append({
+            "date":        f"{d[:4]}-{d[4:6]}-{d[6:]}",
+            "individual":  individual * 100_000_000,
+            "foreign":     foreign * 100_000_000,
+            "institution": institution * 100_000_000,
+        })
+    out.sort(key=lambda r: r["date"])
+    return out

@@ -31,6 +31,7 @@ from shared.utils import (
     fetch_naver_index_history,
     fetch_naver_index_amount,
     fetch_naver_fx_history,
+    fetch_naver_investor_trend,
 )
 
 KST = pytz.timezone("Asia/Seoul")
@@ -266,72 +267,34 @@ def get_prev_month_volatility(month_start_str: str) -> dict:
         return {"volatility": None, "trading_days": 0}
 
 
-def get_investor_trend_monthly(month_end_str: str) -> dict:
-    """월간 투자자별 순매수 합계 (kr_weekly의 일별 수급 함수를 재사용해 월초~월말 합산).
+def get_investor_trend_monthly(month_start_str: str, month_end_str: str) -> dict:
+    """월간 투자자별 순매수 합계 (하루씩 조회해 월초~월말 합산).
 
-    kr_weekly.get_market_investor_trend_weekly는 요청 시점 기준 최근 거래일 목록을
-    반환하는 방식이라, 월말 기준으로 한 번 호출하면 그 달 전체 거래일이 포함된다는
-    보장이 없다(네이버 페이지가 보여주는 최근 거래일 수에 의존). 페이지를 여러 장
-    조회해 월초~월말 범위를 채운다.
+    ⚠️ 2026-09-19 실사고로 교체됨. 기존 desktop 페이지(finance.naver.com/sise/
+    investorDealTrendDay.naver)가 HTTP 410 Gone으로 폐쇄됐다(kr_weekly가 같은
+    함수를 쓰다 발행 중단까지 갔다). 거래일 목록은 지수 시세(이미 검증된
+    fetch_naver_index_history)에서 구하고, 각 날짜의 수급은
+    shared/utils.fetch_naver_investor_trend()로 받는다 — 새 모바일 API는
+    desktop 페이지와 달리 날짜 하나당 값 하나만 주기 때문.
+
+    한 달(약 20영업일)을 하루씩 조회해도 페이지당 6행씩 3-4페이지 넘기던
+    기존 방식과 요청 수가 비슷하다.
     """
-    from bs4 import BeautifulSoup
-    month_start = month_end_str[:6] + "01"
-    all_rows = []
     try:
-        for page in range(1, 4):  # 페이지당 약 20거래일 — 3페이지면 한 달 이상 커버
-            resp = fetch_with_retry(
-                "https://finance.naver.com/sise/investorDealTrendDay.naver",
-                params={"bizdate": month_end_str, "sosok": "", "page": page},
-                headers=_NAVER_HEADERS, timeout=10,
-            )
-            resp.encoding = "euc-kr"
-            soup = BeautifulSoup(resp.text, "lxml")
-            table = soup.find("table", {"class": "type_1"})
-            if not table:
-                break
-
-            def _num(td):
-                raw = td.get_text(strip=True).replace(",", "")
-                try:
-                    return int(raw)
-                except ValueError:
-                    return None
-
-            page_has_target_month = False
-            for tr in table.find_all("tr"):
-                tds = tr.find_all("td")
-                if len(tds) < 4:
-                    continue
-                date_text = tds[0].get_text(strip=True)
-                if not re.match(r"^\d{2}\.\d{2}\.\d{2}$", date_text):
-                    continue
-                yy, mm, dd = date_text.split(".")
-                date_full = f"20{yy}{mm}{dd}"
-                if not (month_start <= date_full <= month_end_str):
-                    if date_full < month_start:
-                        continue
-                    continue
-                page_has_target_month = True
-                individual, foreign, institution = _num(tds[1]), _num(tds[2]), _num(tds[3])
-                if individual is None or foreign is None or institution is None:
-                    continue
-                all_rows.append({
-                    "date": f"20{yy}-{mm}-{dd}",
-                    "individual": individual * 100_000_000,
-                    "foreign": foreign * 100_000_000,
-                    "institution": institution * 100_000_000,
-                })
-            # 이 페이지에 목표 달 데이터가 전혀 없고 이미 그 이전 달까지 갔으면 중단
-            if not page_has_target_month and all_rows:
-                break
+        trading_days = [
+            h["date"].replace("-", "") for h in fetch_naver_index_history("KOSPI", days=_MONTH_LOOKBACK_DAYS)
+            if month_start_str <= h["date"].replace("-", "") <= month_end_str
+        ]
+        rows = fetch_naver_investor_trend("KOSPI", trading_days)
     except Exception as e:
         print(f"  [월간수급] 수집 실패: {e}")
+        rows = []
 
     total = {
-        "individual": sum(r["individual"] for r in all_rows),
-        "foreign": sum(r["foreign"] for r in all_rows),
-        "institution": sum(r["institution"] for r in all_rows),
-        "days_count": len(all_rows),
+        "individual": sum(r["individual"] for r in rows),
+        "foreign": sum(r["foreign"] for r in rows),
+        "institution": sum(r["institution"] for r in rows),
+        "days_count": len(rows),
     }
     return total
 
@@ -442,7 +405,7 @@ def collect_all() -> dict:
     fx = get_fx_monthly(month_start, month_end)
     stock_data = get_top_stocks_weekly(month_end, month_start)  # 기간만 월 단위로 재사용
     rank_changes = get_top10_rank_changes(month_start, month_end)
-    investor_trend = get_investor_trend_monthly(month_end)
+    investor_trend = get_investor_trend_monthly(month_start, month_end)
     news = get_news_monthly(month_label)
 
     return {

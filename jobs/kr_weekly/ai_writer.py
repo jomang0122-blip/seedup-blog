@@ -4,8 +4,15 @@ from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, fmt_amoun
 
 client = Anthropic()
 
-# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체 — kr_weekly는 조건부 생략 섹션이
-# 없어 8개 모두 필수 (2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로 적용).
+# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체.
+# ⚠️ 2026-09-19 실사고로 정정: "조건부 생략 섹션이 없다"는 위 주석은 틀렸다 —
+# 코스피 투자자별 매매동향·시가총액 TOP10 두 섹션은 데이터가 없으면 build_prompt()가
+# 프롬프트에서 아예 생략하라고 지시하는데, 이 고정 목록은 그 사실을 모른 채 항상
+# 8개 전부를 요구했다. 네이버 수급 API가 HTTP 410으로 죽자 "데이터 없음 → 섹션
+# 생략"과 "8개 전부 필수"가 정면으로 부딪혀, 절대 채워질 수 없는 섹션을 두고
+# 3회 재생성 끝에 발행이 중단됐다(크레딧 3배 소모).
+# 이 상수는 "전체 후보 목록"으로만 쓰고, 실제 검증에는 아래 required_sections_for()가
+# 데이터 가용성을 반영해 걸러낸 목록을 쓴다.
 KR_WEEKLY_REQUIRED_SECTIONS = [
     ("이번 주 핵심 요약",           "이번 주 핵심 요약"),
     ("주간 시장 지표",             "📊 주간 시장 지표"),
@@ -16,6 +23,27 @@ KR_WEEKLY_REQUIRED_SECTIONS = [
     ("이번 주를 돌아보며",          "💬 이번 주를 돌아보며"),
     ("다음 주 전망",              "🔮 다음 주 전망"),
 ]
+
+# 데이터가 없으면 build_prompt()가 생략을 지시하는 섹션들 — 이름은 위 목록의
+# 첫 번째 원소와 정확히 일치해야 한다. build_prompt()도 이 함수로 판정해
+# "생략 지시"와 "필수 목록"이 같은 소스에서 나오게 한다(드리프트 원천 차단).
+def _section_availability(data: dict) -> dict:
+    return {
+        "코스피 투자자별 매매동향": bool(data.get("market_trend")),
+        "시가총액 TOP10 주간 성적": bool(data.get("top_gainers") or data.get("top_losers")),
+    }
+
+
+def required_sections_for(data: dict) -> list:
+    """이 데이터로 실제 채울 수 있는 섹션만 남긴 필수 목록.
+
+    main.py의 assert_structure_complete()는 이 반환값을 써야 한다 — 정적
+    KR_WEEKLY_REQUIRED_SECTIONS를 그대로 쓰면 데이터 없는 섹션까지 요구해
+    2026-09-19와 같은 사고가 재발한다.
+    """
+    avail = _section_availability(data)
+    return [(name, marker) for name, marker in KR_WEEKLY_REQUIRED_SECTIONS
+            if avail.get(name, True)]
 
 
 def _build_index_block(data: dict) -> str:
@@ -157,7 +185,8 @@ def build_prompt(data: dict, prev_issues: list = None) -> str:
 
     market_trend      = data.get("market_trend", [])
     market_trend_block = _build_market_trend_block(market_trend)
-    has_market_trend  = bool(market_trend)
+    _avail = _section_availability(data)
+    has_market_trend  = _avail["코스피 투자자별 매매동향"]
     investor_data_sec = f"\n[코스피 시장 전체 일별 투자자별 순매수 (억원 단위, 개인/외국인/기관)]\n{market_trend_block}\n" if has_market_trend else ""
     investor_prompt_sec = """
 b) ### 💰 이번 주 코스피 투자자별 매매동향
@@ -169,7 +198,7 @@ b) ### 💰 이번 주 코스피 투자자별 매매동향
      (예: 기관 순매수가 강했던 날 코스피 상승폭이 확대됐는지 등, 데이터에서 직접 드러나는 패턴만 서술)
 """ if has_market_trend else ""
 
-    has_stocks = bool(data.get("top_gainers") or data.get("top_losers"))
+    has_stocks = _avail["시가총액 TOP10 주간 성적"]
     stocks_skip_note = (
         "\n⚠️ 시총 TOP10 데이터 없음 → 아래 c) 시가총액 TOP10 주간 성적 섹션 전체 생략. 소제목 포함 텍스트 한 줄도 출력 금지. 종목명 임의 생성 절대 금지."
         if not has_stocks else ""
@@ -319,5 +348,6 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
     raw    = extract_text(message)
     result = _parse_response(raw, data.get("week_end", ""))
     result["labels"] = _build_labels(data)  # AI의 LABELS: 출력 대신 Python 고정 라벨로 덮어쓰기
+    result["required_sections"] = required_sections_for(data)
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
     return result

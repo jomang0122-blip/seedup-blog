@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from data_collector import collect_all
-from ai_writer import generate_post, US_DAILY_REQUIRED_SECTIONS
+from ai_writer import generate_post
 from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
 from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_structure_complete, assert_no_english_holiday_name
 from shared.blog_publisher import publish_post, check_today_post
@@ -306,7 +306,7 @@ def run(dry_run: bool = False, force: bool = False):
             sys.exit(1)
 
         try:
-            assert_structure_complete(candidate["content"], US_DAILY_REQUIRED_SECTIONS, "미국증시 데일리")
+            assert_structure_complete(candidate["content"], candidate["required_sections"], "미국증시 데일리")
         except ValueError as e:
             log(f"  [경고] {e}")
             if attempt < 2:

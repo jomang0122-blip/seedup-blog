@@ -4,8 +4,14 @@ from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_col
 
 client = Anthropic()
 
-# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체 — us_weekly는 조건부 생략 섹션이
-# 없어 전부 필수 (2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로 적용).
+# 프롬프트 "구조(반드시 이 순서로)"의 섹션 전체.
+# ⚠️ 2026-09-19 kr_weekly 실사고로 정정: "조건부 생략 섹션이 없다"는 아래 원래
+# 주석은 틀렸다 — 주간 급등락 TOP3·이번 주 핵심 뉴스 두 섹션은 데이터가 없으면
+# build_prompt()가 프롬프트에서 아예 생략하라고 지시하는데, 이 목록은 그 사실을
+# 모른 채 항상 7개 전부를 요구했다. 데이터 소스가 죽으면 절대 채워질 수 없는
+# 섹션을 두고 3회 재생성 끝에 발행이 중단된다(kr_weekly 실제 발생 사례와 동일).
+# 이 상수는 "전체 후보 목록"으로만 쓰고, 검증에는 required_sections_for()가
+# 데이터 가용성을 반영해 걸러낸 목록을 쓴다.
 US_WEEKLY_REQUIRED_SECTIONS = [
     ("이번 주 미국증시 핵심",      "이번 주 미국증시 핵심"),
     ("주간 3대 지수 성적",        "📊 주간 3대 지수 성적"),
@@ -15,6 +21,26 @@ US_WEEKLY_REQUIRED_SECTIONS = [
     ("이번 주를 돌아보며",         "💬 이번 주를 돌아보며"),
     ("다음 주 전망",             "🔮 다음 주 전망"),
 ]
+
+# 이름은 위 목록의 첫 번째 원소와 정확히 일치해야 한다. build_prompt()도 이
+# 함수로 판정해 "생략 지시"와 "필수 목록"이 같은 소스에서 나오게 한다.
+def _section_availability(data: dict) -> dict:
+    return {
+        "주간 급등락 TOP3":      bool(data.get("top_movers")),
+        "이번 주 핵심 뉴스 & 이슈": bool(data.get("news")),
+    }
+
+
+def required_sections_for(data: dict) -> list:
+    """이 데이터로 실제 채울 수 있는 섹션만 남긴 필수 목록.
+
+    main.py의 assert_structure_complete()는 이 반환값을 써야 한다 — 정적
+    US_WEEKLY_REQUIRED_SECTIONS를 그대로 쓰면 급등락·뉴스 데이터가 없는 주에
+    발행이 중단된다(2026-09-19 kr_weekly와 동일 계열 사고).
+    """
+    avail = _section_availability(data)
+    return [(name, marker) for name, marker in US_WEEKLY_REQUIRED_SECTIONS
+            if avail.get(name, True)]
 
 
 def _fmt_vol(vol: int) -> str:
@@ -145,8 +171,9 @@ def build_prompt(data: dict, prev_issues: list = None) -> str:
     movers_block  = _build_movers_block(data.get("top_movers", []))
     news_block    = _build_news_block(data.get("news", []))
 
-    has_movers = bool(data.get("top_movers"))
-    has_news   = bool(data.get("news"))
+    _avail = _section_availability(data)
+    has_movers = _avail["주간 급등락 TOP3"]
+    has_news   = _avail["이번 주 핵심 뉴스 & 이슈"]
 
     movers_skip_note = (
         "\n⚠️ 급등락 종목 데이터 없음 → #### 💥 주간 급등락 TOP3 소제목 포함 해당 하위섹션 전체 삭제. 텍스트 한 줄도 출력 금지."
@@ -313,5 +340,6 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
     raw = extract_text(message)
     result = _parse_response(raw, data.get("week_end", ""))
     result["labels"] = _build_labels(data)  # AI의 LABELS: 출력 대신 Python 고정 라벨로 덮어쓰기
+    result["required_sections"] = required_sections_for(data)
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
     return result

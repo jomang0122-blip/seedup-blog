@@ -4,15 +4,40 @@ from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_col
 
 client = Anthropic()
 
-# 프롬프트 "구조(반드시 이 순서로)"의 항상 존재하는 섹션만 — 급등락 종목·경제지표
-# 섹션은 데이터 없으면 조건부 생략되므로 제외 (kr_daily와 동일한 목적,
-# 2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로 us_daily에도 적용).
+# 프롬프트 "구조(반드시 이 순서로)"의 항상 존재하는 섹션만 — 급등락 종목(오늘의
+# 주목 종목 안의 하위섹션)·경제지표 섹션은 데이터 없으면 조건부 생략되므로 제외
+# (kr_daily와 동일한 목적, 2026-08-20 kr_daily 실사고 이후 5개 job 전수조사로
+# us_daily에도 적용).
+# ⚠️ 2026-09-19 kr_weekly 실사고로 정정: 위에서 "제외했다"던 목록에 실제로는
+# "오늘의 핵심 뉴스"가 빠져 있었다 — news_skip_note가 뉴스 데이터 없으면 이
+# 섹션 전체를 삭제하라고 지시하는데, 이 목록은 항상 필수로 요구했다.
+# (급등락 종목은 "오늘의 주목 종목" 안의 하위섹션(####)이라 마커가 다르므로
+# 실제로는 문제 없음 — 부모 섹션은 그대로 남는다.)
 US_DAILY_REQUIRED_SECTIONS = [
     ("오늘 미국증시 핵심", "오늘 미국증시 핵심"),
     ("3대 지수",          "📊 3대 지수"),
     ("오늘의 주목 종목",    "🔥 오늘의 주목 종목"),
     ("오늘의 핵심 뉴스",    "📰 오늘의 핵심 뉴스"),
 ]
+
+# 이름은 위 목록의 첫 번째 원소와 정확히 일치해야 한다. build_prompt()도 이
+# 함수로 판정해 "생략 지시"와 "필수 목록"이 같은 소스에서 나오게 한다.
+def _section_availability(data: dict) -> dict:
+    return {
+        "오늘의 핵심 뉴스": bool(data.get("news")),
+    }
+
+
+def required_sections_for(data: dict) -> list:
+    """이 데이터로 실제 채울 수 있는 섹션만 남긴 필수 목록.
+
+    main.py의 assert_structure_complete()는 이 반환값을 써야 한다 — 정적
+    US_DAILY_REQUIRED_SECTIONS를 그대로 쓰면 뉴스 데이터가 없는 날 발행이
+    중단된다(2026-09-19 kr_weekly와 동일 계열 사고).
+    """
+    avail = _section_availability(data)
+    return [(name, marker) for name, marker in US_DAILY_REQUIRED_SECTIONS
+            if avail.get(name, True)]
 
 
 def _fmt_vol(vol: int) -> str:
@@ -142,7 +167,7 @@ def build_prompt(data: dict) -> str:
     time_rule_block = us_time_rule_block(us_date)
 
     has_movers   = bool(data.get("top_movers"))
-    has_news     = bool(news_list)
+    has_news     = _section_availability(data)["오늘의 핵심 뉴스"]
     has_economic = bool(data.get("economic_calendar"))
     # 뉴스 헤드라인에 경제지표/연준 관련 키워드가 있는지 — 있어야만 뉴스 기반 서술 시도,
     # 없으면 "확인 불가" 같은 군더더기 문장 없이 섹션 자체를 스킵한다.
@@ -377,5 +402,6 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6") -> dict:
     )
     raw = extract_text(message)
     result = _parse_response(raw, data.get("us_date", ""))
+    result["required_sections"] = required_sections_for(data)
     print(f"  [작성] 글자수: {result['char_count']}자  라벨: {result['labels']}")
     return result
