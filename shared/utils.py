@@ -88,7 +88,6 @@ def fetch_naver_market_listing(market: str):
 
 
 _NAVER_INDEX_PAGE_SIZE = 60   # pageSize 100 이상은 HTTP 400 (실측, 2026-09-10)
-_NAVER_AMOUNT_MAX_PAGES = 40  # 페이지당 6행 — 폭주 방지 상한
 
 
 def fetch_naver_index_history(index: str, days: int = 30) -> list:
@@ -147,57 +146,72 @@ def fetch_naver_index_history(index: str, days: int = 30) -> list:
     return out[-days:] if len(out) > days else out
 
 
-def fetch_naver_index_amount(index: str, days: int = 45) -> dict:
-    """지수 일별 거래대금 — {"YYYY-MM-DD": 원 단위 float}
+def fetch_naver_index_trading_value_today(index: str) -> float | None:
+    """지수 당일 누적거래대금(원 단위) — 오늘 하루치만 조회 가능.
 
-    ⚠️ 단위 주의: 네이버 표는 **백만원** 단위로 표시하는데, 이 함수는 **원**으로
-    환산해 반환한다. 교체 이전 FDR의 Amount 컬럼이 원 단위였고 kr_monthly의
-    ai_writer가 `avg_amount / 1e12`로 조원을 만들기 때문 — 백만원을 그대로
-    돌려주면 거래대금이 100만분의 1로 표시된다.
+    ⚠️ 2026-09-19 이후 확인: 기존에 쓰던 일별 거래대금 표
+    (finance.naver.com/sise/sise_index_day.naver)가 HTTP 410로 영구
+    폐쇄됐다. 대체로 찾아본 네이버 모바일 API들(/price, /trend, /basic,
+    /integration, siseJson.naver 등) 중 과거 날짜를 지정해 거래대금을
+    소급 조회할 수 있는 곳은 하나도 없었다 — /integration의 totalInfos만
+    "오늘 하루치" 누적거래대금을 준다.
 
-    지수 시세 JSON API(fetch_naver_index_history)는 시가·고가·저가·종가와
-    등락률만 주고 거래대금이 없다. 월간 결산의 "일평균 거래대금(전월 대비)"은
-    총괄이 2026-09-01에 직접 요청해 넣은 지표라 뺄 수 없어, 거래대금만
-    네이버 금융의 일별 지수 표(HTML)에서 따로 가져온다.
+    그래서 매일(kr_daily) 이 함수로 오늘 값을 찍어 record_trading_value_snapshot()
+    으로 로컬에 쌓고, kr_monthly는 load_trading_value_history()로 그 누적
+    로그에서 당월·전월분만 꺼내 쓰는 방식으로 바꿨다. 과거로 소급은
+    불가능해 전환 시점 이전 달은 "데이터 없음"으로 조건부 생략된다
+    (2026-10-06, 9월 결산에서 이 거래대금 조회 실패가 월중고점·저점·YTD
+    까지 통째로 날려버린 사고 이후 수정 — 원인은 try/except가 묶여
+    있었던 것이라 shared/utils.py 교체와 별개로 kr_monthly 쪽도 분리함).
 
-    종가·등락률까지 여기서 같이 받지 않는 이유: 데일리·위클리가 이미 JSON
-    API로 검증돼 있는데 월간만 다른 경로를 쓰면 또 출처가 갈라진다. 거래대금은
-    날짜를 키로 병합하므로 이번 사고처럼 "위치가 어긋나 값이 뒤바뀌는" 위험은
-    없다.
-
-    Args:
-        index: "KOSPI" 또는 "KOSDAQ"
-        days:  가져올 거래일 수 (페이지당 6행)
+    Returns:
+        원 단위 float, 조회·파싱 실패 시 None(호출부가 "데이터 없음"으로 처리).
     """
-    import re
-
-    out = {}
-    page = 1
-    while len(out) < days and page <= _NAVER_AMOUNT_MAX_PAGES:
+    try:
         resp = fetch_with_retry(
-            "https://finance.naver.com/sise/sise_index_day.naver",
-            params={"code": index, "page": page},
+            f"https://m.stock.naver.com/api/index/{index}/integration",
             headers=NAVER_HEADERS, timeout=10,
         )
-        resp.encoding = "euc-kr"
-        found = 0
-        for tr in re.findall(r"<tr>(.*?)</tr>", resp.text, re.S):
-            tds = [re.sub(r"<[^>]+>", "", t).strip()
-                   for t in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
-            tds = [t for t in tds if t]
-            if len(tds) < 6 or not re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", tds[0]):
-                continue                       # 페이지 이동 링크 행 등은 건너뛴다
-            try:
-                # tds = [날짜, 체결가, 전일비, 등락률, 거래량(천주), 거래대금(백만원)]
-                out[tds[0].replace(".", "-")] = float(tds[5].replace(",", "")) * 1e6
-                found += 1
-            except ValueError:
-                continue
-        if not found:
-            break
-        page += 1
-        time.sleep(0.2)
-    return out
+        infos = resp.json().get("totalInfos", [])
+        raw = next((i["value"] for i in infos if i.get("code") == "accumulatedTradingValue"), None)
+        if raw is None:
+            return None
+        num = raw.replace(",", "").replace("백만", "").strip()
+        return float(num) * 1e6
+    except Exception:
+        return None
+
+
+def _trading_value_log_path():
+    from pathlib import Path
+    return Path(__file__).parent.parent / "data" / "kr_trading_value_log.json"
+
+
+def record_trading_value_snapshot(index: str, date_str: str, value: float) -> None:
+    """오늘 거래대금을 날짜별로 로컬에 누적 저장 (data/kr_trading_value_log.json)."""
+    import json
+    path = _trading_value_log_path()
+    path.parent.mkdir(exist_ok=True)
+    data = {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    data.setdefault(index, {})[date_str] = value
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_trading_value_history(index: str) -> dict:
+    """지수별 {날짜: 거래대금(원)} 누적 로그 로드. 파일·지수 없으면 빈 dict."""
+    import json
+    path = _trading_value_log_path()
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8")).get(index, {})
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def fetch_naver_fx_history(days: int = 45, code: str = "FX_USDKRW") -> list:

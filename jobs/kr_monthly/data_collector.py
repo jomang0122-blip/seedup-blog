@@ -29,7 +29,7 @@ get_top_stocks_weekly = _kr_weekly_dc.get_top_stocks_weekly
 from shared.utils import (
     fetch_with_retry,
     fetch_naver_index_history,
-    fetch_naver_index_amount,
+    load_trading_value_history,
     fetch_naver_fx_history,
     fetch_naver_investor_trend,
 )
@@ -143,7 +143,15 @@ def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
 
     "월간 +3.4%" 한 숫자만으로는 그 달에 지수가 어디까지 갔다 왔는지, 돈이 실제로
     들어왔는지(거래대금), 올해 전체에서 지금이 어디인지(YTD)를 알 수 없다.
-    모두 FDR이 이미 반환하는 컬럼(Close/Amount)으로 계산 — 신규 외부 소스 없음.
+
+    ⚠️ 2026-10-06 수정: 원래 월중고점·저점·YTD(hist 기반, 정상 작동)와 일평균
+    거래대금(amt 기반, 소스가 410로 죽음)이 같은 try/except 안에 있었다.
+    거래대금 조회가 실패하면 그 예외가 바로 위에서 이미 계산된 월중고점·저점·
+    YTD까지 통째로 날려버려서, 9월 결산에 거래대금뿐 아니라 저 셋도 전부
+    빠지는 사고가 났다(발행물에서 직접 확인). 이제 두 블록을 분리해 거래대금이
+    없어도 나머지는 그대로 나간다. 거래대금 자체는 과거 소급이 불가능한
+    소스로 바뀌어(load_trading_value_history 참고) 전환 시점 이전 달은
+    "데이터 없음"으로 조건부 생략된다.
     """
     out = {}
     start_dt = datetime.strptime(month_start_str, "%Y%m%d")
@@ -157,6 +165,7 @@ def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
     ytd_cut = f"{start_dt.year - 1}-12-31"
 
     for key, index in [("kospi", "KOSPI"), ("kosdaq", "KOSDAQ")]:
+        # 1) 월중 고점·저점·YTD — hist 소스는 멀쩡하니 이 블록은 독립적으로 성공/실패한다.
         try:
             # 연초 기준값까지 한 번에 받으려면 전년 말까지 거슬러 올라가야 한다
             # (네이버는 페이지당 60행 — fetch_naver_index_history가 페이징 처리)
@@ -174,19 +183,6 @@ def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
                 "month_range_pct": round((hi["close"] - lo["close"]) / lo["close"] * 100, 2),
             }
 
-            # 일평균 거래대금 (전월 대비) — 네이버 금융 일별 표(백만원 단위).
-            # 지수 시세 JSON API에는 거래대금이 없어 이 지표만 별도 소스를 쓴다.
-            amt = fetch_naver_index_amount(index, days=_MONTH_LOOKBACK_DAYS)
-            cur_amt = [v for d, v in amt.items() if start_date <= d <= end_date]
-            prev_amt = [v for d, v in amt.items() if prev_start_date <= d <= prev_last_date]
-            if cur_amt:
-                info["avg_amount"] = sum(cur_amt) / len(cur_amt)
-                if prev_amt:
-                    info["prev_avg_amount"] = sum(prev_amt) / len(prev_amt)
-                    info["amount_change_pct"] = round(
-                        (info["avg_amount"] - info["prev_avg_amount"]) / info["prev_avg_amount"] * 100, 2
-                    )
-
             # 연초 대비 누적(YTD) — 전년도 마지막 거래일 종가 대비 이번 달 말 종가
             ytd_rows = [h for h in hist if h["date"] <= ytd_cut]
             if ytd_rows:
@@ -196,7 +192,25 @@ def get_index_extra_monthly(month_start_str: str, month_end_str: str) -> dict:
 
             out[key] = info
         except Exception as e:
-            print(f"  [{key} 월간 부가지표] 수집 실패: {e}")
+            print(f"  [{key} 월중고점·저점·YTD] 수집 실패: {e}")
+            continue
+
+        # 2) 일평균 거래대금 (전월 대비) — 별도 블록. 실패해도 위 info는 이미 out에 들어가 있다.
+        try:
+            amt = load_trading_value_history(index)
+            cur_amt = [v for d, v in amt.items() if start_date <= d <= end_date]
+            prev_amt = [v for d, v in amt.items() if prev_start_date <= d <= prev_last_date]
+            if cur_amt:
+                out[key]["avg_amount"] = sum(cur_amt) / len(cur_amt)
+                if prev_amt:
+                    out[key]["prev_avg_amount"] = sum(prev_amt) / len(prev_amt)
+                    out[key]["amount_change_pct"] = round(
+                        (out[key]["avg_amount"] - out[key]["prev_avg_amount"]) / out[key]["prev_avg_amount"] * 100, 2
+                    )
+            else:
+                print(f"  [{key} 일평균 거래대금] 누적 로그에 이번 달 데이터 없음 — 생략")
+        except Exception as e:
+            print(f"  [{key} 일평균 거래대금] 수집 실패(생략, 나머지 지표는 유지): {e}")
     return out
 
 

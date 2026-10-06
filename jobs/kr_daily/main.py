@@ -18,7 +18,10 @@ load_dotenv()
 
 from data_collector import collect_all
 from ai_writer import generate_post
-from shared.utils import DISCLAIMER, md_to_html, apply_color_spans
+from shared.utils import (
+    DISCLAIMER, md_to_html, apply_color_spans,
+    fetch_naver_index_trading_value_today, record_trading_value_snapshot,
+)
 from shared.validator import validate_post, apply_corrections, apply_structural_fixes, assert_market_keywords, assert_structure_complete, assert_no_english_holiday_name, strip_ungrounded_dart_section
 from shared.blog_publisher import publish_post, check_today_post
 
@@ -313,6 +316,19 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
     if not data.get("kosdaq", {}).get("close"):
         log("  [오류] KOSDAQ 지수 누락 — 품질 게이트: 발행 중단")
         sys.exit(1)
+
+    log("▶ Step 1b: 거래대금 스냅샷 기록 (kr_monthly용 — 실패해도 발행은 계속)")
+    snap_date = data.get("date", datetime.today().strftime("%Y-%m-%d"))
+    for idx in ("KOSPI", "KOSDAQ"):
+        try:
+            value = fetch_naver_index_trading_value_today(idx)
+            if value is not None:
+                record_trading_value_snapshot(idx, snap_date, value)
+                log(f"  {idx} 거래대금 기록: {value/1e12:,.2f}조원")
+            else:
+                log(f"  [경고] {idx} 거래대금 조회 실패 — 이번 날짜는 건너뜀")
+        except Exception as e:
+            log(f"  [경고] {idx} 거래대금 스냅샷 실패(무시하고 계속): {e}")
 
     log("▶ Step 2: AI 블로그 포스팅 생성 + 검증 (반복서술·근거없는 창작 시 재생성, 최대 3회)")
     post = None

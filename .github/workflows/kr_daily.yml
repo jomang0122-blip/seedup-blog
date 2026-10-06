@@ -107,7 +107,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}.git
-          git add logs/*.json || true
+          git add logs/*.json data/kr_trading_value_log.json || true
           if git diff --staged --quiet; then
             echo "변경 없음 — 커밋 생략"
           else

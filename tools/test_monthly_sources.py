@@ -47,7 +47,9 @@ if "FinanceDataReader" not in sys.modules:
     sys.modules["FinanceDataReader"] = _stub
 
 from shared.utils import (  # noqa: E402
-    fetch_naver_index_history, fetch_naver_index_amount, fetch_naver_fx_history,
+    fetch_naver_index_history, fetch_naver_fx_history,
+    fetch_naver_index_trading_value_today, record_trading_value_snapshot,
+    load_trading_value_history,
 )
 
 import time  # noqa: E402
@@ -87,38 +89,36 @@ check("전년 12월까지 도달(YTD 기준값 확보 가능)",
       any(x["date"] <= "2025-12-31" for x in _deep),
       f"가장 오래된 날짜 {_deep[0]['date']}")
 
-print("\n[2] 거래대금 — 값과 단위")
-amt = fetch_naver_index_amount("KOSPI", days=45)
-check("거래대금 수집됨", len(amt) >= 40, f"{len(amt)}일")
-if amt:
-    latest = max(amt)
-    v = amt[latest]
-    # 코스피 하루 거래대금은 조 단위(1e12~1e14 원). 백만원을 그대로 두면 1e7 수준이라
-    # 이 검사에서 바로 걸린다.
-    check("단위가 원 (조원 규모)", 1e12 <= v <= 1e15,
-          f"{latest}: {v:,.0f}원 = {v/1e12:.1f}조원")
+print("\n[2] 거래대금 — 오늘 스냅샷 + 로컬 누적 로그 (2026-10-06: sise_index_day.naver"
+      " 영구 410으로 소급조회 불가해 '오늘 1건씩 쌓기' 방식으로 교체)")
+today_val = fetch_naver_index_trading_value_today("KOSPI")
+check("오늘 거래대금 조회됨", today_val is not None, f"{today_val}")
+if today_val is not None:
+    check("단위가 원 (조원 규모)", 1e12 <= today_val <= 1e15,
+          f"{today_val:,.0f}원 = {today_val/1e12:.1f}조원")
 
-    # 네이버 표 원본과 직접 대조 (백만원 → 원 환산이 맞는지)
-    import re
-    req = urllib.request.Request(
-        "https://finance.naver.com/sise/sise_index_day.naver?code=KOSPI&page=1",
-        headers={"User-Agent": "Mozilla/5.0", "Referer": "https://finance.naver.com/"})
-    html = urllib.request.urlopen(req, timeout=20).read().decode("euc-kr", "replace")
-    raw_rows = {}
-    for tr in re.findall(r"<tr>(.*?)</tr>", html, re.S):
-        tds = [re.sub(r"<[^>]+>", "", t).strip()
-               for t in re.findall(r"<td[^>]*>(.*?)</td>", tr, re.S)]
-        tds = [t for t in tds if t]
-        if len(tds) >= 6 and re.fullmatch(r"\d{4}\.\d{2}\.\d{2}", tds[0]):
-            raw_rows[tds[0].replace(".", "-")] = float(tds[5].replace(",", ""))
-    # 오늘 행은 뺀다 — 거래대금은 장중에 계속 쌓여서, 우리 함수와 검증용 조회
-    # 사이 몇 초 차이만으로도 값이 다르다(테스트만 흔들릴 뿐 운영에는 영향 없음:
-    # 월간 결산은 월말 마감 후에 돈다).
-    today_str = max(raw_rows) if raw_rows else ""
-    compared = [d for d in raw_rows if d in amt and d < today_str]
-    bad = [d for d in compared if abs(amt[d] - raw_rows[d] * 1e6) > 1]
-    check("네이버 표 값 × 100만 과 일치", not bad,
-          str(bad) if bad else f"마감된 {len(compared)}일 대조 (오늘 {today_str} 제외)")
+# record/load 라운드트립은 실제 운영 로그(data/kr_trading_value_log.json)를
+# 건드리면 안 되므로 임시 경로로 바꿔치기해서 검증한다.
+import shared.utils as _u  # noqa: E402
+import tempfile
+_orig_path_fn = _u._trading_value_log_path
+_tmp_log = Path(tempfile.gettempdir()) / "test_kr_trading_value_log.json"
+if _tmp_log.exists():
+    _tmp_log.unlink()
+_u._trading_value_log_path = lambda: _tmp_log
+try:
+    record_trading_value_snapshot("KOSPI", "2026-01-02", 1.23e13)
+    record_trading_value_snapshot("KOSPI", "2026-01-05", 2.34e13)
+    loaded = load_trading_value_history("KOSPI")
+    check("기록한 두 날짜가 그대로 로드됨",
+          loaded.get("2026-01-02") == 1.23e13 and loaded.get("2026-01-05") == 2.34e13,
+          str(loaded))
+    check("다른 지수(KOSDAQ)는 비어 있음(섞이지 않음)",
+          load_trading_value_history("KOSDAQ") == {}, "")
+finally:
+    _u._trading_value_log_path = _orig_path_fn
+    if _tmp_log.exists():
+        _tmp_log.unlink()
 
 print("\n[3] 환율 — FDR 지연(09-08) 이후 날짜까지 온다")
 fx = fetch_naver_fx_history(days=45)
@@ -171,8 +171,14 @@ for key in ("kospi", "kosdaq"):
     e = extra.get(key) or {}
     check(f"{key} 월중 고저 산출", bool(e.get("month_high")) and bool(e.get("month_low")),
           f"{e.get('month_low')} ~ {e.get('month_high')} ({e.get('month_range_pct')}%)")
-    check(f"{key} 일평균 거래대금 산출", e.get("avg_amount") is not None,
-          f"{e.get('avg_amount', 0)/1e12:.1f}조원 (전월 대비 {e.get('amount_change_pct')}%)")
+    # 거래대금은 2026-10-06부터 매일 1건씩 쌓는 방식이라, 누적 로그가 아직
+    # 없으면 이번 달·전월 모두 "데이터 없음"이 정상이다 — 있으면 값을, 없으면
+    # 생략됐는지만 확인한다(실패 취급 안 함).
+    if e.get("avg_amount") is not None:
+        check(f"{key} 일평균 거래대금 산출", True,
+              f"{e['avg_amount']/1e12:.1f}조원 (전월 대비 {e.get('amount_change_pct')}%)")
+    else:
+        print(f"  --  [{key}] 일평균 거래대금: 누적 로그 데이터 없음(정상 — 축적 중)")
     check(f"{key} YTD 산출", e.get("ytd_pct") is not None,
           f"기준 {e.get('ytd_base_close')} → {e.get('ytd_pct')}%")
 
