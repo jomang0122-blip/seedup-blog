@@ -330,127 +330,128 @@ def get_marketcap_top_stocks(stock_maps: dict) -> dict:
 _MIN_SECTOR_STOCK_CAP = 1_000_000_000_000  # 1조원 — 섹터 대표종목·뉴스 특징주 잡주 차단 기준 (급등락 TOP과 동일 기준)
 
 
+_SECTOR_API_PAGE_SIZE = 100  # pageSize 100 초과는 거절됨 (실측, 2026-10-06)
+_SECTOR_API_MAX_PAGES = 5    # 업종당 최대 500종목까지 — 폭주 방지 상한
+
+
 def _crawl_sector_top_stocks(
     no: str, top_n: int = 2, is_rising: bool = True,
-    stock_cap_map: dict = None, min_cap: float = _MIN_SECTOR_STOCK_CAP,
+    min_cap: float = _MIN_SECTOR_STOCK_CAP,
 ) -> tuple:
-    """업종 상세 페이지(type_5 테이블)에서 대표종목 + 업종폭(breadth) 통계 수집.
+    """업종 구성종목(모바일 API)에서 대표종목 + 업종폭(breadth) 통계 수집.
+
+    ⚠️ 2026-10-06 교체: 기존 소스(finance.naver.com/sise/sise_group_detail.naver)가
+    stock.naver.com의 새 업종 페이지로 302 리다이렉트되기 시작했다. 새 페이지는
+    서버사이드 HTML 테이블이 아니라 클라이언트 렌더링이라 BeautifulSoup이 테이블을
+    못 찾고 빈 리스트를 반환 — 예외 없이 조용히 "섹터 데이터 없음"으로 빠져서
+    10/6 데일리 리포트가 발행된 뒤에야 발견됐다(총괄 스크린샷으로 확인).
+    m.stock.naver.com/api/stocks/industry/{no} 모바일 API로 교체 — 종목별
+    시가총액(marketValueRaw, 원 단위)을 직접 주므로 별도 stock_cap_map 조회가
+    필요 없어졌다(기존엔 FDR 시가총액 테이블을 따로 만들어 전달해야 했음).
 
     is_rising=True  → 상승률 높은 순 (상승 섹터용)
     is_rising=False → 하락률 큰 순  (하락 섹터용)
-    stock_cap_map 제공 시 시가총액 min_cap 미만 종목(잡주)은 대표종목에서 제외.
+    min_cap 미만 종목(잡주)은 대표종목 선정에서 제외.
 
     Returns: (대표종목 리스트, breadth 통계 dict 또는 None)
     breadth = {"total": 구성종목 수, "same_dir": 섹터 방향과 같은 방향 종목 수,
                "ratio": same_dir/total}
-    breadth는 시총 필터 적용 전 전체 구성종목(ETF·우선주 제외) 기준 —
-    "섹터 등락이 업종 전반의 움직임인지, 소수 종목이 견인한 것인지"를
-    구성종목 등락 분포라는 숫자로만 판정하기 위한 데이터. 뉴스 헤드라인
-    문구에 의존하는 판정은 표현 다양성 때문에 구조적으로 오판이 반복되어
-    (실사고 2건: 업종명 정확매칭 방식 전체 오탐, '관련주' 키워드 방식은
-    호남 테마를 업종 이슈로 오인) 숫자 기반으로 재설계했다.
     """
-    url = "https://finance.naver.com/sise/sise_group_detail.naver"
     try:
-        resp = fetch_with_retry(url, params={"type": "upjong", "no": no}, headers=_NAVER_HEADERS, timeout=10)
-        resp.encoding = "euc-kr"
-        soup = BeautifulSoup(resp.text, "lxml")
-        # 종목 목록은 type_5 테이블 (td 10개, tds[0]=종목명, tds[3]=등락률)
-        table = soup.find("table", {"class": "type_5"})
-        if not table:
-            return [], None
         all_stocks = []
-        for tr in table.find_all("tr"):
-            tds = tr.find_all("td")
-            if len(tds) < 4:
-                continue
-            name_tag = tds[0].find("a")
-            if not name_tag:
-                continue
-            name = name_tag.get_text(strip=True)
-            if not name or _is_etf(name):
-                continue
-            # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
-            if re.match(r".*우[BC]?$", name):
-                continue
-            pct_raw = tds[3].get_text(strip=True)
-            is_neg = "-" in pct_raw
-            pct_val = re.sub(r"[^\d.]", "", pct_raw)
-            if not pct_val:
-                continue
-            try:
-                pct = float(pct_val) * (-1 if is_neg else 1)
-                all_stocks.append({"name": name, "change_pct": round(pct, 2)})
-            except ValueError:
-                continue
+        page = 1
+        while page <= _SECTOR_API_MAX_PAGES:
+            resp = fetch_with_retry(
+                f"https://m.stock.naver.com/api/stocks/industry/{no}",
+                params={"page": page, "pageSize": _SECTOR_API_PAGE_SIZE},
+                headers=_NAVER_HEADERS, timeout=10,
+            )
+            rows = resp.json().get("stocks", [])
+            if not rows:
+                break
+            for r in rows:
+                name = r.get("stockName", "")
+                if not name or _is_etf(name):
+                    continue
+                # 우선주 제외 (종목명 끝 '우', '우B', '우C' 등)
+                if re.match(r".*우[BC]?$", name):
+                    continue
+                try:
+                    pct = float(r["fluctuationsRatio"])
+                    cap = float(r.get("marketValueRaw", 0) or 0)
+                except (KeyError, ValueError, TypeError):
+                    continue
+                all_stocks.append({"name": name, "change_pct": round(pct, 2), "cap": cap})
+            if len(rows) < _SECTOR_API_PAGE_SIZE:
+                break                              # 마지막 페이지
+            page += 1
+            time.sleep(0.2)
+
+        if not all_stocks:
+            return [], None
 
         # 업종폭 통계 — 전체 구성종목 중 섹터 방향과 같은 방향으로 움직인 비율
-        breadth = None
-        if all_stocks:
-            same_dir = sum(
-                1 for s in all_stocks
-                if (s["change_pct"] > 0) == is_rising and s["change_pct"] != 0
-            )
-            breadth = {
-                "total": len(all_stocks),
-                "same_dir": same_dir,
-                "ratio": round(same_dir / len(all_stocks), 2),
-            }
+        same_dir = sum(
+            1 for s in all_stocks
+            if (s["change_pct"] > 0) == is_rising and s["change_pct"] != 0
+        )
+        breadth = {
+            "total": len(all_stocks),
+            "same_dir": same_dir,
+            "ratio": round(same_dir / len(all_stocks), 2),
+        }
 
         # 대표종목: 시가총액 필터 — 잡주(소형 테마주) 대표종목 선정 차단
-        candidates = [
-            s for s in all_stocks
-            if stock_cap_map is None or stock_cap_map.get(s["name"], 0) >= min_cap
-        ]
+        candidates = [s for s in all_stocks if s["cap"] >= min_cap]
         # 섹터 내 시총 1조원 이상 종목이 하나도 없으면(예: 문구류처럼 소형주 위주 섹터)
         # 필터를 완화해 전체 종목 중 상위 top_n을 대표종목으로 채택 — 완전 공란 방지
-        if not candidates and all_stocks:
+        if not candidates:
             print(f"  [섹터상세-{no}] 시총 {min_cap/1e12:.0f}조 이상 종목 없음 → 필터 완화 적용")
             candidates = list(all_stocks)
         # 상승 섹터: 상승률 높은 순 / 하락 섹터: 하락률 큰 순
         candidates.sort(key=lambda x: x["change_pct"], reverse=is_rising)
-        return candidates[:top_n], breadth
+        top_stocks = [{"name": s["name"], "change_pct": s["change_pct"]} for s in candidates[:top_n]]
+        return top_stocks, breadth
     except Exception as e:
         print(f"  [섹터상세-{no}] 실패: {e}")
         return [], None
 
 
-def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
-    try:
-        main_resp = requests.get(
-            "https://finance.naver.com/sise/sise_group.nhn",
-            params={"type": "upjong"},
-            headers=_NAVER_HEADERS,
-            timeout=10,
-        )
-        main_resp.encoding = "cp949"
-        soup = BeautifulSoup(main_resp.text, "lxml")
+def get_sector_data(date_str: str = None) -> dict:
+    """업종별 등락률 순위 — 모바일 API(m.stock.naver.com/api/stocks/industry).
 
-        table = soup.find("table", {"class": "type_1"}) or soup.find("table")
-        if not table:
+    ⚠️ 2026-10-06 교체: 기존 소스(finance.naver.com/sise/sise_group.nhn)가
+    stock.naver.com의 새 업종 페이지로 302 리다이렉트되면서, 클라이언트 렌더링
+    페이지라 BeautifulSoup이 테이블을 못 찾고 예외 없이 빈 리스트를 반환해왔다
+    (10/6 데일리 리포트에서 "당일 섹터 집계 데이터가 제공되지 않아..."로 발행된
+    뒤 총괄 스크린샷으로 발견). 새 API는 업종별 riseCount/fallCount/totalCount를
+    이미 포함하고 있어, 예전처럼 업종폭(breadth)을 별도 상세페이지 크롤링으로
+    다시 계산할 필요가 없어졌다 — 그래서 여기서 바로 breadth를 채워 넣는다.
+    """
+    try:
+        resp = fetch_with_retry(
+            "https://m.stock.naver.com/api/stocks/industry",
+            headers=_NAVER_HEADERS, timeout=10,
+        )
+        groups = resp.json().get("groups", [])
+        if not groups:
             return {"top_sectors": [], "bottom_sectors": []}
 
         sectors = []
-        for row in table.find_all("tr"):
-            cols = row.find_all("td")
-            if len(cols) < 2:
-                continue
-            a_tag = cols[0].find("a")
-            name = a_tag.get_text(strip=True) if a_tag else cols[0].get_text(strip=True)
-            # 업종 상세 페이지 no 추출
-            href = a_tag.get("href", "") if a_tag else ""
-            no_match = re.search(r"no=(\d+)", href)
-            no = no_match.group(1) if no_match else None
-            pct_raw = cols[1].get_text(strip=True)
-            if not name or not pct_raw:
-                continue
-            is_neg = "-" in pct_raw
-            pct_val = re.sub(r"[^\d.]", "", pct_raw)
+        for g in groups:
             try:
-                pct = float(pct_val) * (-1 if is_neg else 1)
-                sectors.append({"name": name, "change_pct": round(pct, 2), "no": no})
-            except ValueError:
+                pct = float(g["changeRate"])
+                total = int(g["totalCount"])
+            except (KeyError, ValueError, TypeError):
                 continue
+            if total < 1:
+                continue
+            sectors.append({
+                "name": g["name"], "change_pct": round(pct, 2), "no": str(g["no"]),
+                "rise_count": int(g.get("riseCount", 0)),
+                "fall_count": int(g.get("fallCount", 0)),
+                "total_count": total,
+            })
 
         if not sectors:
             return {"top_sectors": [], "bottom_sectors": []}
@@ -462,14 +463,17 @@ def get_sector_data(date_str: str = None, stock_cap_map: dict = None) -> dict:
         def _fill_sectors(candidates: list, is_rising: bool) -> list:
             picked = []
             for s in candidates:
-                if not s.get("no"):
-                    continue
-                s["top_stocks"], s["breadth"] = _crawl_sector_top_stocks(
-                    s["no"], top_n=2, is_rising=is_rising, stock_cap_map=stock_cap_map
+                s["top_stocks"], _detail_breadth = _crawl_sector_top_stocks(
+                    s["no"], top_n=2, is_rising=is_rising
                 )
                 if not s["top_stocks"]:
                     print(f"  [섹터] {s['name']} 대표종목 없음 — 제외, 다음 순위로 대체")
                     continue
+                same_dir = s["rise_count"] if is_rising else s["fall_count"]
+                s["breadth"] = {
+                    "total": s["total_count"], "same_dir": same_dir,
+                    "ratio": round(same_dir / s["total_count"], 2),
+                }
                 _set_breadth_verdict(s)
                 picked.append(s)
                 if len(picked) == 3:
@@ -992,7 +996,7 @@ def collect_all(date: str = None) -> dict:
             verified_pct_map[s["name"]] = s["change_pct"]
         stock_result["stock_pct_map"] = verified_pct_map
 
-        sector_data = get_sector_data(date, stock_cap_map=stock_result.get("stock_cap_map", {}))
+        sector_data = get_sector_data(date)
 
         # 특징주 종목별 개별 뉴스 검색 (top_gainers/losers용)
         stock_names = [
