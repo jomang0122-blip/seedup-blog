@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-13",
+  "published_at": "2026-10-13T07:33:45.416711",
+  "title": "[26년 10월 13일 국내증시] 반도체 급락에 KOSPI 5% 넘게 하락, SK하이닉스·삼성전자 동반 폭락",
+  "search_description": "2026년 10월 13일 KOSPI 6,035.35pt(-5.46%), KOSDAQ 837.03pt(-1.43%) 마감. SK하이닉스 -9.60%, 삼성전자 -6.99% 등 반도체주 전반 급락.",
+  "url": "https://www.seedup-invest.com/2026/10/26-10-13-kospi-5-sk.html",
+  "char_count": 12627,
+  "kospi_close": 6035.35,
+  "kospi_change_pct": -5.46,
+  "validation_issues": [
+    {
+      "type": "sectoral_detail_mismatch",
+      "description": "방송과엔터테인먼트 섹터의 하이브 등락률 표기 오류: 표 내용에는 +3.51%로 표기했으나, 실제 수집 데이터의 급등 종목 리스트에는 +3.58%로 기록됨",
+      "found": "+3.51%",
+      "expected": "+3.58%"
+    }
+  ]
+}
