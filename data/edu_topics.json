@@ -1,8 +1,8 @@
 {
   "meta": {
     "total": 92,
-    "published_count": 39,
-    "last_updated": "2026-10-18"
+    "published_count": 40,
+    "last_updated": "2026-10-24"
   },
   "topics": [
     {
@@ -864,9 +864,9 @@
         "개인 투자자는 주가 상승 시 이익 실현 매도를 하는 경향이 있어 '개인 매도 = 고점' 패턴이 나타나기도 한다",
         "수급 데이터는 후행적이며, 수급보다 실적·금리·매크로 요인이 중장기 주가에 더 큰 영향을 미친다"
       ],
-      "published": false,
-      "published_at": "2026-08-01",
-      "post_url": "https://www.seedup-invest.com/2026/08/blog-post_01.html",
+      "published": true,
+      "published_at": "2026-10-24",
+      "post_url": "https://www.seedup-invest.com/2026/10/blog-post_24.html",
       "format": "개념정의형"
     },
     {
