@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-27",
+  "published_at": "2026-10-27T07:34:16.644430",
+  "title": "[26년 10월 27일 국내증시] 반도체·전자장비 강세로 KOSPI 3% 급등, 삼성전기·SK하이닉스·브이엠 주도",
+  "search_description": "2026년 10월 27일 KOSPI 5,638.34pt(+3.09%), KOSDAQ 743.83pt(+2.29%) 강세 마감. 반도체와반도체장비 섹터 +4.92%, 삼성전기 +7.69%·브이엠 +10.57% 급등.",
+  "url": "https://www.seedup-invest.com/2026/10/26-10-27-kospi-3-sk.html",
+  "char_count": 12599,
+  "kospi_close": 5638.34,
+  "kospi_change_pct": 3.09,
+  "validation_issues": [
+    {
+      "type": "dart_disclosure_mismatch",
+      "description": "공시 섹션에 '하이브' 언급은 있으나 실제 보고서명('타법인주식및출자증권처분결정              ')과 불일치 — 섹션 전체 제거",
+      "found": "📋 관련 공시</h3>\n<ul>\n<li><strong>하이브</strong> 타법인주식및출자증권처분결정 (접수 2026-10-27) <a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261027800539\">[원문보기]</a> — 글로벌 경영 체제 전환 목적 타법인 지분 처분 결정</li>\n</ul>\n",
+      "expected": "(섹션 제거)"
+    }
+  ]
+}
