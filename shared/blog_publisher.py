@@ -171,3 +171,40 @@ def publish_post(title: str, content: str, labels: list = None, status: str = 'L
         'url': post.get('url', ''),
         'title': post['title'],
     }
+
+
+# ── 고정 페이지 (시장 현황판 등, 2026-10-28 신설) ─────────────────────
+# 글(posts)과 달리 페이지는 글 목록·피드에 쌓이지 않고 같은 주소에서 내용만 바뀐다.
+# 페이지 본문은 코드가 만든 HTML이라 _strip_code_fences를 거치지 않는다(스크립트 보존).
+
+def find_page_by_title(title: str, include_drafts: bool = True) -> dict | None:
+    """제목이 같은 페이지 {'id', 'url', 'status'} 또는 None."""
+    service = build('blogger', 'v3', credentials=get_credentials())
+    statuses = ['LIVE', 'DRAFT'] if include_drafts else ['LIVE']
+    resp = service.pages().list(blogId=BLOG_ID, status=statuses, fetchBodies=False).execute()
+    for p in resp.get('items', []):
+        if p.get('title') == title:
+            return {'id': p['id'], 'url': p.get('url', ''), 'status': p.get('status', '')}
+    return None
+
+
+def create_page(title: str, content: str, draft: bool = True) -> dict:
+    """새 페이지. draft=True면 공개되지 않는다(블로거 관리 화면에서만 보임)."""
+    service = build('blogger', 'v3', credentials=get_credentials())
+    page = service.pages().insert(blogId=BLOG_ID, body={'title': title, 'content': content},
+                                  isDraft=draft).execute()
+    return {'id': page['id'], 'url': page.get('url', ''), 'status': page.get('status', '')}
+
+
+def update_page(page_id: str, title: str, content: str) -> dict:
+    """페이지 내용 교체 (같은 주소 유지). 공개/초안 상태는 바꾸지 않는다."""
+    service = build('blogger', 'v3', credentials=get_credentials())
+    page = service.pages().update(blogId=BLOG_ID, pageId=page_id,
+                                  body={'title': title, 'content': content}).execute()
+    return {'id': page['id'], 'url': page.get('url', ''), 'status': page.get('status', '')}
+
+
+def get_page_content(page_id: str) -> str:
+    """저장된 페이지 본문 — 블로거가 스크립트 등을 걸러냈는지 확인할 때."""
+    service = build('blogger', 'v3', credentials=get_credentials())
+    return service.pages().get(blogId=BLOG_ID, pageId=page_id, view='ADMIN').execute().get('content', '')
