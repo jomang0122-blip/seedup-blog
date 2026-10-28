@@ -122,6 +122,32 @@ def _clean_stock_df(df: pd.DataFrame, chg_col: str) -> pd.DataFrame:
     return df.dropna(subset=[chg_col])
 
 
+def _compute_breadth(df: pd.DataFrame, chg_col: str) -> dict:
+    """시장 내부 체력(시장폭) — 정제된 전종목(보통주·거래 있는 종목, ETF·우선주 제외) 기준.
+
+    퀀트 랩(05_재테크/03_퀀트투자)의 시장폭 지표 중 하루치 시세만으로 계산되는
+    것만 서버에서 직접 낸다. 200일선 위 비율·신고가-신저가·공포탐욕지수는 긴
+    이력이 필요해 주간 시장 현황판 글에서 다룬다(2026-10-28 총괄 결정, B안①).
+    거래대금 집중도는 "상위 10종목 ÷ 전체"라는 개념은 랩과 같지만 범위가 다르다 —
+    여기는 시장별(KOSPI·KOSDAQ 따로)·실제 거래대금, 랩(breadth_v1.py)은 두 시장
+    합산·종가×거래량 근사치다. 두 값을 같은 숫자로 비교하지 말 것."""
+    chg = pd.to_numeric(df[chg_col], errors="coerce").dropna()
+    total = int(len(chg))
+    if total == 0:
+        return {}
+    up, down = int((chg > 0).sum()), int((chg < 0).sum())
+    out = {
+        "up": up, "down": down, "flat": total - up - down, "total": total,
+        "up_ratio": round(up / total * 100, 1),
+        "avg_chg": round(float(chg.mean()), 2),
+    }
+    if "Amount" in df.columns:
+        amt = pd.to_numeric(df["Amount"], errors="coerce").fillna(0)
+        if amt.sum() > 0:
+            out["top10_share"] = round(float(amt.nlargest(10).sum() / amt.sum() * 100), 1)
+    return out
+
+
 def _build_stock_maps() -> dict:
     """KOSPI+KOSDAQ 전종목 등락률·시가총액 사전과, TOP5 산출용 정제 DataFrame 생성.
 
@@ -138,6 +164,11 @@ def _build_stock_maps() -> dict:
         raise ValueError(f"등락률 컬럼 없음: {df_kospi.columns.tolist()}")
 
     df_kospi = _clean_stock_df(df_kospi, chg_col)
+    market_breadth = {}
+    try:
+        market_breadth["KOSPI"] = _compute_breadth(df_kospi, chg_col)
+    except Exception as e:
+        print(f"  [시장폭] KOSPI 계산 실패(표 생략): {e}")
     stock_pct_map = {
         str(r["Name"]): round(float(r[chg_col]), 2)
         for _, r in df_kospi.iterrows()
@@ -164,6 +195,10 @@ def _build_stock_maps() -> dict:
         )
         if kq_chg:
             df_kosdaq = _clean_stock_df(df_kosdaq, kq_chg)
+            try:
+                market_breadth["KOSDAQ"] = _compute_breadth(df_kosdaq, kq_chg)
+            except Exception as e:
+                print(f"  [시장폭] KOSDAQ 계산 실패(표 생략): {e}")
             for _, r in df_kosdaq.iterrows():
                 name = str(r["Name"])
                 if name not in stock_pct_map:
@@ -181,6 +216,7 @@ def _build_stock_maps() -> dict:
         "stock_pct_map": stock_pct_map,
         "stock_cap_map": stock_cap_map,
         "code_map": code_map,
+        "market_breadth": {k: v for k, v in market_breadth.items() if v},
     }
 
 
@@ -958,6 +994,7 @@ def collect_all(date: str = None) -> dict:
         stock_news_map = {}
         featured_verified = []
         dart_disclosures = {}
+        market_breadth = {}
     else:
         index_data = get_index_data(date)
         news = get_news()
@@ -968,6 +1005,7 @@ def collect_all(date: str = None) -> dict:
         # 뉴스기반 검증 통과 종목은 TOP5 후보에서 제외해 같은 종목이
         # "상승 특징주"와 "뉴스기반 특징주" 양쪽에 중복 노출되지 않게 한다.
         stock_maps = _build_stock_maps()
+        market_breadth = stock_maps.get("market_breadth", {})
         print("[뉴스기반 특징주 검증]")
         featured_verified = extract_and_verify_featured_stocks(
             featured,
@@ -1019,4 +1057,5 @@ def collect_all(date: str = None) -> dict:
         "stock_news_map": stock_news_map,
         "featured_verified": featured_verified,
         "dart_disclosures": dart_disclosures,
+        "market_breadth": market_breadth,
     }

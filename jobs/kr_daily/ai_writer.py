@@ -116,6 +116,90 @@ def _build_marketcap_table_html(data: dict) -> str:
     )
 
 
+_BREADTH_GAP_PCTP = 1.0   # 지수 등락률과 평균 종목 등락률 차이가 이 이상이면 "대형주 강/약"으로 서술
+
+
+def _breadth_sentence(data: dict) -> str:
+    """표 아래 한 줄 해석 — AI가 아니라 정해진 규칙으로 쓴다(숫자 창작 방지)."""
+    mb = data.get("market_breadth") or {}
+    ups = sum(m.get("up", 0) for m in mb.values())
+    tot = sum(m.get("total", 0) for m in mb.values())
+    if not tot:
+        return ""
+    ratio = ups / tot * 100
+    if ratio < 45:
+        parts = ["오른 종목보다 내린 종목이 많았습니다"]
+    elif ratio > 55:
+        parts = ["내린 종목보다 오른 종목이 많았습니다"]
+    else:
+        parts = ["오른 종목과 내린 종목이 비슷했습니다"]
+
+    kp, idx = mb.get("KOSPI"), (data.get("kospi") or {}).get("change_pct")
+    if kp and idx is not None:
+        gap = float(idx) - kp["avg_chg"]
+        if gap >= _BREADTH_GAP_PCTP:
+            parts.append("코스피는 지수가 평균 종목보다 강해 대형주 중심의 흐름이었습니다")
+        elif gap <= -_BREADTH_GAP_PCTP:
+            parts.append("코스피는 지수가 평균 종목보다 약해 대형주가 상대적으로 부진했습니다")
+        else:
+            parts.append("코스피는 지수와 평균 종목의 흐름이 비슷했습니다")
+    return ", ".join(parts) + "."
+
+
+def build_breadth_block_html(data: dict) -> str:
+    """시장 내부 체력 표 — 시가총액 표와 마찬가지로 Python이 직접 조립한다.
+    시장폭 데이터가 없으면 빈 문자열(표 생략, 발행은 계속)."""
+    mb = data.get("market_breadth") or {}
+    rows = []
+    for name, key in (("KOSPI", "kospi"), ("KOSDAQ", "kosdaq")):
+        m = mb.get(name)
+        if not m:
+            continue
+        idx = (data.get(key) or {}).get("change_pct")
+
+        def _pct(v):
+            color = "#3182f6" if v < 0 else "#e74c3c"
+            return f'<span style="color:{color}"><b>{v:+.2f}%</b></span>'
+
+        avg_vs_idx = _pct(m["avg_chg"]) + (f" vs {_pct(float(idx))}" if idx is not None else "")
+        share = f'{m["top10_share"]:.1f}%' if "top10_share" in m else "—"
+        cells = [f"<strong>{name}</strong>", f'{m["up"]:,}', f'{m["down"]:,}', f'{m["flat"]:,}',
+                 f'{m["up_ratio"]:.1f}%', share, avg_vs_idx]
+        rows.append("<tr>" + "".join(
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{c}</td>' for c in cells) + "</tr>")
+    if not rows:
+        return ""
+    heads = ["구분", "상승", "하락", "보합", "상승 비율", "거래대금 상위10 비중", "평균 종목 vs 지수"]
+    header = "<tr>" + "".join(
+        f'<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">{h}</th>' for h in heads) + "</tr>"
+    sentence = _breadth_sentence(data)
+    note = ('<p style="font-size:12px;color:#8b95a1;">보통주 기준(ETF·우선주·거래 없는 종목 제외). '
+            '평균 종목은 단순평균, 지수는 시가총액 가중입니다.</p>')
+    return (
+        "<h3>[시장 내부 체력]</h3>"
+        '<div style="overflow-x:auto;"><table border="1" style="border-collapse:collapse;width:100%;font-size:14px;">'
+        f"<thead>{header}</thead><tbody>{''.join(rows)}</tbody></table></div>"
+        + (f"<p>{sentence}</p>" if sentence else "") + note
+    )
+
+
+def insert_breadth_block(content: str, data: dict) -> str:
+    """수치검증이 끝난 최종 본문의 '[당일 주도 섹터 및 테마]' 바로 앞에 시장폭 표를 넣는다.
+
+    검증 전에 넣으면 검증 AI가 자기 데이터 블록에 없는 이 숫자들을 창작으로
+    오판해 재생성을 부를 수 있어(lessons-blog B070 계열) 발행 직전에 붙인다.
+    끼울 자리를 못 찾거나 데이터가 없으면 본문을 그대로 돌려준다(발행은 계속)."""
+    block = build_breadth_block_html(data)
+    if not block:
+        return content
+    for pat in (r"<h3>\s*\[당일 주도 섹터 및 테마\]\s*</h3>", r"<h2>\s*💥"):
+        m = re.search(pat, content)
+        if m:
+            return content[:m.start()] + block + "\n" + content[m.start():]
+    print("  [시장폭] 끼울 자리(섹터 소제목·특징주 섹션)를 못 찾아 표 생략")
+    return content
+
+
 def _build_sector_anchor(data: dict) -> str:
     top = data.get("top_sectors", [])
     bot = data.get("bottom_sectors", [])

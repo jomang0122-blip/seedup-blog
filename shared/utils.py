@@ -202,6 +202,25 @@ def record_trading_value_snapshot(index: str, date_str: str, value: float) -> No
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def record_breadth_snapshot(date_str: str, breadth: dict) -> None:
+    """시장폭(상승·하락 종목 수 등)을 날짜별로 누적 저장 (data/kr_breadth_log.json).
+    몇 주 쌓이면 데일리 표에 20일 평균·최근 대비 위치를 붙일 수 있게 미리 모은다."""
+    import json
+    from pathlib import Path
+    if not breadth:
+        return
+    path = Path(__file__).parent.parent / "data" / "kr_breadth_log.json"
+    path.parent.mkdir(exist_ok=True)
+    data = {}
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    data[date_str] = breadth
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def load_trading_value_history(index: str) -> dict:
     """지수별 {날짜: 거래대금(원)} 누적 로그 로드. 파일·지수 없으면 빈 dict."""
     import json
