@@ -4,14 +4,14 @@ name: SeedUP — 시장 현황판 페이지
 #   장 마감 후 칸(지수·시장 내부 체력·업종·시가총액): 국내 데일리 작업이 성공으로 끝나면 이어서
 #   랩 지표 칸(지표 25개)                      : 평일 아침 07:30 KST — 전날 확정 종가로 계산
 #     (오후 4시 이후엔 출처마다 오늘 종가가 다르고 시간외 값이 섞인다 — 랩 update_prices_v3·10-28 실측)
+#     GitHub 자체 예약(schedule)은 쓰지 않는다 — 10-29 07:30 예약이 10:54에 돌았다(다른 발행 작업과 같은 이유)
 # 설계·검증 기록: 08_블로그/02_구글_seedup/03_투자도구/04_시장현황판/_현황판_시장현황판.md
 
 on:
   workflow_run:
     workflows: ["SeedUP — 국내증시 데일리"]
     types: [completed]
-  schedule:
-    - cron: "30 22 * * 0-4"   # UTC 일~목 22:30 = KST 월~금 07:30
+  # 랩 지표 칸: cron-job.org 에서 workflow_dispatch로 트리거 (KST 월~금 07:30)
   workflow_dispatch:
     inputs:
       part:
@@ -68,10 +68,11 @@ jobs:
           INPUT_PART: ${{ github.event.inputs.part }}
           INPUT_PUBLISH: ${{ github.event.inputs.publish }}
         run: |
+          echo "수신된 입력값 — part=[$INPUT_PART] publish=[$INPUT_PUBLISH] (외부 트리거가 inputs를 누락하면 여기서 바로 드러남)"
+          # cron-job.org 호출은 입력값이 빠져 올 수 있다 — 비어 있으면 아침 정기 실행(lab·반영)으로 본다
           case "$EVENT" in
             workflow_run) PART=daily; PUB=true ;;
-            schedule)     PART=lab;   PUB=true ;;
-            *)            PART="$INPUT_PART"; PUB="$INPUT_PUBLISH" ;;
+            *)            PART="${INPUT_PART:-lab}"; PUB="${INPUT_PUBLISH:-true}" ;;
           esac
           echo "part=$PART" >> "$GITHUB_OUTPUT"
           echo "publish=$PUB" >> "$GITHUB_OUTPUT"
