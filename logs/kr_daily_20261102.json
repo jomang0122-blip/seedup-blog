@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-02",
+  "published_at": "2026-11-02T07:34:26.833821",
+  "title": "[26년 11월 2일 국내증시] 항공·전기장비·물류 강세로 KOSPI 2.24% 급등, 효성중공업·현대글로비스 주도",
+  "search_description": "2026년 11월 2일 KOSPI 5,859.08pt(+2.24%), KOSDAQ 734.36pt(+1.38%) 상승 마감. 효성중공업·현대글로비스·GS건설 급등, 항공사·전기장비·물류 섹터 주도.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-2-kospi-224.html",
+  "char_count": 15224,
+  "kospi_close": 5859.08,
+  "kospi_change_pct": 2.24,
+  "validation_issues": [
+    {
+      "type": "sector_data_mismatch",
+      "description": "전기장비 섹터 대표종목 효성중공업의 등락률이 데이터와 불일치",
+      "found": "+11.39%",
+      "expected": "+11.50%"
+    },
+    {
+      "type": "sector_data_mismatch",
+      "description": "자동차부품 섹터 대표종목 HL만도의 등락률이 데이터와 불일치",
+      "found": "-6.07%",
+      "expected": "-5.67%"
+    },
+    {
+      "type": "field_narrative_mismatch",
+      "description": "GS건설의 뉴스 기반 특징주 섹션 등락률이 뉴스 기반 실제 데이터와 불일치",
+      "found": "+9.23%",
+      "expected": "+9.23% (뉴스 데이터 없음 — '뉴스 기반 특징주(4단계 검증 완료)' 목록에 GS건설이 등재되어 있으나, GS의 뉴스 헤드라인은 'GS건설'이 아닌 'GS'로 표기되어 있고, 실제 등락률은 +2.35%임. 포스팅에서는 GS건설으로 명명하고 +9.23%로 기재했으나, 이는 데이터 내 '뉴스기반 특징주' 목록에 GS건설이 없음을 의미)"
+    }
+  ]
+}
