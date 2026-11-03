@@ -120,14 +120,14 @@ def breadth_sentence(b, kospi_chg):
     if not tot:
         return ""
     r = ups / tot * 100
-    s = ("내린 종목보다 오른 종목이 많았습니다" if r > 55 else
-         "오른 종목보다 내린 종목이 많았습니다" if r < 45 else "오른 종목과 내린 종목이 비슷했습니다")
-    if "KOSPI" in b and kospi_chg is not None:
-        gap = kospi_chg - b["KOSPI"]["avg_chg"]
-        s += (", 코스피는 지수가 평균 종목보다 강해 대형주 중심의 흐름이었습니다" if gap >= 1 else
-              ", 코스피는 지수가 평균 종목보다 약해 대형주가 상대적으로 부진했습니다" if gap <= -1 else
-              ", 코스피는 지수와 평균 종목의 흐름이 비슷했습니다")
-    return s + "."
+    s = ("내린 종목보다 오른 종목이 많았" if r > 55 else
+         "오른 종목보다 내린 종목이 많았" if r < 45 else "오른 종목과 내린 종목이 비슷했")
+    if "KOSPI" not in b or kospi_chg is None:
+        return s + "습니다."
+    gap = kospi_chg - b["KOSPI"]["avg_chg"]
+    return s + ("고, 코스피는 지수가 평균 종목보다 강해 대형주 중심의 흐름이었습니다." if gap >= 1 else
+                "고, 코스피는 지수가 평균 종목보다 약해 대형주가 상대적으로 부진했습니다." if gap <= -1 else
+                "고, 코스피는 지수와 평균 종목의 흐름이 비슷했습니다.")
 
 
 def sec_breadth(d):
@@ -228,6 +228,16 @@ def sec_fg(lab):
     return f'<section><h3>공포탐욕지수 {badge("다음 날 아침")}</h3><div class="tiles">{out}</div></section>'
 
 
+def card_chg(c):
+    """값 옆 등락. 이미 %·%p인 지표(비율·금리)는 변화율 대신 차이(%p) — 14.16%의 +11.93%를 11.93%p로 오해하지 않게."""
+    if c["unit"] in ("%", "%p") and len(c["values"]) > 1:
+        return signed(c["values"][-1] - c["values"][-2], "%p")
+    if c["unit"] == "개" and len(c["values"]) > 1:   # 음수끼리 변화율은 방향이 뒤집힌다(-387→-102가 -73.64%)
+        d = c["values"][-1] - c["values"][-2]
+        return f'<span style="color:{POS if d > 0 else NEG if d < 0 else "#8b95a1"}">{d:+,.0f}개</span>'
+    return signed(c["chg_pct"])
+
+
 def sec_cards(lab):
     out = ""
     for gid, gname in GROUPS:
@@ -235,13 +245,13 @@ def sec_cards(lab):
         for c in [c for c in lab["cards"] if c["group"] == gid]:
             yrs = f'{c["years"]:.0f}년' if c["years"] >= 1 else f'{c["years"]:.1f}년'
             body += (f'<div class="card"><div class="cl">{escape(c["label"])}<span class="pc {rarity(c.get("p1"))[1]}" title="최근 1년 중 위치">{c.get("p1", "-")}</span></div>'
-                     f'<div class="cv">{fmt(c["value"], c["unit"])} <small>{signed(c["chg_pct"])}</small></div>'
+                     f'<div class="cv">{fmt(c["value"], c["unit"])} <small>{card_chg(c)}</small></div>'
                      f'<div class="cm">{escape(meaning(c.get("desc")))}</div>{chart(c["dates"], c["values"], c["unit"], 34, label=c["label"])}'
                      f'<div class="cf">{md(c["dates"][-1])} 기준 · 기록 {yrs} 중 {c["pctile"]:.0f}% 지점</div></div>')
         if body:
             out += f'<h4>{gname}</h4><div class="cards">{body}</div>'
     return (f'<section><h3>시장 지표 {badge("다음 날 아침")}</h3><p class="note">그래프는 최근 1년, 커서를 올리면(휴대폰은 누르면) 그날 값이 나옵니다. '
-            f'오른쪽 위 숫자는 1년 중 위치, 아래 "기록 N년 중"은 쌓인 기록 전체에서의 위치입니다. 값 옆 등락은 직전 기록 대비입니다.</p>{out}</section>')
+            f'오른쪽 위 숫자는 1년 중 위치, 아래 "기록 N년 중"은 쌓인 기록 전체에서의 위치입니다. 값 옆 등락은 직전 기록 대비이며, %로 나타내는 비율·금리는 차이(%p), 종목 수는 차이(개)로 적습니다.</p>{out}</section>')
 
 
 def sec_terms():
@@ -293,7 +303,8 @@ CSS = """
 .sbd .ud{display:flex;height:6px;border-radius:3px;overflow:hidden;min-width:120px}
 .sbd .ud i{display:block;height:100%}
 .sbd td small{display:block;text-align:left;color:var(--txt2);font-size:11px}
-.sbd .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sbd .two{display:grid;grid-template-columns:1fr;gap:12px}
+@container (min-width:760px){.sbd .two{grid-template-columns:1fr 1fr}}
 .sbd .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
 .sbd .tile,.sbd .card,.sbd .fg{background:var(--bg2);border-radius:12px;padding:12px 14px;min-width:0}
 .sbd .tl,.sbd .cl{font-size:12px;color:var(--txt2);display:flex;justify-content:space-between;gap:6px}
@@ -358,7 +369,8 @@ def render(lab, daily, latest_daily_url=None):
     kr = next((g for g in lab["gauges"] if g["id"] == "KR"), None) if lab else None
     ld = (f"시장 지표 {md((kr or {'dates': [lab['meta']['asof']]})['dates'][-1])} 기준 · 평일 아침 갱신"
           if lab else "시장 지표 준비 중")
-    parts = [f'<div class="sbd"><header class="hd"><div><h2>시드업 시장 현황판</h2>'
+    # 제목은 블로거 테마가 페이지 제목("시장 현황판")으로 붙이므로 본문에 다시 넣지 않는다 (2026-11-03 미리보기 검토)
+    parts = [f'<div class="sbd"><header class="hd"><div>'
              f'<p class="sub">국내 증시의 오늘 체력과 시장 온도를 한 화면에</p></div>'
              f'<div class="upd"><span><i class="dot"></i>{dd}</span><span><i class="dot w"></i>{ld}</span></div></header>']
     if lab:   # 공포탐욕지수를 맨 위에 (2026-10-28 총괄 요청)
