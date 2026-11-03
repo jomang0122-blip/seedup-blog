@@ -107,6 +107,7 @@ jobs:
           git add data/board/breadth_hist.csv || true
           git add data/board/fg_hist.csv || true
           git add data/board/page.json || true
+          git add data/board/summary.json || true   # 홈 화면 요약 상자가 읽는 자료
           if git diff --staged --quiet; then
             echo "변경 없음 — 커밋 생략"
           else

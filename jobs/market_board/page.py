@@ -361,6 +361,26 @@ el.addEventListener('pointerleave',function(){el.classList.remove('on');});
 })();"""
 
 
+def summary(lab, daily):
+    """홈 화면 요약 상자(블로거 HTML 가젯)가 읽는 작은 자료 — 핵심 5개 (2026-11-03 총괄 선택).
+    가젯은 한 번만 설치하고 이 파일을 읽어 숫자를 채운다(가젯은 API로 고칠 수 없어서)."""
+    out = {}
+    if lab:
+        out["fg"] = []
+        for g in lab["gauges"]:
+            name, col = band_of(g["value"], lab["bands"])
+            out["fg"].append({"id": g["id"], "label": g["label"], "value": g["value"], "rating": name,
+                              "color": col, "date": g["dates"][-1]})
+        out["bands"] = [[lo, hi, col] for lo, hi, _, col in lab["bands"]]
+    if daily:
+        out["index"] = [{"name": n, "close": s[-1]["close"], "chg": s[-1]["chg"], "date": s[-1]["date"]}
+                        for n, s in (("KOSPI", daily["kospi"]), ("KOSDAQ", daily["kosdaq"]))]
+        b = daily.get("breadth") or {}
+        out["breadth"] = {n: b[n]["up_ratio"] for n in ("KOSPI", "KOSDAQ") if n in b}
+        out["daily_asof"] = daily["asof"]
+    return out
+
+
 def render(lab, daily, latest_daily_url=None):
     """블로거 페이지 본문(style + div + script). lab·daily 중 없는 쪽은 그 칸을 빼고 그린다."""
     dd = f"장 마감 후 지표 {md(daily['asof'])} 기준" if daily else "장 마감 후 지표 준비 중"

@@ -69,6 +69,9 @@ def main():
                        '<style>body{margin:0;background:#fff}.wrap{max-width:760px;margin:24px auto;padding:0 16px}</style></head>'
                        f'<body><div class="wrap">{html}</div></body></html>', encoding="utf-8")
     print(f"[페이지] {len(html) / 1024:.0f}KB · 미리보기 {PREVIEW}")
+    # 홈 화면 요약 상자가 읽는 자료 — 페이지와 같은 두 파일에서 만든다
+    (DATA / "summary.json").write_text(json.dumps(P.summary(lab, daily), ensure_ascii=False, separators=(",", ":")),
+                                       encoding="utf-8")
 
     if not a.publish:
         return
