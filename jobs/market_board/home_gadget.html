@@ -20,10 +20,11 @@
 .sbh .ix div{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:4px 0}
 .sbh .ix div+div{border-top:1px solid var(--bg3)}
 .sbh .ix .n{font-size:12px;color:var(--txt2)}.sbh .ix .c{font-size:16px;font-weight:700}.sbh .ix small{font-size:12px;font-weight:600}
+.sbh .dt{font-size:11px;color:var(--txt2);margin:2px 0 0}.sbh .ix p.dt{margin:0 0 2px}
 .sbh .go{display:block;text-align:center;margin-top:10px;font-size:13px;color:var(--blue);text-decoration:none;background:#e8f3ff;padding:8px;border-radius:8px}
 @container (max-width:520px){.sbh .row{grid-template-columns:1fr 1fr}.sbh .ix{grid-column:1/-1}}
 </style>
-<div class="hd"><b>오늘의 시장 온도</b><span id="sbh-d"></span></div>
+<div class="hd"><b id="sbh-t">시장 현황판</b></div>
 <div class="row" id="sbh-row"></div>
 <a class="go" href="https://www.seedup-invest.com/p/blog-page_03.html">시장 현황판 전체 보기 →</a>
 </div>
@@ -51,9 +52,10 @@
     var h = '';
     s.fg.forEach(function(g){
       h += '<div class="bx fg"><div class="t">' + (g.id === 'KR' ? '한국' : '미국') + ' 공포탐욕지수</div>' + gauge(g.value, s.bands) +
-           '<div class="v" style="color:' + g.color + '">' + g.value.toFixed(1) + '</div><div class="r" style="color:' + g.color + '">' + g.rating + '</div></div>';
+           '<div class="v" style="color:' + g.color + '">' + g.value.toFixed(1) + '</div><div class="r" style="color:' + g.color + '">' + g.rating + '</div>' +
+           '<div class="dt">' + md(g.date) + ' 기준</div></div>';
     });
-    h += '<div class="bx ix">';
+    h += '<div class="bx ix"><p class="dt">지수 · ' + md(s.daily_asof || s.index[0].date) + ' 종가</p>';
     s.index.forEach(function(x){ h += '<div><span class="n">' + x.name + '</span><span><span class="c">' + num(x.close) + '</span> ' + chg(x.chg) + '</span></div>'; });
     [['KOSPI', '코스피'], ['KOSDAQ', '코스닥']].forEach(function(m){
       if (s.breadth && s.breadth[m[0]] != null)
@@ -61,7 +63,9 @@
     });
     h += '</div>';
     document.getElementById('sbh-row').innerHTML = h;
-    document.getElementById('sbh-d').textContent = md(s.daily_asof || s.fg[0].date) + ' 장 마감 기준';
+    // 제목에 '오늘'을 쓰지 않고 기준일만 — 장 마감 갱신 전엔 전날 숫자라 '오늘'이 틀린다 (11-03 총괄 제안)
+    var asof = s.daily_asof || s.index[0].date;
+    document.getElementById('sbh-t').textContent = '시장 현황판 (' + (+asof.slice(5,7)) + '월 ' + (+asof.slice(8,10)) + '일 기준)';
     document.getElementById('sbh').style.display = '';
   }).catch(function(){});   // 못 읽으면 상자는 계속 숨김
 })();
