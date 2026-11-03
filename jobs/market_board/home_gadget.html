@@ -1,0 +1,68 @@
+<!-- 시드업 홈 화면 요약 상자 (블로거 레이아웃 > 페이지 본문 > 가젯 추가 > HTML/JavaScript, 제목 칸은 비움)
+     data/board/summary.json(시장 현황판 자동 갱신 때 함께 만들어짐)을 읽어 숫자를 채운다. 홈에서만 보이고,
+     자료를 못 읽으면 상자 전체를 숨긴다. 핵심 5개 = 2026-11-03 총괄 선택. API 크레딧 0. -->
+<div class="sbh" id="sbh" style="display:none">
+<style>
+.sbh{--bg2:#f2f4f6;--bg3:#e5e8eb;--txt:#191f28;--txt2:#8b95a1;--pos:#f04452;--neg:#3182f6;--blue:#3182f6;
+ font-family:-apple-system,'Malgun Gothic','Noto Sans KR',sans-serif;font-size:14px;color:var(--txt);line-height:1.5;
+ font-variant-numeric:tabular-nums;container-type:inline-size;margin:0 0 20px;
+ box-sizing:border-box;background:#fff;padding:30px 40px;box-shadow:0 1px 4px 0 rgba(60,64,67,.3)}
+/* 흰 카드 = 테마의 글 카드(.post-outer-container)와 같은 바탕·여백·그림자 — 회색 페이지 배경에 묻히지 않게 (11-03 총괄 확인) */
+@media (max-width:600px){.sbh{padding:18px 16px}}
+.sbh *{box-sizing:border-box}
+.sbh .hd{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+.sbh .hd b{font-size:16px}.sbh .hd span{font-size:12px;color:var(--txt2)}
+.sbh .row{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px}
+.sbh .bx{background:var(--bg2);border-radius:12px;padding:12px 14px;min-width:0}
+.sbh .fg{text-align:center}.sbh .fg .t{font-size:12px;color:var(--txt2)}
+.sbh .fg svg{display:block;margin:4px auto 0;width:120px;height:auto}
+.sbh .fg .v{font-size:24px;font-weight:800;line-height:1.1}.sbh .fg .r{font-size:12px;font-weight:600}
+.sbh .ix div{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:4px 0}
+.sbh .ix div+div{border-top:1px solid var(--bg3)}
+.sbh .ix .n{font-size:12px;color:var(--txt2)}.sbh .ix .c{font-size:16px;font-weight:700}.sbh .ix small{font-size:12px;font-weight:600}
+.sbh .go{display:block;text-align:center;margin-top:10px;font-size:13px;color:var(--blue);text-decoration:none;background:#e8f3ff;padding:8px;border-radius:8px}
+@container (max-width:520px){.sbh .row{grid-template-columns:1fr 1fr}.sbh .ix{grid-column:1/-1}}
+</style>
+<div class="hd"><b>오늘의 시장 온도</b><span id="sbh-d"></span></div>
+<div class="row" id="sbh-row"></div>
+<a class="go" href="https://www.seedup-invest.com/p/blog-page_03.html">시장 현황판 전체 보기 →</a>
+</div>
+<script>
+(function(){
+  if (location.pathname !== '/' && !window.SBH_FORCE) return;   // 홈에서만
+  var URL = 'https://raw.githubusercontent.com/jomang0122-blip/seedup-blog/main/data/board/summary.json';
+  var POS = '#f04452', NEG = '#3182f6';
+  function md(d){ return (+d.slice(5,7)) + '/' + (+d.slice(8,10)); }
+  function num(v){ return v.toLocaleString('ko-KR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function chg(v){ var c = v > 0 ? POS : v < 0 ? NEG : '#8b95a1';
+    return '<small style="color:' + c + '">' + (v > 0 ? '+' : '') + v.toFixed(2) + '%</small>'; }
+  function gauge(value, bands){
+    var cx = 70, cy = 74, r = 56, s = '';
+    function pt(v, rr){ var a = Math.PI * (1 - v / 100); return [cx + rr * Math.cos(a), cy - rr * Math.sin(a)]; }
+    bands.forEach(function(b){ var p = pt(b[0], r), q = pt(Math.min(b[1], 100), r);
+      s += '<path d="M' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ' A' + r + ',' + r + ' 0 0 1 ' + q[0].toFixed(1) + ',' + q[1].toFixed(1) +
+           '" stroke="' + b[2] + '" stroke-width="11" fill="none"/>'; });
+    var n = pt(value, r - 16);
+    return '<svg viewBox="0 0 140 82" aria-hidden="true">' + s + '<line x1="' + cx + '" y1="' + cy + '" x2="' + n[0].toFixed(1) + '" y2="' + n[1].toFixed(1) +
+           '" stroke="#191f28" stroke-width="2.5" stroke-linecap="round"/><circle cx="' + cx + '" cy="' + cy + '" r="4.5" fill="#191f28"/></svg>';
+  }
+  fetch(URL, {cache: 'no-cache'}).then(function(r){ if (!r.ok) throw 0; return r.json(); }).then(function(s){
+    if (!s.fg || !s.index) return;
+    var h = '';
+    s.fg.forEach(function(g){
+      h += '<div class="bx fg"><div class="t">' + (g.id === 'KR' ? '한국' : '미국') + ' 공포탐욕지수</div>' + gauge(g.value, s.bands) +
+           '<div class="v" style="color:' + g.color + '">' + g.value.toFixed(1) + '</div><div class="r" style="color:' + g.color + '">' + g.rating + '</div></div>';
+    });
+    h += '<div class="bx ix">';
+    s.index.forEach(function(x){ h += '<div><span class="n">' + x.name + '</span><span><span class="c">' + num(x.close) + '</span> ' + chg(x.chg) + '</span></div>'; });
+    [['KOSPI', '코스피'], ['KOSDAQ', '코스닥']].forEach(function(m){
+      if (s.breadth && s.breadth[m[0]] != null)
+        h += '<div><span class="n">' + m[1] + ' 오른 종목 비율</span><span class="c">' + s.breadth[m[0]].toFixed(1) + '%</span></div>';
+    });
+    h += '</div>';
+    document.getElementById('sbh-row').innerHTML = h;
+    document.getElementById('sbh-d').textContent = md(s.daily_asof || s.fg[0].date) + ' 장 마감 기준';
+    document.getElementById('sbh').style.display = '';
+  }).catch(function(){});   // 못 읽으면 상자는 계속 숨김
+})();
+</script>
