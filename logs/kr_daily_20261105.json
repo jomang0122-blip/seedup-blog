@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-05",
+  "published_at": "2026-11-05T07:33:50.079814",
+  "title": "[26년 11월 5일 국내증시] 카카오·셀트리온 강세에도 반도체 급락으로 KOSPI 5.28% 하락 마감",
+  "search_description": "2026년 11월 5일 KOSPI 5,383.80pt(-5.28%), KOSDAQ 678.41pt(-5.11%) 급락.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-5-kospi-528.html",
+  "char_count": 15058,
+  "kospi_close": 5383.8,
+  "kospi_change_pct": -5.28,
+  "validation_issues": [
+    {
+      "type": "sector_number",
+      "description": "비철금속 섹터 대표 종목 고려아연의 등락률이 데이터와 불일치",
+      "found": "+9.32%",
+      "expected": "+9.76%",
+      "location": "섹터 테이블 - 비철금속 행 대표종목"
+    },
+    {
+      "type": "sector_number",
+      "description": "양방향미디어와서비스 섹터 NAVER 등락률이 데이터와 불일치",
+      "found": "+7.44%",
+      "expected": "+7.49%",
+      "location": "섹터 테이블 - 양방향미디어와서비스 행 대표종목"
+    },
+    {
+      "type": "field_narrative_mismatch",
+      "description": "상승 특징주에서 고려아연이 +9.76%로 올바르게 표기되었으나, 섹터 테이블의 비철금속 섹션에서는 동일 종목이 +9.32%로 다르게 표기됨. 두 섹션 간 동일 종목의 수치 불일치.",
+      "found": "상승 특징주: 고려아연 +9.76% vs 섹터 테이블: 고려아연 +9.32%",
+      "expected": "일관되게 +9.76%로 통일"
+    }
+  ]
+}
