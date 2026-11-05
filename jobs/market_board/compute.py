@@ -104,7 +104,9 @@ def run(save=True, trim_days=0):
             raise RuntimeError(f"주가 조회 실패 {len(pfail)}종목 > {MAX_FAIL_RATIO:.0%} — 시장 폭 계산 안 함")
         chk = C.check_two_sources(px)
         basis["두 출처 대조"] = f"{len(chk)}건 모두 0.1% 이내 (기준 3종목 vs FinanceDataReader)"
-        etf = px[px["ticker"].isin([C.LEV_ETF, C.INV_ETF])]
+        etf, clipped = C.unclip_volume(px[px["ticker"].isin([C.LEV_ETF, C.INV_ETF])])
+        if clipped:
+            basis["거래량 잘림"] = f"{', '.join(clipped)} — 실제 값을 못 받아 하락베팅수요를 빼고 평균, 나오면 다시 계산"
         st = px[px["ticker"].isin(uni)]
         close = st.pivot_table(index="date", columns="ticker", values="close", aggfunc="last").sort_index()
         volume = st.pivot_table(index="date", columns="ticker", values="volume", aggfunc="last").sort_index()
@@ -123,6 +125,7 @@ def run(save=True, trim_days=0):
         raw_cols = [f"{c}_원시" for c in I.FG_ORDER]
         comp_hist = fh[raw_cols].rename(columns=lambda c: c[:-3])
         comp_all, new_f = I.append_new(comp_hist, comp)
+        comp_all = I.refresh_recent(comp_all, comp, "하락베팅수요")
         idx, sc = I.fg_index(comp_all)
         fh = pd.concat([idx, sc.add_suffix("_점수"), comp_all.add_suffix("_원시")], axis=1)
         fh.index.name = "date"

@@ -11,6 +11,8 @@
 이력 갱신 원칙: 이미 있는 날짜는 건드리지 않고 **기록에 없는 새 날짜만** 덧붙인다
 (랩이 맞게 계산해 둔 과거 값을 서버 값으로 바꾸지 않기 위해). 서버가 며칠 쉬어도
 받아 온 주가 창 안이면 빠진 날이 다음 실행에서 함께 채워진다.
+예외: 하락베팅수요만 최근 FG_REFRESH_DAYS거래일을 매번 다시 쓴다 — 최신일 거래량이 잘려 오고
+실제 값도 못 받은 날은 빈 칸으로 두고, 값이 나온 뒤 채우기 위해서다(refresh_recent).
 """
 import numpy as np
 import pandas as pd
@@ -75,6 +77,7 @@ def breadth_frame(close, volume):
 
 # ── fear_greed_v1.py ──────────────────────────────────
 FG_MIN_OBS, FG_WINDOW, KTB3Y_DURATION = 250, 750, 2.8
+FG_REFRESH_DAYS = 10
 FG_INVERT = {"변동성", "신용스프레드", "하락베팅수요"}
 FG_ORDER = ["주가모멘텀", "주가강도", "주가폭", "변동성", "안전자산수요", "신용스프레드", "하락베팅수요"]
 
@@ -203,3 +206,11 @@ def append_new(hist: pd.DataFrame, fresh: pd.DataFrame):
     if new.empty:
         return hist, []
     return pd.concat([hist, new[hist.columns.intersection(new.columns)]]).sort_index(), list(new.index)
+
+
+def refresh_recent(hist: pd.DataFrame, fresh: pd.DataFrame, col, days=FG_REFRESH_DAYS):
+    """hist 마지막 days거래일의 col을 fresh 값으로 덮어쓴다. fresh가 빈 칸인 날은 그대로 둔다."""
+    new = fresh.loc[hist.index[-days:].intersection(fresh.index), col].dropna()
+    out = hist.copy()
+    out.loc[new.index, col] = new
+    return out

@@ -27,6 +27,9 @@ SISE_URL = ("https://api.finance.naver.com/siseJson.naver?symbol=%s&requestType=
             "&startTime=%s&endTime=20991231&timeframe=day")
 REF_TICKERS = ["005930", "000660", "005490"]   # 삼성전자·SK하이닉스·POSCO홀딩스 (랩과 같음)
 LEV_ETF, INV_ETF = "122630", "252670"           # KODEX 레버리지 / KODEX 200선물인버스2X
+# 네이버 siseJson·FDR이 최신일 거래량을 32비트 최댓값으로 잘라 준다(11-05 실측, 뒤에 실제 값으로 바뀜).
+# 252670은 거래량이 이 값을 넘는 날이 많으므로 '이상'이 아니라 정확히 같은 값만 잘림으로 본다.
+VOL_CLIP = 2**31 - 1
 
 FDR_CODES = {   # 랩 collect_market_v1.FDR_CODES 그대로 (다우는 화면에 없어 뺐다)
     "KOSPI": "KS11", "KOSDAQ": "KQ11",
@@ -83,6 +86,29 @@ def fetch_prices(tickers, start, workers=8):
             rows.extend((d, tk, c, v) for d, c, v in r if d < cut)
     df = pd.DataFrame(rows, columns=["date", "ticker", "close", "volume"])
     return df, fail
+
+
+def _mobile_volume(ticker):
+    """네이버 모바일 일별 시세의 거래량 — siseJson이 자른 날도 실제 값을 준다(11-05 실측 13,119,572,439)."""
+    req = urllib.request.Request(f"https://m.stock.naver.com/api/stock/{ticker}/price?pageSize=20&page=1",
+                                 headers={"User-Agent": "Mozilla/5.0"})
+    rows = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
+    got = {pd.Timestamp(r["localTradedAt"]): float(str(r["accumulatedTradingVolume"]).replace(",", "")) for r in rows}
+    return {d: v for d, v in got.items() if v != VOL_CLIP}
+
+
+def unclip_volume(prices: pd.DataFrame):
+    """잘린 거래량을 실제 값으로 바꾼다. 못 구한 날은 빈 칸으로 둔다. 반환: (표, 못 구한 날짜 목록)"""
+    out = prices.copy()
+    hit = out["volume"] == VOL_CLIP
+    for tk in out.loc[hit, "ticker"].unique():
+        try:
+            real = _mobile_volume(tk)
+        except Exception:
+            real = {}
+        m = hit & (out["ticker"] == tk)
+        out.loc[m, "volume"] = out.loc[m, "date"].map(real)
+    return out, sorted({str(d.date()) for d in out.loc[hit & out["volume"].isna(), "date"]})
 
 
 def check_two_sources(prices: pd.DataFrame, days=5):
@@ -155,6 +181,18 @@ def naver_index(sym, start="20150101"):
     return s
 
 
+def _ecos_json(url, tries=3):
+    """시간 초과·연결 오류는 다시 시도한다(11-05 아침 시간 초과로 공포탐욕이 하루 멈췄다)."""
+    for k in range(tries):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception:
+            if k == tries - 1:
+                raise
+            time.sleep(5 * (k + 1))
+
+
 def fetch_ecos(key, start="20160101"):
     """국고채3년·회사채AA_3년 일별 (date 인덱스). ECOS는 오류도 200으로 준다."""
     end = dt.datetime.now(KST).strftime("%Y%m%d")
@@ -163,8 +201,7 @@ def fetch_ecos(key, start="20160101"):
         rows, pos = [], 1
         while True:
             url = f"{ECOS_BASE}/{key}/json/kr/{pos}/{pos + 4999}/817Y002/D/{start}/{end}/{code}"
-            with urllib.request.urlopen(url, timeout=60) as r:
-                j = json.loads(r.read().decode("utf-8"))
+            j = _ecos_json(url)
             if "RESULT" in j:
                 if j["RESULT"].get("CODE") == "INFO-200":
                     break
