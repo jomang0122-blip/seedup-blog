@@ -70,6 +70,55 @@ def fg_history(save_as=None):
     return _uri(fig, save_as)
 
 
+def _style(ax, title):
+    ax.grid(axis="y", color="#f2f4f6")
+    for sp in ("top", "right"):
+        ax.spines[sp].set_visible(False)
+    ax.set_title(title, fontsize=10.5, color=TXT, loc="left")
+
+
+def _mark(ax, x, y, text, color, xytext):
+    ax.scatter([x], [y], color=color, s=18, zorder=3)
+    ax.annotate(text, (x, y), xytext=xytext, textcoords="offset points", fontsize=8.5, color=color, fontweight="bold",
+                bbox=dict(boxstyle="round,pad=.25", fc="white", ec="#e5e8eb", lw=.6),
+                arrowprops=dict(arrowstyle="-", color=color, lw=.6))
+
+
+def component_raw(col, unit_mul=100.0, unit="%", title="", save_as=None):
+    """공포탐욕 구성 지표의 원시값 전체 기록 — 0선 위(탐욕 쪽)는 파랑, 아래(공포 쪽)는 빨강 음영 (2편~ 공용)."""
+    s = load_fg()[col].dropna() * unit_mul
+    fig, ax = plt.subplots(figsize=(8, 3.4))
+    ax.plot(s.index, s.values, color=TXT, lw=.8)
+    ax.fill_between(s.index, s.values, 0, where=s.values >= 0, color="#3182f6", alpha=.12, lw=0)
+    ax.fill_between(s.index, s.values, 0, where=s.values < 0, color="#f04452", alpha=.12, lw=0)
+    ax.axhline(0, color=TXT2, lw=.6)
+    _mark(ax, s.idxmin(), s.min(), f"최저 {s.min():+.1f}{unit} ({s.idxmin():%Y.%m.%d})", "#f04452", (14, -4))
+    _mark(ax, s.idxmax(), s.max(), f"최고 {s.max():+.1f}{unit} ({s.idxmax():%Y.%m.%d})", "#3182f6", (-150, -6))
+    _mark(ax, s.index[-1], s.iloc[-1], f"{s.index[-1]:%m/%d} {s.iloc[-1]:+.1f}{unit}", TXT, (-70, -30))
+    ax.set_xlim(s.index[0], s.index[-1])
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    _style(ax, title or f"{col} ({s.index[0]:%Y.%m} ~ {s.index[-1]:%Y.%m.%d})")
+    return _uri(fig, save_as)
+
+
+def index_vs_ma(close, days=125, window=250, name="코스피", save_as=None):
+    """지수와 N일 이동평균 — 최근 window거래일 (2편 주가 모멘텀)."""
+    ma = close.rolling(days).mean()
+    c, m = close.iloc[-window:], ma.iloc[-window:]
+    fig, ax = plt.subplots(figsize=(8, 3.2))
+    ax.plot(c.index, c.values, color=TXT, lw=1.1, label=f"{name} 종가")
+    ax.plot(m.index, m.values, color="#3182f6", lw=1.3, label=f"{days}일 이동평균")
+    ax.fill_between(c.index, c.values, m.values, where=c.values < m.values, color="#f04452", alpha=.12, lw=0)
+    ax.fill_between(c.index, c.values, m.values, where=c.values >= m.values, color="#3182f6", alpha=.10, lw=0)
+    gap = (c.iloc[-1] / m.iloc[-1] - 1) * 100
+    _mark(ax, c.index[-1], c.iloc[-1], f"{c.index[-1]:%m/%d} {c.iloc[-1]:,.0f} (평균 대비 {gap:+.1f}%)", "#f04452", (-210, -22))
+    ax.legend(loc="upper left", frameon=False, fontsize=9)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%y.%m"))
+    _style(ax, f"{name}와 {days}일 이동평균 (최근 {window}거래일)")
+    return _uri(fig, save_as)
+
+
 def fg_band_share(save_as=None):
     """구간별로 머문 거래일 비율 가로 막대."""
     s = load_fg()["공포탐욕지수"]
