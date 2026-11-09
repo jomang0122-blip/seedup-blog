@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-09",
+  "published_at": "2026-11-09T07:35:28.984022",
+  "title": "[26년 11월 9일 국내증시] 알테오젠·삼성SDI 급락에 KOSPI 하락, 통신장비·항공 섹터가 낙폭 방어",
+  "search_description": "2026년 11월 9일 KOSPI 5,018.85pt(-0.81%), KOSDAQ 638.97pt(-0.82%) 하락 마감. 알테오젠 -17.11%·삼성SDI -12.93% 급락, RFHIC +13.44%·한진칼 +5.81% 강세.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-9-sdi-kospi.html",
+  "char_count": 14860,
+  "kospi_close": 5018.85,
+  "kospi_change_pct": -0.81,
+  "validation_issues": [
+    {
+      "type": "sector_number",
+      "description": "통신장비 섹터 대표종목 RFHIC의 등락률이 일치하지 않음",
+      "found": "+13.31%",
+      "expected": "+13.44%",
+      "location": "섹터 표 및 본문"
+    },
+    {
+      "type": "sector_number",
+      "description": "통신장비 섹터 대표종목 한화비전의 등락률이 일치하지 않음",
+      "found": "+4.46%",
+      "expected": "+4.59%",
+      "location": "섹터 표"
+    }
+  ]
+}
