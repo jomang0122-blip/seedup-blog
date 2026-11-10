@@ -1,0 +1,30 @@
+{
+  "date": "2026-11-10",
+  "published_at": "2026-11-10T07:36:55.938547",
+  "title": "[26년 11월 10일 국내증시] NHN 상한가·한올바이오파마 26% 급등 속 항공·전기장비·통신장비 주도로 KOSPI 4% 강세 마감",
+  "search_description": "2026년 11월 10일 KOSPI +4.39%, KOSDAQ +4.48% 급등. NHN 상한가·한올바이오파마 +26.15% 급등, 항공사·전기장비·통신장비 섹터가 시장 상승 주도. 한전KPS 어닝 쇼크로 약세.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-10-nhn-26-kospi-4.html",
+  "char_count": 15092,
+  "kospi_close": 5239.13,
+  "kospi_change_pct": 4.39,
+  "validation_issues": [
+    {
+      "type": "sector_number",
+      "description": "항공사 섹터 대표종목 한진칼의 등락률이 실제 데이터와 불일치",
+      "found": "+13.98%",
+      "expected": "+13.73%"
+    },
+    {
+      "type": "field_narrative_mismatch",
+      "description": "한올바이오파마 섹션에서 대표 종목이 아닌 다른 섹션의 특징주로 분류되어야 하는데, 본문 여러 곳에서 반복 강조되고 있음. 다만 이는 실제 수치 오류는 아니며 구성의 문제임. 재검토 필요.",
+      "found": "한올바이오파마가 급등 특징주와 뉴스 기반 특징주에서 동시에 강조됨",
+      "expected": "한올바이오파마는 뉴스 기반 특징주에만 명시"
+    },
+    {
+      "type": "dart_disclosure_mismatch",
+      "description": "공시 섹션에 '시프트업' 언급은 있으나 실제 보고서명('연결재무제표기준영업(잠정)실적(공정공시)              ')과 불일치 — 섹션 전체 제거",
+      "found": "📋 관련 공시</h3>\n<ul>\n<li><strong>시프트업</strong> 연결재무제표기준영업(잠정)실적(공정공시) (접수 2026-11-10) <a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261110800546\">[원문보기]</a> — 3분기 영업익 207억 원, 전년 대비 58.2% 감소</li>\n<li><strong>F&amp;F</strong> 연결재무제표기준영업(잠정)실적(공정공시) (접수 2026-11-10) <a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261110800544\">[원문보기]</a></li>\n</ul>\n",
+      "expected": "(섹션 제거)"
+    }
+  ]
+}
