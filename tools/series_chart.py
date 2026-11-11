@@ -102,6 +102,56 @@ def component_raw(col, unit_mul=100.0, unit="%", title="", save_as=None):
     return _uri(fig, save_as)
 
 
+def component_level(col, unit_mul=100.0, unit="%", title="", invert=False, digits=1, save_as=None):
+    """0이 기준이 아닌 구성 지표의 원시값 — 10년 중앙값을 기준선으로 공포 쪽은 빨강, 탐욕 쪽은 파랑 음영 (3편~ 공용).
+    invert: 값이 높을수록 공포인 지표(변동성·신용 스프레드·하락 베팅 수요)."""
+    s = load_fg()[col].dropna() * unit_mul
+    med = s.median()
+    hi_col, lo_col = ("#f04452", "#3182f6") if invert else ("#3182f6", "#f04452")
+    fig, ax = plt.subplots(figsize=(8, 3.4))
+    ax.plot(s.index, s.values, color=TXT, lw=.7)
+    ax.fill_between(s.index, s.values, med, where=s.values >= med, color=hi_col, alpha=.12, lw=0)
+    ax.fill_between(s.index, s.values, med, where=s.values < med, color=lo_col, alpha=.12, lw=0)
+    ax.axhline(med, color=TXT2, lw=.7, ls="--")
+    f = lambda v: f"{v:.{digits}f}{unit}"
+    ax.text(1.005, med, "중앙값\n" + f(med), transform=ax.get_yaxis_transform(), fontsize=8, color=TXT2, va="center")
+    left = lambda d: (d - s.index[0]) / (s.index[-1] - s.index[0]) < .3   # 왼쪽 끝 점은 상자를 오른쪽으로
+    _mark(ax, s.idxmin(), s.min(), f"최저 {f(s.min())} ({s.idxmin():%Y.%m.%d})", lo_col,
+          (16, 14) if left(s.idxmin()) else (-150, 14))
+    _mark(ax, s.idxmax(), s.max(), f"최고 {f(s.max())} ({s.idxmax():%Y.%m.%d})", hi_col,
+          (16, -14) if left(s.idxmax()) else (-150, -8))
+    _mark(ax, s.index[-1], s.iloc[-1], f"{s.index[-1]:%m/%d} {f(s.iloc[-1])}", TXT, (-74, 26))
+    ax.set_xlim(s.index[0], s.index[-1])
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    _style(ax, title or f"{col} ({s.index[0]:%Y.%m} ~ {s.index[-1]:%Y.%m.%d})")
+    return _uri(fig, save_as)
+
+
+def fear_periods(kospi, min_days=8, save_as=None):
+    """코스피와 공포탐욕지수 — 극단적 공포가 min_days거래일 이상 이어진 구간을 빨간 띠로 표시 (9편)."""
+    s = load_fg()["공포탐욕지수"]
+    k = kospi.reindex(s.index).ffill()
+    low = s < 25
+    runs = [g for _, g in s[low].groupby((low != low.shift()).cumsum()[low]) if len(g) >= min_days]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(8, 4.6), sharex=True, gridspec_kw={"height_ratios": [3, 2], "hspace": .12})
+    a1.plot(k.index, k.values, color=TXT, lw=.9)
+    a2.plot(s.index, s.values, color=TXT, lw=.6)
+    a2.axhspan(0, 25, color="#f04452", alpha=.08, lw=0)
+    a2.scatter(s.index[low], s[low], color="#f04452", s=3, zorder=3)
+    for g in runs:
+        for ax in (a1, a2):
+            ax.axvspan(g.index[0], g.index[-1], color="#f04452", alpha=.18, lw=0)
+    a2.set_ylim(0, 100)
+    a2.set_xlim(s.index[0], s.index[-1])
+    a2.xaxis.set_major_locator(mdates.YearLocator())
+    a2.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+    _style(a1, f"코스피 종가와 극단적 공포가 {min_days}거래일 이상 이어진 구간(빨간 띠)")
+    _style(a2, "")
+    a2.set_ylabel("공포탐욕지수", fontsize=8.5)
+    return _uri(fig, save_as)
+
+
 def index_vs_ma(close, days=125, window=250, name="코스피", save_as=None):
     """지수와 N일 이동평균 — 최근 window거래일 (2편 주가 모멘텀)."""
     ma = close.rolling(days).mean()
