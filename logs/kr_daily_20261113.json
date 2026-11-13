@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-13",
+  "published_at": "2026-11-13T07:34:08.366733",
+  "title": "[26년 11월 13일 국내증시] 한국전력 어닝 쇼크에 KOSPI 하락, 은행·반도체 소켓 강세로 낙폭 방어",
+  "search_description": "2026년 11월 13일 KOSPI -0.98% 하락 마감, 한국전력 3분기 어닝 쇼크로 -9.79% 급락. 은행 업종 전반 강세와 ISC 송도팹 착공 등이 낙폭을 방어했습니다.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-13-kospi.html",
+  "char_count": 14406,
+  "kospi_close": 5290.53,
+  "kospi_change_pct": -0.98,
+  "validation_issues": [
+    {
+      "type": "number_mismatch",
+      "section": "상승 특징주 - 신한지주",
+      "description": "신한지주 등락률 불일치",
+      "found": "+5.41%",
+      "expected": "+5.53%"
+    }
+  ]
+}
