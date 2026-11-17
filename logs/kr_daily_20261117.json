@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-17",
+  "published_at": "2026-11-17T07:34:10.029653",
+  "title": "[26년 11월 17일 국내증시] 백화점·건강관리 강세 속 KOSPI 급락, 삼성전자·LG에너지솔루션 하락 압력",
+  "search_description": "2026년 11월 17일 KOSPI 4,968.48pt(-2.59%), KOSDAQ 650.06pt(-2.34%) 하락 마감. 현대백화점·동국제약 강세, 에스엘·로보티즈 급락. 백화점·건강관리 섹터가 낙폭을 방어했습니다.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-17-kospi-lg.html",
+  "char_count": 14532,
+  "kospi_close": 4968.48,
+  "kospi_change_pct": -2.59,
+  "validation_issues": [
+    {
+      "type": "content_number",
+      "section": "상승 특징주",
+      "description": "현대백화점 등락률 불일치",
+      "found": "+7.50%",
+      "expected": "+7.39%",
+      "location": "상승 특징주 리스트 및 본문 첫 문장"
+    }
+  ]
+}
