@@ -8,6 +8,7 @@ main.py는 이 폴더에서 오래된 순서로 하나씩 꺼내 발행한다.
 """
 import argparse
 import json
+import re
 from pathlib import Path
 
 # draft 임포트 시점에 콘솔 UTF-8 래핑이 이미 처리됨 — 이중 래핑 방지(draft.py 주석 참고)
@@ -33,6 +34,17 @@ def approve(topic_id: int) -> None:
             "insert_chart.py로 전부 삽입한 뒤 승인하세요."
         )
 
+    if "data:image" in record["content"]:
+        raise ValueError(
+            "본문에 그림이 통째로(data:image) 들어 있습니다 — 블로거 홈 화면에 글이 1개만 보이는 원인이 됩니다"
+            "(2026-11-16). insert_chart.py로 다시 넣어 그림 주소로 연결한 뒤 승인하세요."
+        )
+    root = Path(__file__).resolve().parents[2]
+    imgs = re.findall(r"assets/img/([\w.-]+)", record["content"])
+    missing = [n for n in imgs if not (root / "assets" / "img" / n).exists()]
+    if missing:
+        raise ValueError(f"본문이 가리키는 그림 파일이 없습니다: {missing}")
+
     kanji = find_kanji(record["title"] + record["content"])
     if kanji:
         raise ValueError(f"한자가 검출됐습니다: {sorted(set(kanji))} — 승인할 수 없습니다.")
@@ -47,6 +59,8 @@ def approve(topic_id: int) -> None:
 
     log(f"승인 완료 — 발행 큐에 등록됨: {dest.name}")
     log(f"현재 큐 대기: {len(list(APPROVED_DIR.glob('*.json')))}건")
+    if imgs:
+        log(f"함께 push할 그림 파일: {sorted(set(imgs))}")
 
 
 if __name__ == "__main__":

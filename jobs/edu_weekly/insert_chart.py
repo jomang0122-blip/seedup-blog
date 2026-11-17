@@ -2,19 +2,35 @@
 """
 SeedUP 주식공부 — 초안의 차트 요청 자리에 총괄이 캡처한 이미지를 삽입
 _drafts/에 저장된 초안 JSON을 찾아 N번째 CHART_REQUEST 플레이스홀더를
-base64 <img> 태그로 교체하고, 미리보기 HTML도 다시 만든다.
+<img> 태그로 교체하고, 미리보기 HTML도 다시 만든다.
+
+그림은 본문에 통째로(base64) 넣지 않는다 — assets/img/edu_{주제ID}_{차트번호}.png로 복사하고
+jsDelivr 주소로 연결한다. 통째로 넣은 큰 글 때문에 블로거 홈 화면에 글이 1개만 보인 사고(2026-11-16).
+승인한 초안을 push할 때 이 그림 파일도 같이 push해야 발행 후 그림이 보인다.
 
 실행: python jobs/edu_weekly/insert_chart.py --id 1 --chart 1 --image "경로/파일.png"
 """
 import argparse
-import base64
 import json
 import mimetypes
+import os
 import re
+import shutil
 from pathlib import Path
 
 # draft 임포트 시점에 콘솔 UTF-8 래핑이 이미 처리됨 — 이중 래핑 방지(draft.py 주석 참고)
 from draft import _CHART_REQUEST_RE, _build_preview_html, _find_chart_requests, _find_draft_json
+
+
+ROOT = Path(__file__).resolve().parents[2]
+IMG_DIR = ROOT / "assets" / "img"
+CDN = "https://cdn.jsdelivr.net/gh/jomang0122-blip/seedup-blog@main/assets/img/"
+
+
+def local_preview(content: str, preview_dir: Path) -> str:
+    """미리보기는 push 전이라 CDN 주소가 안 열린다 — 로컬 그림 경로로 바꿔 보여 준다."""
+    rel = os.path.relpath(IMG_DIR, preview_dir).replace(os.sep, "/") + "/"
+    return content.replace(CDN, rel)
 
 
 def log(msg: str):
@@ -33,8 +49,10 @@ def insert_chart(topic_id: int, chart_index: int, image_path: str) -> None:
     if not mime or not mime.startswith("image/"):
         raise ValueError(f"이미지 파일이 아닌 것으로 보입니다(mime={mime}): {img_path}")
 
-    encoded = base64.b64encode(img_path.read_bytes()).decode("ascii")
-    data_uri = f"data:{mime};base64,{encoded}"
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
+    img_name = f"edu_{topic_id:03d}_{chart_index}{img_path.suffix.lower()}"
+    shutil.copyfile(img_path, IMG_DIR / img_name)
+    data_uri = CDN + img_name  # 이름은 기존 코드 유지(이제 data URI가 아니라 그림 주소)
 
     content = record["content"]
     matches = list(_CHART_REQUEST_RE.finditer(content))
@@ -69,11 +87,11 @@ def insert_chart(topic_id: int, chart_index: int, image_path: str) -> None:
     post_stub = {"title": record["title"], "content": content, "char_count": record["char_count"], "labels": record["labels"]}
     preview_path = json_path.with_name(json_path.stem + "_preview.html")
     preview_path.write_text(
-        _build_preview_html(topic_stub, post_stub, remaining, record.get("review_issues")),
+        local_preview(_build_preview_html(topic_stub, post_stub, remaining, record.get("review_issues")), preview_path.parent),
         encoding="utf-8",
     )
 
-    log(f"삽입 완료: {json_path.name} (요청 #{chart_index}: {pattern_desc})")
+    log(f"삽입 완료: {json_path.name} (요청 #{chart_index}: {pattern_desc}) — 그림 파일 assets/img/{img_name}")
     log(f"남은 차트 요청: {len(remaining)}건")
     log(f"미리보기 갱신: {preview_path}")
 
