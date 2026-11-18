@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-18",
+  "published_at": "2026-11-18T07:33:50.573990",
+  "title": "[26년 11월 18일 국내증시] 엔터·로봇·반도체 동반 강세로 KOSPI 급등, 레인보우로보틱스·하이브·삼성전기 주도",
+  "search_description": "2026년 11월 18일 KOSPI +1.99% 5,067pt, KOSDAQ +1.96% 마감. 레인보우로보틱스 +19.76%, 하이브 +12.86%, 삼성전기 +7.16% 강세. 방송·엔터 섹터 +12.89% 급등.",
+  "url": "https://www.seedup-invest.com/2026/11/26-11-18-kospi.html",
+  "char_count": 15391,
+  "kospi_close": 5067.44,
+  "kospi_change_pct": 1.99,
+  "validation_issues": [
+    {
+      "type": "dart_disclosure_mismatch",
+      "description": "공시 섹션에 '하이브' 언급은 있으나 실제 보고서명('타법인주식및출자증권취득결정(자율공시)(종속회사의주요경영사항)              ')과 불일치 — 섹션 전체 제거",
+      "found": "📋 관련 공시</h3>\n<ul>\n<li><strong>하이브</strong> 타법인주식및출자증권취득결정(자율공시)(종속회사의주요경영사항) (접수 2026-11-18) <a href=\"https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20261118800338\">[원문보기]</a> — 한한령 해제 기대감 속 엔터주 급등</li>\n</ul>\n",
+      "expected": "(섹션 제거)"
+    }
+  ]
+}
