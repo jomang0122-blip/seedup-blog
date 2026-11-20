@@ -338,5 +338,25 @@
       "avg_chg": 1.57,
       "top10_share": 27.8
     }
+  },
+  "2026-11-20": {
+    "KOSPI": {
+      "up": 99,
+      "down": 688,
+      "flat": 19,
+      "total": 806,
+      "up_ratio": 12.3,
+      "avg_chg": -2.97,
+      "top10_share": 62.7
+    },
+    "KOSDAQ": {
+      "up": 266,
+      "down": 1434,
+      "flat": 47,
+      "total": 1747,
+      "up_ratio": 15.2,
+      "avg_chg": -3.46,
+      "top10_share": 30.7
+    }
   }
 }
