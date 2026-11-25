@@ -401,6 +401,18 @@ US_REPORT_LINKS_HTML = (
     '</div>'
 )
 
+# 데일리 글 끝 "함께 읽기" — 데일리에서 고유 콘텐츠(현황판·연재·클래스)로 이어지는 내부 링크
+# (2026-11-25: 구글 "발견됨-색인 안 됨" 글을 다시 찾게 하고, 한 편만 보고 나가는 것을 줄이려는 목적).
+# 연재 2부가 생기면 두 번째 줄을 바꾼다.
+DAILY_READ_MORE_HTML = (
+    '<div style="margin-top:16px;padding:16px;background:#f2f4f6;border-radius:8px;">'
+    '<p style="margin:0 0 8px;font-weight:bold;font-size:13px;">📚 함께 읽기</p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 지금 시장 온도는? <a href="https://www.seedup-invest.com/p/blog-page_03.html">시장 현황판</a></p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 공포탐욕지수 읽는 법 <a href="https://www.seedup-invest.com/2026/11/1-7.html">시장 지표 읽는 법 1편</a></p>'
+    '<p style="margin:4px 0;font-size:13px;">👉 주식 기초부터 차근차근 <a href="https://www.seedup-invest.com/p/blog-page_04.html">시드업 클래스</a></p>'
+    '</div>'
+)
+
 DISCLAIMER = (
     '<p style="margin-top:30px;padding:15px;background:#f5f5f5;'
     'border-left:4px solid #999;font-size:12px;color:#666;">'

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label, truncate_at_sentence, extract_text
+from shared.utils import DISCLAIMER, KR_REPORT_LINKS_HTML, DAILY_READ_MORE_HTML, md_to_html, apply_color_spans, fix_weekday_labels, next_kr_trading_day_label, truncate_at_sentence, extract_text
 
 client = Anthropic()
 
@@ -716,7 +716,7 @@ def _parse_response(raw: str, date: str = "", data: dict = None) -> dict:
     # AI가 플레이스홀더를 <p>로 감싸는 경우 대비 (md_to_html이 단독 줄을 <p>로 래핑)
     content_html = content_html.replace(f"<p>{marketcap_table}</p>", marketcap_table)
 
-    content = content_html + summary_block + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML
+    content = content_html + summary_block + "\n" + DISCLAIMER + "\n" + KR_REPORT_LINKS_HTML + "\n" + DAILY_READ_MORE_HTML
     return {"title": title, "search_description": search_description, "content": content, "char_count": len(content)}
 
 

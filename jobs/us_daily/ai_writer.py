@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from anthropic import Anthropic
-from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block, truncate_at_sentence, extract_text
+from shared.utils import DISCLAIMER, US_REPORT_LINKS_HTML, DAILY_READ_MORE_HTML, md_to_html, apply_color_spans, fix_weekday_labels, us_time_rule_block, truncate_at_sentence, extract_text
 
 client = Anthropic()
 
@@ -387,7 +387,7 @@ def _parse_response(raw: str, us_date: str = "") -> dict:
     # 이 값을 본문에 넣지 않고 로그로만 남겨 총괄이 Blogger 편집화면에 수동으로
     # 붙여넣게 하는데(searchDescription은 Blogger API로 설정 불가, 2026-08-26
     # 확인됨), us_daily만 다르게 동작하고 있었다. 같은 방식으로 통일.
-    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML
+    content = apply_color_spans(md_to_html(md_body)) + "\n" + DISCLAIMER + "\n" + US_REPORT_LINKS_HTML + "\n" + DAILY_READ_MORE_HTML
     return {"labels": labels, "search_description": search_description, "content": content, "char_count": len(content)}
 
 
