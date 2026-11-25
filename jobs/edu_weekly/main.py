@@ -119,12 +119,17 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
         if topic_id is not None:
             log(f"  id={topic_id} 승인된 초안이 큐에 없습니다. 종료.")
         else:
-            log("  승인된 초안이 없습니다 — 이번 회차는 건너뜁니다.")
-            log("  (draft.py로 초안 생성 → insert_chart.py → approve.py 로 큐에 등록해주세요)")
+            # 2026-11-25: 예전에는 여기서 정상 종료(성공)해 11/14~22 두 주말 발행 0편을
+            # 아무도 몰랐다(B077 계열). 실패로 끝내 워크플로의 카카오톡 실패 알림이 가게 한다.
+            log("  [오류] 발행 대기 글 0편 — 초안 추가 필요 (세션이 초안 작성 → approve.py → push)")
+            sys.exit(1)
         sys.exit(0)
     record = json.loads(queue_path.read_text(encoding="utf-8"))
     log(f"  선택된 주제: [{record['level']}] {record['topic_title']} (id={record['topic_id']})")
-    log(f"  큐 대기: {len(list(APPROVED_DIR.glob('*.json')))}건")
+    queue_n = len(list(APPROVED_DIR.glob('*.json')))
+    log(f"  큐 대기: {queue_n}건 (이번 발행 후 남는 글 {queue_n - 1}편)")
+    if queue_n - 1 <= 2:
+        log(f"  [경고] 발행 대기 글이 {queue_n - 1}편만 남습니다 — 다음 주말분 초안 작성 필요")
 
     log("▶ Step 2: 중복 발행 가드 (Blogger 실제 발행 여부 확인)")
     try:
