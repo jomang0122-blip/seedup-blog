@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from data_collector import collect_all
-from ai_writer import generate_post, insert_breadth_block
+from ai_writer import generate_post, insert_breadth_block, insert_stock_prices
 from shared.utils import (
     DISCLAIMER, md_to_html, apply_color_spans,
     fetch_naver_index_trading_value_today, record_trading_value_snapshot,
@@ -442,6 +442,10 @@ def run(dry_run: bool = False, date: str = None, force: bool = False):
     post["content"] = insert_breadth_block(post["content"], data)
     post["char_count"] = len(post["content"])
     log("  삽입 완료" if post["char_count"] > before_len else "  생략 (시장폭 데이터 없음 또는 위치 못 찾음)")
+
+    log("▶ Step 3-3: 특징주 종가 표기 (코드가 수집값 그대로 — 수치검증 이후)")
+    post["content"] = insert_stock_prices(post["content"], data)
+    post["char_count"] = len(post["content"])
 
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")

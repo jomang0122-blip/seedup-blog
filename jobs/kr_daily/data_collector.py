@@ -180,6 +180,10 @@ def _build_stock_maps() -> dict:
             for _, r in df_kospi.iterrows()
             if pd.notna(r["Marcap"])
         }
+    # 종목 종가(정규장) — 글에 "종목명 123,400원 +1.23%"로 넣기 위함(2026-11-25)
+    stock_close_map = {}
+    if "Close" in df_kospi.columns:
+        stock_close_map = {str(r["Name"]): float(r["Close"]) for _, r in df_kospi.iterrows() if pd.notna(r["Close"])}
     code_map = {}
     if "Code" in df_kospi.columns:
         code_map = {
@@ -205,6 +209,8 @@ def _build_stock_maps() -> dict:
                     stock_pct_map[name] = round(float(r[kq_chg]), 2)
                 if name not in stock_cap_map and "Marcap" in df_kosdaq.columns and pd.notna(r["Marcap"]):
                     stock_cap_map[name] = float(r["Marcap"])
+                if name not in stock_close_map and "Close" in df_kosdaq.columns and pd.notna(r["Close"]):
+                    stock_close_map[name] = float(r["Close"])
                 if name not in code_map and "Code" in df_kosdaq.columns:
                     code_map[name] = str(r["Code"]).zfill(6)
     except Exception as e:
@@ -215,6 +221,7 @@ def _build_stock_maps() -> dict:
         "chg_col": chg_col,
         "stock_pct_map": stock_pct_map,
         "stock_cap_map": stock_cap_map,
+        "stock_close_map": stock_close_map,
         "code_map": code_map,
         "market_breadth": {k: v for k, v in market_breadth.items() if v},
     }
@@ -247,7 +254,13 @@ def _verify_and_fix_change_pct(stocks: list, code_map: dict) -> list:
                 f"https://m.stock.naver.com/api/stock/{code}/basic",
                 headers=_NAVER_HEADERS, timeout=5,
             )
-            live_pct = float(resp.json().get("fluctuationsRatio", "0"))
+            js = resp.json()
+            live_pct = float(js.get("fluctuationsRatio", "0"))
+            # 등락률을 확인한 같은 응답의 정규장 종가를 함께 쓴다(시간외 overMarketPriceInfo 아님)
+            try:
+                s["close"] = float(str(js.get("closePrice", "")).replace(",", ""))
+            except ValueError:
+                pass
             if abs(live_pct - s["change_pct"]) >= _STOCK_VERIFY_DIFF_THRESHOLD:
                 print(f"  [종목검증] {s['name']}: FDR {s['change_pct']:+.2f}% → 네이버 {live_pct:+.2f}%로 교정")
                 s["change_pct"] = round(live_pct, 2)
@@ -349,6 +362,7 @@ def get_marketcap_top_stocks(stock_maps: dict) -> dict:
                 "name": name,
                 "marcap": float(r["Marcap"]) if pd.notna(r.get("Marcap")) else None,
                 "amount": float(r["Amount"]) if "Amount" in r and pd.notna(r.get("Amount")) else None,
+                "close": float(r["Close"]) if "Close" in r and pd.notna(r.get("Close")) else None,
                 "change_pct": round(float(pct), 2),
                 "is_upper_limit": round(float(pct), 2) >= 29.0,
             })
@@ -1033,6 +1047,13 @@ def collect_all(date: str = None) -> dict:
                   + marketcap_data.get("marketcap_top", [])):
             verified_pct_map[s["name"]] = s["change_pct"]
         stock_result["stock_pct_map"] = verified_pct_map
+        # 종가도 같은 방식 — 재검증에서 받은 종가가 있으면 그 값이 우선(2026-11-25)
+        verified_close_map = dict(stock_maps.get("stock_close_map", {}))
+        for s in (stock_result.get("top_gainers", []) + stock_result.get("top_losers", [])
+                  + marketcap_data.get("marketcap_top", []) + featured_verified):
+            if s.get("close"):
+                verified_close_map[s["name"]] = s["close"]
+        stock_result["stock_close_map"] = verified_close_map
 
         sector_data = get_sector_data(date)
 

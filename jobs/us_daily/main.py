@@ -368,6 +368,14 @@ def run(dry_run: bool = False, force: bool = False):
     else:
         log("  구조 이상 없음")
 
+    log("▶ Step 3-2: 급등락 종목 종가 표기 (코드가 수집값 그대로 — 수치검증 이후)")
+    from shared.utils import insert_prices
+    mover_prices = {f"{m['ticker']}({m['name']})": m.get("close") for m in (data.get("top_movers") or [])}
+    post["content"], n_price = insert_prices(post["content"], mover_prices, "급등락 종목 한눈에",
+                                             ("<hr", "<h2"), lambda v: f"${v:,.2f}")
+    post["char_count"] = len(post["content"])
+    log(f"  {n_price}곳에 종가 표기")
+
     if dry_run:
         log("▶ [DRY-RUN] 발행 생략 — 미리보기")
         print("\n" + "─" * 60)

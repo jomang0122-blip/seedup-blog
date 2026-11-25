@@ -77,6 +77,9 @@ def fetch_naver_market_listing(market: str):
                     "Marcap": float(s["marketValueRaw"]),
                     "Amount": float(s.get("accumulatedTradingValueRaw", 0) or 0),
                     "Volume": float(s.get("accumulatedTradingVolumeRaw", 0) or 0),
+                    # 정규장 종가(closePriceRaw). 시간외 가격(overMarketPriceInfo)은 쓰지 않는다
+                    # — 2026-10 시간외 값이 섞여 전일 대비가 틀렸던 사고와 같은 이유.
+                    "Close": float(str(s.get("closePriceRaw") or s.get("closePrice") or "nan").replace(",", "")),
                 })
             except (KeyError, ValueError, TypeError):
                 continue
@@ -544,3 +547,28 @@ def fetch_naver_investor_trend(index: str, dates: list) -> list:
         })
     out.sort(key=lambda r: r["date"])
     return out
+
+
+def insert_prices(content: str, prices: dict, region_start: str, region_ends: tuple, fmt) -> tuple:
+    """본문 특정 구역에서 '종목명 + 등락률 배지' 사이에 종가를 끼워 넣는다 (2026-11-25 신설).
+
+    숫자를 AI에 맡기지 않고 코드가 수집값을 그대로 넣는다(시가총액 표·시장폭 표와 같은 원칙).
+    수치검증이 끝난 뒤 발행 직전에 호출해야 검증 AI가 데이터에 없는 숫자로 오판하지 않는다.
+    매칭 형태: [<strong>]KEY[</strong>] <span ...><b>+1.23%</b></span>
+    이미 종가가 들어간 줄은 배지가 바로 뒤에 붙어 있지 않아 다시 매칭되지 않는다(두 번 호출해도 안전).
+    구역을 못 찾거나 가격이 없는 종목은 그대로 둔다(발행은 계속). 반환: (본문, 넣은 개수)."""
+    start = content.find(region_start)
+    if start < 0 or not prices:
+        return content, 0
+    ends = [i for i in (content.find(m, start + len(region_start)) for m in region_ends) if i > 0]
+    end = min(ends) if ends else len(content)
+    seg, count = content[start:end], 0
+    badge = r'<span[^>]*>\s*<b>[+\-−]?\d[\d.,]*%</b>\s*</span>'
+    for key in sorted(prices, key=len, reverse=True):
+        price = prices[key]
+        if price is None or price != price:  # None 또는 NaN
+            continue
+        pat = re.compile(r'(?<=[>\s])(' + re.escape(key) + r')(</strong>)?(\s*)(' + badge + r')')
+        seg, n = pat.subn(lambda m: m.group(1) + (m.group(2) or '') + ' ' + fmt(price) + ' ' + m.group(4), seg)
+        count += n
+    return content[:start] + seg + content[end:], count

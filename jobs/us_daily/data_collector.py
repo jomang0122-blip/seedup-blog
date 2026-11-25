@@ -124,16 +124,17 @@ def collect_top_movers(top_n: int = 5) -> list[dict]:
             if abs(pct) > 40:
                 print(f"  [경고] {ticker} {pct:+.2f}% — 데이터 이상 의심, 급등락 제외")
                 continue
-            changes[ticker] = pct
+            changes[ticker] = (pct, round(float(series.iloc[-1]), 2))  # (등락률, 종가)
 
-        sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1]), reverse=True)
+        sorted_movers = sorted(changes.items(), key=lambda x: abs(x[1][0]), reverse=True)
         result = []
-        for ticker, pct in sorted_movers[:top_n]:
+        for ticker, (pct, last_close) in sorted_movers[:top_n]:
             news = mover_news(ticker) if abs(pct) >= _MOVER_NEWS_MIN_PCT else ""
             result.append({
                 "ticker": ticker,
                 "name": WATCH_NAMES.get(ticker, ticker),
                 "change_pct": pct,
+                "close": last_close,  # 종가(2026-11-25) — 급등락 줄에 코드가 직접 표기
                 "direction": "up" if pct >= 0 else "down",
                 "news": news,
             })

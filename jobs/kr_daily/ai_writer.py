@@ -91,10 +91,12 @@ def _build_marketcap_table_html(data: dict) -> str:
     rows = []
     for s in top:
         color = "#3182f6" if s["change_pct"] < 0 else "#e74c3c"
+        close_txt = f"{s['close']:,.0f}원" if s.get("close") else "-"
         rows.append(
             '<tr>'
             f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{s.get("rank", "")}</td>'
             f'<td style="padding:8px;vertical-align:top;white-space:nowrap;"><strong>{s["name"]}</strong></td>'
+            f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{close_txt}</td>'
             f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{_fmt_won(s.get("marcap"))}</td>'
             f'<td style="padding:8px;vertical-align:top;white-space:nowrap;"><span style="color:{color}"><b>{s["change_pct"]:+.2f}%</b></span></td>'
             f'<td style="padding:8px;vertical-align:top;white-space:nowrap;">{_fmt_won(s.get("amount"))}</td>'
@@ -104,6 +106,7 @@ def _build_marketcap_table_html(data: dict) -> str:
         '<tr>'
         '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">순위</th>'
         '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">종목명</th>'
+        '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">종가</th>'
         '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">시가총액</th>'
         '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">등락률</th>'
         '<th style="padding:8px;background:#f2f4f6;text-align:left;white-space:nowrap;">거래대금</th>'
@@ -744,3 +747,15 @@ def generate_post(data: dict, model: str = "claude-sonnet-4-6", prev_issues: lis
         print(f"  {raw[:300]}")
 
     raise RuntimeError("AI 응답 파싱 3회 모두 실패 — 발행 중단")
+
+
+def insert_stock_prices(content: str, data: dict) -> str:
+    """특징주 구역(💥 2. ~ 🏆/🔮)의 '종목명 +1.23%' 줄에 정규장 종가를 넣는다(2026-11-25).
+
+    insert_breadth_block과 같은 이유로 수치검증이 끝난 뒤 발행 직전에 호출한다.
+    종가가 없는 종목은 그대로(등락률만) 두고 발행은 계속한다."""
+    from shared.utils import insert_prices
+    out, n = insert_prices(content, data.get("stock_close_map") or {}, "💥 2.", ("🏆", "🔮"),
+                           lambda v: f"{v:,.0f}원")
+    print(f"  [종가] 특징주 {n}곳에 종가 표기")
+    return out
