@@ -155,6 +155,24 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
         log("DRY-RUN 완료")
         return
 
+    log("▶ Step 2-1: 이전 편 링크 넣기 (class_nav)")
+    try:
+        import class_nav
+        from topic_manager import load_topics as _load_topics
+    except ImportError:
+        _load_topics = None
+    topics_all = []
+    try:
+        if _load_topics:
+            raw_topics = _load_topics()
+            topics_all = raw_topics if isinstance(raw_topics, list) else raw_topics.get("topics", [])
+        prev_link = class_nav.topic_link(topics_all, record["topic_id"] - 1)
+        record["content"] = class_nav.apply_nav(record["content"], prev_link, None)
+        log(f"  이전 편: {prev_link[0] if prev_link else '없음'}")
+    except Exception as e:
+        log(f"  [경고] 이전 편 링크 생략 (발행은 계속): {e}")
+        prev_link = None
+
     log("▶ Step 3: Blogger 발행")
     try:
         result = publish_post(
@@ -175,6 +193,19 @@ def run(dry_run: bool = False, force: bool = False, topic_id: int = None):
         log(f"  현황: {get_status()}")
     except Exception as e:
         log(f"  [경고] 상태 업데이트 실패: {e}")
+
+    log("▶ Step 4-1: 직전 편에 다음 편 링크 추가 (본문만 수정, 검색 설명 유지)")
+    try:
+        if prev_link:
+            from googleapiclient.discovery import build as _build
+            from shared.blog_publisher import get_credentials, BLOG_ID
+            svc = _build("blogger", "v3", credentials=get_credentials())
+            prev2 = class_nav.topic_link(topics_all, record["topic_id"] - 2)
+            this_link = (record["title"], result["url"])
+            changed = class_nav.patch_nav(svc, BLOG_ID, prev_link[1], prev2, this_link)
+            log(f"  {'추가 완료' if changed else '변경 없음'}: {prev_link[0]}")
+    except Exception as e:
+        log(f"  [경고] 직전 편 링크 추가 실패 (발행 자체는 완료됨): {e}")
 
     log("▶ Step 5: 로컬 아카이브 (04_시드업클래스/01_발행글)")
     try:
